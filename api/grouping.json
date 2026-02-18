@@ -1,0 +1,403 @@
+{
+    "syscohada": [
+        {
+            "compte": "10",
+            "nature": "bilan",
+            "libelle": "CAPITAL"
+           },
+           {
+            "compte": "11",
+            "nature": "bilan",
+            "libelle": "RÉSERVES"
+           },
+           {
+            "compte": "12",
+            "nature": "bilan",
+            "libelle": "REPORT À NOUVEAU"
+           },
+           {
+            "compte": "13",
+            "nature": "bilan",
+            "libelle": "RÉSULTAT NET DE L'EXERCICE"
+           },
+           {
+            "compte": "14",
+            "nature": "bilan",
+            "libelle": "SUBVENTIONS D'INVESTISSEMENT"
+           },
+           {
+            "compte": "15",
+            "nature": "bilan",
+            "libelle": "PROVISIONS RÉGLEMENTÉES ET FONDS ASSIMILÉS"
+           },
+           {
+            "compte": "16",
+            "nature": "bilan",
+            "libelle": "EMPRUNTS ET DETTES ASSIMILÉES"
+           },
+           {
+            "compte": "17",
+            "nature": "bilan",
+            "libelle": "DETTES DE LOCATION ACQUISITION"
+           },
+           {
+            "compte": "18",
+            "nature": "bilan",
+            "libelle": "DETTES LIÉES À DES PARTICIPATIONS ET COMPTES DE LIAISON DES ÉTABLISSEMENTS ET SOCIÉTÉS EN PARTICIPATION"
+           },
+           {
+            "compte": "19",
+            "nature": "bilan",
+            "libelle": "PROVISIONS POUR RISQUES ET CHARGES"
+           },
+           {
+            "compte": "20",
+            "nature": "bilan",
+            "libelle": "AUTRES ACTIFS NON COURANTS"
+           },
+           {
+            "compte": "21",
+            "nature": "bilan",
+            "libelle": "IMMOBILISATIONS INCORPORELLES"
+           },
+           {
+            "compte": "22",
+            "nature": "bilan",
+            "libelle": "TERRAINS"
+           },
+           {
+            "compte": "23",
+            "nature": "bilan",
+            "libelle": "BÂTIMENTS, INSTALLATIONS TECHNIQUES ET AGENCEMENTS"
+           },
+           {
+            "compte": "24",
+            "nature": "bilan",
+            "libelle": "MATÉRIEL, MOBILIER ET ACTIFS BIOLOGIQUES"
+           },
+           {
+            "compte": "25",
+            "nature": "bilan",
+            "libelle": "AVANCES ET ACOMPTES VERSÉS SUR IMMOBILISATIONS"
+           },
+           {
+            "compte": "26",
+            "nature": "bilan",
+            "libelle": "TITRES DE PARTICIPATION"
+           },
+           {
+            "compte": "27",
+            "nature": "bilan",
+            "libelle": "AUTRES IMMOBILISATIONS FINANCIÈRES"
+           },
+           {
+            "compte": "28",
+            "nature": "bilan",
+            "libelle": "AMORTISSEMENTS"
+           },
+           {
+            "compte": "29",
+            "nature": "bilan",
+            "libelle": "DÉPRÉCIATIONS DES IMMOBILISATIONS"
+           },
+           {
+            "compte": "30",
+            "nature": "bilan",
+            "libelle": "AUTRES PROVISIONS DÉPRÉCIATIONS ACTIFS NON COURANTS"
+           },
+           {
+            "compte": "31",
+            "nature": "bilan",
+            "libelle": "STOCKS DE MARCHANDISES"
+           },
+           {
+            "compte": "32",
+            "nature": "bilan",
+            "libelle": "STOCKS DE MATIÈRES PREMIERES ET FOURNITURES LIÉES"
+           },
+           {
+            "compte": "33",
+            "nature": "bilan",
+            "libelle": "STOCKS D'AUTRES APPROVISIONNEMENTS"
+           },
+           {
+            "compte": "34",
+            "nature": "bilan",
+            "libelle": "STOCKS DE PRODUITS EN COURS"
+           },
+           {
+            "compte": "35",
+            "nature": "bilan",
+            "libelle": "STOCKS DE SERVICES EN COURS"
+           },
+           {
+            "compte": "36",
+            "nature": "bilan",
+            "libelle": "STOCKS DE PRODUITS FINIS"
+           },
+           {
+            "compte": "37",
+            "nature": "bilan",
+            "libelle": "STOCKS DE PRODUITS INTERMÉDIAIRES ET RÉSIDUELS"
+           },
+           {
+            "compte": "38",
+            "nature": "bilan",
+            "libelle": "STOCKS EN COURS DE ROUTE, EN CONSIGNATION OU EN DÉPÔT"
+           },
+           {
+            "compte": "39",
+            "nature": "bilan",
+            "libelle": "DÉPRÉCIATIONS DE STOCKS"
+           },
+           {
+            "compte": "40",
+            "nature": "bilan",
+            "libelle": "FOURNISSEURS ET COMPTES RATTACHÉS"
+           },
+           {
+            "compte": "41",
+            "nature": "bilan",
+            "libelle": "CLIENTS ET COMPTES RATTACHÉS"
+           },
+           {
+            "compte": "42",
+            "nature": "bilan",
+            "libelle": "PERSONNEL"
+           },
+           {
+            "compte": "43",
+            "nature": "bilan",
+            "libelle": "ORGANISMES SOCIAUX"
+           },
+           {
+            "compte": "44",
+            "nature": "bilan",
+            "libelle": "ÉTAT ET COLLECTIVITÉS PUBLIQUES"
+           },
+           {
+            "compte": "45",
+            "nature": "bilan",
+            "libelle": "ORGANISMES INTERNATIONAUX"
+           },
+           {
+            "compte": "46",
+            "nature": "bilan",
+            "libelle": "APPORTEURS ASSOCIÉS ET GROUPE"
+           },
+           {
+            "compte": "47",
+            "nature": "bilan",
+            "libelle": "DÉBITEURS ET CRÉDITEURS DIVERS"
+           },
+           {
+            "compte": "48",
+            "nature": "bilan",
+            "libelle": "CRÉANCES ET DETTES HORS ACTIVITÉS ORDINAIRES (H.A.O.)"
+           },
+           {
+            "compte": "49",
+            "nature": "bilan",
+            "libelle": "DÉPRÉCIATIONS ET PROVISIONS POUR RISQUES A COURT TERME - TIERS"
+           },
+           {
+            "compte": "50",
+            "nature": "bilan",
+            "libelle": "TITRES DE PLACEMENT"
+           },
+           {
+            "compte": "51",
+            "nature": "bilan",
+            "libelle": "VALEURS À ENCAISSER"
+           },
+           {
+            "compte": "52",
+            "nature": "bilan",
+            "libelle": "BANQUES"
+           },
+           {
+            "compte": "53",
+            "nature": "bilan",
+            "libelle": "ÉTABLISSEMENTS FINANCIERS ET ASSIMILÉS"
+           },
+           {
+            "compte": "54",
+            "nature": "bilan",
+            "libelle": "INSTRUMENTS DE TRÉSORERIE"
+           },
+           {
+            "compte": "55",
+            "nature": "bilan",
+            "libelle": "INSTRUMENTS DE MONNAIE ELECTRONIQUE"
+           },
+           {
+            "compte": "56",
+            "nature": "bilan",
+            "libelle": "BANQUES, CRÉDITS DE TRÉSORERIE ET D'ESCOMPTE"
+           },
+           {
+            "compte": "57",
+            "nature": "bilan",
+            "libelle": "CAISSE"
+           },
+           {
+            "compte": "58",
+            "nature": "bilan",
+            "libelle": "RÉGIES D'AVANCES, ACCRÉDITIFS ET VIREMENTS INTERNES"
+           },
+           {
+            "compte": "59",
+            "nature": "bilan",
+            "libelle": "DÉPRÉCIATIONS ET PROVISIONS POUR RISQUES A COURT TERME - TRESORERIE"
+           },
+           {
+            "compte": "60",
+            "nature": "pnl",
+            "libelle": "ACHATS ET VARIATIONS DE STOCKS"
+           },
+           {
+            "compte": "61",
+            "nature": "pnl",
+            "libelle": "TRANSPORTS"
+           },
+           {
+            "compte": "62",
+            "nature": "pnl",
+            "libelle": "SERVICES EXTÉRIEURS"
+           },
+           {
+            "compte": "63",
+            "nature": "pnl",
+            "libelle": "AUTRES SERVICES EXTÉRIEURS"
+           },
+           {
+            "compte": "64",
+            "nature": "pnl",
+            "libelle": "IMPÔTS ET TAXES"
+           },
+           {
+            "compte": "65",
+            "nature": "pnl",
+            "libelle": "AUTRES CHARGES"
+           },
+           {
+            "compte": "66",
+            "nature": "pnl",
+            "libelle": "CHARGES DE PERSONNEL"
+           },
+           {
+            "compte": "67",
+            "nature": "pnl",
+            "libelle": "FRAIS FINANCIERS ET CHARGES ASSIMILÉES"
+           },
+           {
+            "compte": "68",
+            "nature": "pnl",
+            "libelle": "DOTATIONS AUX AMORTISSEMENTS"
+           },
+           {
+            "compte": "69",
+            "nature": "pnl",
+            "libelle": "DOTATIONS AUX PROVISIONS"
+           },
+           {
+            "compte": "70",
+            "nature": "pnl",
+            "libelle": "VENTES"
+           },
+           {
+            "compte": "71",
+            "nature": "pnl",
+            "libelle": "SUBVENTIONS D'EXPLOITATION"
+           },
+           {
+            "compte": "72",
+            "nature": "pnl",
+            "libelle": "PRODUCTION IMMOBILISÉE"
+           },
+           {
+            "compte": "73",
+            "nature": "pnl",
+            "libelle": "VARIATIONS DE STOCKS DE BIENS ET DE SERVICES PRODUITS"
+           },
+           {
+            "compte": "74",
+            "nature": "pnl",
+            "libelle": "PROVISIONS GESTIONNAIRES ET AUTRES REGULARISATIONS"
+           },
+           {
+            "compte": "75",
+            "nature": "pnl",
+            "libelle": "AUTRES PRODUITS"
+           },
+           {
+            "compte": "76",
+            "nature": "pnl",
+            "libelle": "PRODUITS FINANCIERS DIVERS"
+           },
+           {
+            "compte": "77",
+            "nature": "pnl",
+            "libelle": "REVENUS FINANCIERS ET ASSIMILÉS"
+           },
+           {
+            "compte": "78",
+            "nature": "pnl",
+            "libelle": "TRANSFERTS DE CHARGES"
+           },
+           {
+            "compte": "79",
+            "nature": "pnl",
+            "libelle": "REPRISES DE PROVISIONS"
+           },
+           {
+            "compte": "81",
+            "nature": "pnl",
+            "libelle": "VALEURS COMPTABLES DES CESSIONS D'IMMOBILISATIONS"
+           },
+           {
+            "compte": "82",
+            "nature": "pnl",
+            "libelle": "PRODUITS DES CESSIONS D'IMMOBILISATIONS"
+           },
+           {
+            "compte": "83",
+            "nature": "pnl",
+            "libelle": "CHARGES HORS ACTIVITÉS ORDINAIRES"
+           },
+           {
+            "compte": "84",
+            "nature": "pnl",
+            "libelle": "PRODUITS HORS ACTIVITÉS ORDINAIRES"
+           },
+           {
+            "compte": "85",
+            "nature": "pnl",
+            "libelle": "DOTATIONS HORS ACTIVITÉS ORDINAIRES"
+           },
+           {
+            "compte": "86",
+            "nature": "pnl",
+            "libelle": "REPRISES HORS ACTIVITÉS ORDINAIRES"
+           },
+           {
+            "compte": "87",
+            "nature": "pnl",
+            "libelle": "PARTICIPATION DES TRAVAILLEURS"
+           },
+           
+           {
+            "compte": "88",
+            "nature": "pnl",
+            "libelle": "SUBVENTIONS D'ÉQUILIBRE"
+           },
+           {
+            "compte": "89",
+            "nature": "pnl",
+            "libelle": "IMPÔTS SUR LE RÉSULTAT"
+           }
+    ],
+    "pcb": []
+
+    
+}

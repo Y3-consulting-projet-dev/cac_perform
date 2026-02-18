@@ -1,0 +1,12 @@
+virtualenv
+__pycache__
+*.txt
+envi
+.env
+*.xlsx
+Balance
+playground-1.mongodb.js
+test-cac-perform
+
+# Ne pas ignorer requirements.txt
+!requirements.txt

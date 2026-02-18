@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+
+@theme {
+    --color-blue-ycube: #043C5D;
+    --color-blue-ycube-1: #053D5E;
+    --color-blue-ycube-2: #8faadc;
+    --color-blue-ycube-3: #156082;
+    --color-green-ycube-2: #7FC241;
+    --color-green-ycube: #589654;
+    --color-gray-ycube: #F2F2F2;
+    --color-gray-ycube-1: #B2B2B2;
+}
+
+html, body, #app {
+  height: 100%;
+  overflow: hidden; /* pour éviter les scroll fantômes */
+}
+
+button {
+    cursor: pointer;
+}
+
+/* Styles personnalisés pour les boutons */
+.btn-primary {
+    background: #043C5D;
+    border: 2px solid #1E40AF;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: #156082;
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: linear-gradient(135deg,  #7FC241 0%, #589654 100%);
+    border: 2px solid #047857;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    transition: all 0.3s ease;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    border: 2px solid #B45309;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    transition: all 0.3s ease;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Classes de taille standardisées pour les boutons */
+.btn-standard {
+    width: 12rem; /* w-48 = 192px */
+    height: 3rem; /* h-12 = 48px */
+    padding: 0.75rem 1.5rem; /* px-6 py-3 */
+    font-size: 1rem; /* text-base */
+    font-weight: 600; /* font-semibold */
+    border-radius: 0.5rem; /* rounded-lg */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.btn-large {
+    width: 16rem; /* w-64 = 256px */
+    height: 3rem; /* h-12 = 48px */
+    padding: 0.75rem 1.5rem; /* px-6 py-3 */
+    font-size: 1rem; /* text-base */
+    font-weight: 600; /* font-semibold */
+    border-radius: 0.5rem; /* rounded-lg */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Animation pour les boutons */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.btn-pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Classe pour les petits boutons */
+.btn-small {
+    width: 5rem; /* w-20 = 80px */
+    height: 2rem; /* h-8 = 32px */
+    padding: 0.25rem 0.75rem; /* px-3 py-1 */
+    font-size: 0.75rem; /* text-xs */
+    font-weight: 500;
+    border-radius: 0.25rem; /* rounded */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.btn-tiny {
+    width: 6rem; /* w-24 = 96px */
+    height: 2rem; /* h-8 = 32px */
+    padding: 0.25rem 0.75rem; /* px-3 py-1 */
+    font-size: 0.75rem; /* text-xs */
+    font-weight: 500;
+    border-radius: 0.25rem; /* rounded */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Styles pour les états disabled */
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
