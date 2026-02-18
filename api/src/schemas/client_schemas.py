@@ -1,155 +1,172 @@
 """
-Schémas de validation pour les clients
+Schemas de validation pour les clients
 """
 
-from marshmallow import Schema, fields, validate, ValidationError, post_load
-from typing import Dict, Any
+from datetime import date, datetime
+from typing import Any, Dict
+from marshmallow import EXCLUDE, Schema, ValidationError, fields, validate, validates
+
+
+REFERENTIELS = ["SYSCOHADA", "IFRS", "PCG"]
+CIVILITIES = ["M", "Mme", "Mlle"]
 
 
 class ClientCreateSchema(Schema):
-    """Schéma pour la création d'un client"""
-    
-    nom = fields.Str(
-        required=True, 
-        validate=validate.Length(min=2, max=100),
-        error_messages={"required": "Le nom du client est requis"}
-    )
-    
-    activite = fields.Str(
+    """Schema pour la creation d'un client (aligne sur NewClient.vue)."""
+
+    class Meta:
+        unknown = EXCLUDE
+
+    company_name = fields.Str(
         required=True,
-        validate=validate.Length(min=2, max=200),
-        error_messages={"required": "L'activité du client est requise"}
+        validate=validate.Length(min=2, max=120),
+        error_messages={"required": "Le nom de l'entreprise est requis."},
     )
-    
+    sector = fields.Str(
+        required=True,
+        validate=validate.Length(min=2, max=120),
+        error_messages={"required": "Le secteur est requis."},
+    )
+    address = fields.Str(
+        required=True,
+        validate=validate.Length(min=2, max=300),
+        error_messages={"required": "L'adresse est requise."},
+    )
     referentiel = fields.Str(
         required=True,
-        validate=validate.OneOf(["syscohada", "ifrs", "pcg"]),
-        error_messages={"required": "Le référentiel comptable est requis"}
+        validate=validate.OneOf(REFERENTIELS),
+        error_messages={"required": "Le referentiel comptable est requis."},
     )
-    
-    forme_juridique = fields.Str(
+    legal_form = fields.Str(
         required=True,
-        validate=validate.Length(min=2, max=50),
-        error_messages={"required": "La forme juridique est requise"}
+        validate=validate.Length(min=2, max=80),
+        error_messages={"required": "La forme legale est requise."},
     )
-    
-    capital = fields.Float(
+    responsable_name = fields.Str(
         required=True,
-        validate=validate.Range(min=0),
-        error_messages={"required": "Le capital est requis"}
+        validate=validate.Length(min=2, max=120),
+        error_messages={"required": "Le nom du responsable est requis."},
     )
-    
-    siege_social = fields.Str(
+    civility = fields.Str(
         required=True,
-        validate=validate.Length(min=5, max=200),
-        error_messages={"required": "Le siège social est requis"}
+        validate=validate.OneOf(CIVILITIES),
+        error_messages={"required": "La civilite est requise."},
     )
-    
-    adresse = fields.Str(
+    responsable_function = fields.Str(
         required=True,
-        validate=validate.Length(min=5, max=300),
-        error_messages={"required": "L'adresse est requise"}
+        validate=validate.Length(min=2, max=120),
+        error_messages={"required": "La fonction du responsable est requise."},
     )
-    
-    n_cc = fields.Str(
-        required=False,
-        validate=validate.Length(max=50),
-        allow_none=True
+    RCCM = fields.Str(
+        required=True,
+        validate=validate.Length(min=2, max=80),
+        error_messages={"required": "Le numero RCCM est requis."},
+    )
+    country = fields.Str(
+        required=True,
+        validate=validate.Length(min=2, max=120),
+        error_messages={"required": "Le pays est requis."},
+    )
+    creation_date = fields.Date(
+        required=True,
+        format="%Y-%m-%d",
+        error_messages={
+            "required": "La date de creation de l'entreprise est requise.",
+            "invalid": "Le format de la date de creation doit etre YYYY-MM-DD.",
+        },
     )
 
+    @validates("referentiel")
+    def _normalize_referentiel(self, value: str) -> None:
+        # Marshmallow validates after load; rely on allowed upper-case values.
+        if value and value.upper() not in REFERENTIELS:
+            raise ValidationError("Referentiel invalide. Valeurs autorisees: SYSCOHADA, IFRS, PCG.")
 
-class ClientUpdateSchema(ClientCreateSchema):
-    """Schéma pour la modification d'un client"""
-    
-    _id = fields.Str(
-        required=True,
-        error_messages={"required": "L'ID du client est requis pour la modification"}
-    )
-    
-    # Rendre tous les champs optionnels pour la modification
-    nom = fields.Str(validate=validate.Length(min=2, max=100), required=False)
-    activite = fields.Str(validate=validate.Length(min=2, max=200), required=False)
-    referentiel = fields.Str(validate=validate.OneOf(["syscohada", "ifrs", "pcg"]), required=False)
-    forme_juridique = fields.Str(validate=validate.Length(min=2, max=50), required=False)
-    capital = fields.Float(validate=validate.Range(min=0), required=False)
-    siege_social = fields.Str(validate=validate.Length(min=5, max=200), required=False)
-    adresse = fields.Str(validate=validate.Length(min=5, max=300), required=False)
+
+class ClientUpdateSchema(Schema):
+    """Schema pour la mise a jour d'un client."""
+
+    class Meta:
+        unknown = EXCLUDE
+
+    _id = fields.Str(required=True, error_messages={"required": "L'ID du client est requis."})
+    company_name = fields.Str(required=False, validate=validate.Length(min=2, max=120))
+    sector = fields.Str(required=False, validate=validate.Length(min=2, max=120))
+    address = fields.Str(required=False, validate=validate.Length(min=2, max=300))
+    referentiel = fields.Str(required=False, validate=validate.OneOf(REFERENTIELS))
+    legal_form = fields.Str(required=False, validate=validate.Length(min=2, max=80))
+    responsable_name = fields.Str(required=False, validate=validate.Length(min=2, max=120))
+    civility = fields.Str(required=False, validate=validate.OneOf(CIVILITIES))
+    responsable_function = fields.Str(required=False, validate=validate.Length(min=2, max=120))
+    RCCM = fields.Str(required=False, validate=validate.Length(min=2, max=80))
+    country = fields.Str(required=False, validate=validate.Length(min=2, max=120))
+    creation_date = fields.Date(required=False, format="%Y-%m-%d", allow_none=True)
 
 
 class ClientResponseSchema(Schema):
-    """Schéma pour la réponse client"""
-    
+    """Schema de sortie pour les clients."""
+
+    class Meta:
+        unknown = EXCLUDE
+
     _id = fields.Str(required=True)
-    nom = fields.Str(required=True)
-    activite = fields.Str(required=True)
-    referentiel = fields.Str(required=True)
-    forme_juridique = fields.Str(required=True)
-    capital = fields.Float(required=True)
-    siege_social = fields.Str(required=True)
-    adresse = fields.Str(required=True)
-    n_cc = fields.Str(allow_none=True)
+    company_name = fields.Str(required=True)
+    sector = fields.Str(required=True)
+    address = fields.Str(required=True)
+    referentiel = fields.Str(required=False, allow_none=True)
+    legal_form = fields.Str(required=False, allow_none=True)
+    responsable_name = fields.Str(required=False, allow_none=True)
+    civility = fields.Str(required=False, allow_none=True)
+    responsable_function = fields.Str(required=False, allow_none=True)
+    RCCM = fields.Str(required=False, allow_none=True)
+    country = fields.Str(required=False, allow_none=True)
+    creation_date = fields.Str(required=False, allow_none=True)
 
 
 class ClientListResponseSchema(Schema):
-    """Schéma pour la liste des clients"""
-    
+    """Schema de liste clients."""
+
     clients = fields.List(fields.Nested(ClientResponseSchema))
     total = fields.Int()
 
 
 class ClientWithMissionsSchema(ClientResponseSchema):
-    """Schéma pour un client avec ses missions"""
-    
+    """Schema client avec missions."""
+
     missions = fields.List(fields.Dict(), allow_none=True)
 
 
 def validate_client_data(data: Dict[str, Any], schema_class: Schema) -> Dict[str, Any]:
-    """
-    Valide les données d'un client selon le schéma fourni
-    
-    Args:
-        data: Données à valider
-        schema_class: Classe de schéma à utiliser
-        
-    Returns:
-        Données validées et nettoyées
-        
-    Raises:
-        ValidationError: Si les données ne sont pas valides
-    """
+    """Valide les donnees d'un client selon le schema fourni."""
     schema = schema_class()
     try:
-        return schema.load(data)
+        normalized = dict(data or {})
+        if "referentiel" in normalized and isinstance(normalized["referentiel"], str):
+            normalized["referentiel"] = normalized["referentiel"].upper().strip()
+        if "creation_date" in normalized and isinstance(normalized["creation_date"], str):
+            raw_date = normalized["creation_date"].strip()
+            if raw_date:
+                for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+                    try:
+                        normalized["creation_date"] = datetime.strptime(raw_date, fmt).strftime("%Y-%m-%d")
+                        break
+                    except ValueError:
+                        continue
+        loaded = schema.load(normalized)
+        if isinstance(loaded.get("creation_date"), (date, datetime)):
+            loaded["creation_date"] = loaded["creation_date"].strftime("%Y-%m-%d")
+        return loaded
     except ValidationError as err:
-        raise ValidationError(f"Erreurs de validation: {err.messages}")
+        raise ValidationError(err.messages)
 
 
 def serialize_client(client_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Sérialise les données d'un client pour la réponse
-    
-    Args:
-        client_data: Données du client
-        
-    Returns:
-        Données sérialisées
-    """
+    """Serialize un client pour la reponse."""
     schema = ClientResponseSchema()
     return schema.dump(client_data)
 
 
 def serialize_client_list(clients_data: list) -> Dict[str, Any]:
-    """
-    Sérialise une liste de clients pour la réponse
-    
-    Args:
-        clients_data: Liste des clients
-        
-    Returns:
-        Données sérialisées avec métadonnées
-    """
+    """Serialize une liste de clients pour la reponse."""
     schema = ClientListResponseSchema()
-    return schema.dump({
-        "clients": clients_data,
-        "total": len(clients_data)
-    })
+    return schema.dump({"clients": clients_data, "total": len(clients_data)})

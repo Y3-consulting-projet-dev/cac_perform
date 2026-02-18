@@ -252,8 +252,7 @@ class Mission(Document):
 
     def get_referentiel_groupes(self, referentiel="syscohada"):
         """
-        Retourne les groupes pour un r??f??rentiel depuis grouping.json
-        (nouveau format: dictionnaire avec grands_groupes / sous_groupes).
+        Retourne la liste des groupes pour un référentiel depuis grouping.json
         """
         try:
             grouping_path = os.path.join(os.path.dirname(__file__), "..", "grouping.json")
@@ -261,7 +260,7 @@ class Mission(Document):
                 data = json.load(file)
             return data.get(referentiel)
         except Exception as e:
-            print(f"??? Erreur chargement referentiel '{referentiel}': {str(e)}")
+            print(f"❌ Erreur chargement referentiel '{referentiel}': {str(e)}")
             return None
 
     # ---------- Revue analytique ----------
@@ -537,7 +536,6 @@ class Mission(Document):
         
         balance = balance_data
         data = []
-        pending_error_msg = None
 
         try:
             # Traitement des fichiers Excel uniquement

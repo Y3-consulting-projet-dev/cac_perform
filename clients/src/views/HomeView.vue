@@ -9,6 +9,7 @@ const listClients = ref([])
 const lastTenClients = ref([])
 const totalMissions = ref(0)
 const searchQuery = ref("")
+const missionsByClient = ref({})
 
 const showDeleteModal = ref(false)
 const clientToDelete = ref(null)
@@ -39,7 +40,7 @@ const unreadNotifications = ref(3)
 async function loadClients() {
   try {
     const response = await axios.get('/client/afficher_clients/')
-    listClients.value = response.data.response
+    listClients.value = response.data.response || []
 
     lastTenClients.value = [...listClients.value]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -52,11 +53,48 @@ async function loadClients() {
 
 async function loadMissions() {
   try {
-    const response = await axios.get('/mission/afficher_missions/')
-    totalMissions.value = response.data.response.length
+    const response = await axios.get('/mission/all_missions')
+    const missions = response.data.response || response.data.data || []
+    totalMissions.value = missions.length
+
+    const byClient = {}
+
+    const normalizeId = (value) => {
+      if (!value) return ''
+      if (typeof value === 'string') return value.trim()
+      if (typeof value === 'object' && value.$oid) return String(value.$oid).trim()
+      return String(value).trim()
+    }
+
+    const extractMissionYear = (mission) => {
+      const fromAuditedYear = parseInt(mission?.date_debut, 10)
+      if (Number.isFinite(fromAuditedYear)) return fromAuditedYear
+
+      return null
+    }
+
+    missions.forEach((mission) => {
+      const clientId = normalizeId(mission.id_client)
+      if (!clientId) return
+
+      const missionYear = extractMissionYear(mission)
+      if (!missionYear) return
+
+      const current = byClient[clientId]
+      if (!current || missionYear > current) {
+        byClient[clientId] = missionYear
+      }
+    })
+
+    missionsByClient.value = byClient
   } catch (error) {
     console.error(error)
   }
+}
+
+function getLastMissionYear(client) {
+  const clientId = client?._id ? String(client._id).trim() : ''
+  return missionsByClient.value[clientId] || '-'
 }
 
 function redirectClientSpace(id) {
@@ -122,100 +160,91 @@ async function deleteClient() {
 
     <!-- SIDEBAR GAUCHE -->
     <!-- SIDEBAR GAUCHE -->
-<aside class="w-72 shrink-0 bg-blue-ycube text-white flex flex-col px-6 py-8">
+    <aside class="w-72 shrink-0 bg-blue-ycube text-white flex flex-col px-6 py-8">
 
-  <!-- Logo -->
-  <div class="flex items-center gap-3 mb-10">
-    <img src="../assets/logo.png" alt="Logo" class="h-12" />
-    <h2 class="text-lg font-bold tracking-wide">CAC PERFORM</h2>
-  </div>
-
-  <!-- Menu -->
-  <nav class="flex flex-col gap-4 text-white">
-
-    <!-- Tableau de bord -->
-    <button
-      @click="router.push('/')"
-      :class="[
-        'flex items-center gap-3 px-3 py-2 rounded-lg transition',
-        isActive('/') 
-          ? 'bg-white text-blue-ycube font-semibold shadow-md' 
-          : 'hover:bg-blue-700'
-      ]"
-    >
-      <i :class="[
-        'fa-solid fa-chart-pie text-lg',
-        isActive('/') ? 'text-blue-ycube' : 'text-white'
-      ]"></i>
-      Tableau de bord
-    </button>
-
-    <!-- Clients -->
-    <button
-      @click="router.push('/clients')"
-      :class="[
-        'flex items-center gap-3 px-3 py-2 rounded-lg transition',
-        isActive('/clients') 
-          ? 'bg-white text-blue-ycube font-semibold shadow-md' 
-          : 'hover:bg-green-ycube-2'
-      ]"
-    >
-      <i :class="[
-        'fa-solid fa-users text-lg',
-        isActive('/clients') ? 'text-blue-ycube' : 'text-white'
-      ]"></i>
-      Clients
-    </button>
-
-    <!-- Missions -->
-    <button
-      @click="router.push('/missions')"
-      :class="[
-        'flex items-center gap-3 px-3 py-2 rounded-lg transition',
-        isActive('/missions') 
-          ? 'bg-white text-blue-ycube font-semibold shadow-md' 
-          : 'hover:bg-green-ycube-2'
-      ]"
-    >
-      <i :class="[
-        'fa-solid fa-clipboard-check text-lg',
-        isActive('/missions') ? 'text-blue-ycube' : 'text-white'
-      ]"></i>
-      Missions d’audit
-    </button>
-
-  </nav>
-
-  <!-- Profil / Notifications -->
-  <div class="mt-auto flex flex-col gap-6 pt-10 border-t border-white/30">
-
-    <!-- Notifications -->
-    <div class="flex items-center gap-4 cursor-pointer hover:text-gray-200 transition">
-      <i class="fa-solid fa-bell text-orange-400 text-xl"></i>
-      <span class="text-sm">Notifications ({{ unreadNotifications }})</span>
-    </div>
-
-    <!-- Profil utilisateur -->
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white text-lg font-semibold">
-        {{ userProfile.nom.charAt(0) }}
+      <!-- Logo -->
+      <div class="flex items-center gap-3 mb-10">
+        <img src="../assets/logo.png" alt="Logo" class="h-12" />
+        <h2 class="text-lg font-bold tracking-wide">CAC PERFORM</h2>
       </div>
-      <div>
-        <p class="font-semibold">{{ userProfile.nom }}</p>
-        <p class="text-xs text-gray-200">{{ userProfile.role }}</p>
+
+      <!-- Menu -->
+      <nav class="flex flex-col gap-4 text-white">
+
+        <!-- Tableau de bord -->
+        <button @click="router.push('/')" :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg transition',
+          isActive('/')
+            ? 'bg-white text-blue-ycube font-semibold shadow-md'
+            : 'hover:bg-blue-700'
+        ]">
+          <i :class="[
+            'fa-solid fa-chart-pie text-lg',
+            isActive('/') ? 'text-blue-ycube' : 'text-white'
+          ]"></i>
+          Tableau de bord
+        </button>
+
+        <!-- Clients -->
+        <button @click="router.push('/clients')" :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg transition',
+          isActive('/clients')
+            ? 'bg-white text-blue-ycube font-semibold shadow-md'
+            : 'hover:bg-green-ycube-2'
+        ]">
+          <i :class="[
+            'fa-solid fa-users text-lg',
+            isActive('/clients') ? 'text-blue-ycube' : 'text-white'
+          ]"></i>
+          Clients
+        </button>
+
+        <!-- Missions -->
+        <button @click="router.push('/missions')" :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg transition',
+          isActive('/missions')
+            ? 'bg-white text-blue-ycube font-semibold shadow-md'
+            : 'hover:bg-green-ycube-2'
+        ]">
+          <i :class="[
+            'fa-solid fa-clipboard-check text-lg',
+            isActive('/missions') ? 'text-blue-ycube' : 'text-white'
+          ]"></i>
+          Missions d’audit
+        </button>
+
+      </nav>
+
+      <!-- Profil / Notifications -->
+      <div class="mt-auto flex flex-col gap-6 pt-10 border-t border-white/30">
+
+        <!-- Notifications -->
+        <div class="flex items-center gap-4 cursor-pointer hover:text-gray-200 transition">
+          <i class="fa-solid fa-bell text-orange-400 text-xl"></i>
+          <span class="text-sm">Notifications ({{ unreadNotifications }})</span>
+        </div>
+
+        <!-- Profil utilisateur -->
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white text-lg font-semibold">
+            {{ userProfile.nom.charAt(0) }}
+          </div>
+          <div>
+            <p class="font-semibold">{{ userProfile.nom }}</p>
+            <p class="text-xs text-gray-200">{{ userProfile.role }}</p>
+          </div>
+        </div>
+
+        <!-- Déconnexion -->
+        <button @click="logout" class="flex items-center gap-2 text-gray-200 hover:text-red-300 transition">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Déconnexion
+        </button>
+
       </div>
-    </div>
 
-    <!-- Déconnexion -->
-    <button @click="logout"
-      class="flex items-center gap-2 text-gray-200 hover:text-red-300 transition">
-      <i class="fa-solid fa-right-from-bracket"></i>
-      Déconnexion
-    </button>
-
-  </div>
-
-</aside>
+    </aside>
 
 
 
@@ -226,12 +255,8 @@ async function deleteClient() {
       <div class="flex justify-end">
         <div class="flex items-center bg-white px-4 py-2 w-full sm:w-2/3 lg:w-1/3 rounded-lg shadow">
           <i class="fa-solid fa-magnifying-glass text-gray-500 mr-3"></i>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Rechercher un client..."
-            class="flex-1 bg-transparent focus:outline-none"
-          />
+          <input v-model="searchQuery" type="text" placeholder="Rechercher un client..."
+            class="flex-1 bg-transparent focus:outline-none" />
         </div>
       </div>
 
@@ -251,58 +276,55 @@ async function deleteClient() {
       </div>
 
       <!-- CARD : MISSION EN COURS -->
-<div class="bg-white rounded-xl shadow p-6">
+      <div class="bg-white rounded-xl shadow p-6">
 
-  <!-- Header -->
-  <div class="flex justify-between items-start mb-4">
-    <div>
-      <h3 class="text-lg font-semibold text-gray-800">Mission en cours</h3>
-      <p class="text-sm text-gray-500">
-        {{ currentMission.entreprise }} — {{ currentMission.annee }}
-      </p>
-    </div>
+        <!-- Header -->
+        <div class="flex justify-between items-start mb-4">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800">Mission en cours</h3>
+            <p class="text-sm text-gray-500">
+              {{ currentMission.entreprise }} — {{ currentMission.annee }}
+            </p>
+          </div>
 
-    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-700">
-      En cours
-    </span>
-  </div>
+          <span class="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-700">
+            En cours
+          </span>
+        </div>
 
-  <!-- Nom + étape -->
-  <p class="text-sm text-gray-700 mb-2">
-    Mission :
-    <span class="font-semibold text-blue-ycube">
-      {{ currentMission.nom }}
-    </span>
-  </p>
+        <!-- Nom + étape -->
+        <p class="text-sm text-gray-700 mb-2">
+          Mission :
+          <span class="font-semibold text-blue-ycube">
+            {{ currentMission.nom }}
+          </span>
+        </p>
 
-  <p class="text-sm text-gray-700 mb-3">
-    Étape actuelle :
-    <span class="font-semibold text-green-ycube">
-      {{ currentMission.etape }}
-    </span>
-  </p>
+        <p class="text-sm text-gray-700 mb-3">
+          Étape actuelle :
+          <span class="font-semibold text-green-ycube">
+            {{ currentMission.etape }}
+          </span>
+        </p>
 
-  <!-- Barre de progression -->
-  <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
-    <div
-      class="bg-blue-ycube h-3 rounded-full transition-all duration-500"
-      :style="{ width: currentMission.progression + '%' }"
-    ></div>
-  </div>
+        <!-- Barre de progression -->
+        <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
+          <div class="bg-blue-ycube h-3 rounded-full transition-all duration-500"
+            :style="{ width: currentMission.progression + '%' }"></div>
+        </div>
 
-  <div class="flex justify-between items-center">
-    <span class="text-sm text-gray-600">
-      Progression : <strong>{{ currentMission.progression }}%</strong>
-    </span>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-600">
+            Progression : <strong>{{ currentMission.progression }}%</strong>
+          </span>
 
-    <button
-      class="px-4 py-2 bg-blue-ycube text-white rounded-md text-sm font-semibold hover:bg-blue-700 transition"
-    >
-      Reprendre la mission →
-    </button>
-  </div>
+          <button
+            class="px-4 py-2 bg-blue-ycube text-white rounded-md text-sm font-semibold hover:bg-blue-700 transition">
+            Reprendre la mission →
+          </button>
+        </div>
 
-</div>
+      </div>
 
 
       <!-- TABLEAU 10 DERNIERS CLIENTS -->
@@ -313,29 +335,24 @@ async function deleteClient() {
           <thead class="bg-gray-100 text-gray-700">
             <tr class="h-12">
               <th class="text-left pl-3">Client</th>
-              <th class="text-left pl-3">Activité</th>
+              <th class="text-left pl-3">Secteur d'activité</th>
               <th class="text-left pl-3">Adresse</th>
-              <th class="text-left pl-3">Référentiel</th>
               <th class="text-left pl-3">Dernière mission</th>
               <th class="text-center">Actions</th>
             </tr>
           </thead>
 
           <tbody>
-            <tr v-for="client in lastTenClients"
-                :key="client._id"
-                class="h-12 border-b hover:bg-gray-50 cursor-pointer"
-                @click="redirectClientSpace(client._id)">
+            <tr v-for="client in lastTenClients" :key="client._id" class="h-12 border-b hover:bg-gray-50 cursor-pointer"
+              @click="redirectClientSpace(client._id)">
 
-              <td class="pl-3">{{ client.nom }}</td>
-              <td class="pl-3">{{ client.activite }}</td>
-              <td class="pl-3">{{ client.adresse }}</td>
-              <td class="pl-3">{{ client.referentiel }}</td>
-              <td class="pl-3">{{ client.date_mission }}</td>
+              <td class="pl-3">{{ client.company_name }}</td>
+              <td class="pl-3">{{ client.sector }}</td>
+              <td class="pl-3">{{ client.address }}</td>
+              <td class="pl-3">{{ getLastMissionYear(client) }}</td>
 
               <td class="text-center">
-                <button 
-                  @click.stop="confirmDeleteClient(client, $event)"
+                <button @click.stop="confirmDeleteClient(client, $event)"
                   class="bg-red-500 text-white px-2 py-1 rounded text-xs">
                   🗑️
                 </button>
@@ -351,8 +368,7 @@ async function deleteClient() {
 
 
     <!-- MODAL SUPPRESSION -->
-    <div v-if="showDeleteModal"
-         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
 
       <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
         <h3 class="text-lg font-semibold mb-4">Supprimer le client ?</h3>
@@ -362,14 +378,12 @@ async function deleteClient() {
         </p>
 
         <div class="flex justify-end gap-3">
-          <button @click="cancelDelete"
-                  class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+          <button @click="cancelDelete" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
             Annuler
           </button>
 
-          <button @click="deleteClient"
-                  class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                  :disabled="isDeleting">
+          <button @click="deleteClient" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            :disabled="isDeleting">
             Supprimer
           </button>
         </div>

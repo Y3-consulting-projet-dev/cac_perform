@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, inject, onMounted, computed } from 'vue';
 import router from "@/router";
 import { useNotyf } from '@/composables/useNotyf'
@@ -9,6 +9,7 @@ const notyf = useNotyf()
 
 
 const infos = ref({})
+const originalInfos = ref({})
 const missions = ref([])
 const editMode = ref(false)
 const props = defineProps(['clientId'])
@@ -21,22 +22,23 @@ const searchMission = ref("");
 
 onMounted(async() => {
     try {
-        console.log("🔍 Chargement des informations du client:", props.clientId)
+        console.log("Chargement des informations du client:", props.clientId)
         const response = (await axios.get(`/client/info_client/${props.clientId}`)).data
-        console.log("📊 Réponse complète:", response)
+        console.log("Réponse complète:", response)
         
         if (response && response.response) {
             infos.value = response.response.info
+            originalInfos.value = { ...response.response.info }
             missions.value = response.response.missions || []
-            console.log("✅ Missions chargées:", missions.value.length)
-            console.log("📋 Détails missions:", missions.value)
+            console.log("Missions chargées:", missions.value.length)
+            console.log("Détails missions:", missions.value)
         } else {
-            console.error("❌ Format de réponse inattendu:", response)
+            console.error("Format de réponse inattendu:", response)
             missions.value = []
         }
     } catch (e) {
-        console.error("❌ Erreur lors du chargement:", e)
-        console.error("📋 Détails:", e.response?.data)
+        console.error("Erreur lors du chargement:", e)
+        console.error("Détails:", e.response?.data)
         missions.value = []
     }
 })
@@ -47,6 +49,7 @@ async function newMission() {
 
 async function updateClient() {
     if (!editMode.value) {
+        originalInfos.value = { ...infos.value }
         editMode.value = true
         return
     }
@@ -54,10 +57,17 @@ async function updateClient() {
         const payload = { ...infos.value }
         const res = (await axios.put('/client/modifier_client/', payload)).data.response
         notyf.trigger('Client mis à jour', 'success')
+        originalInfos.value = { ...infos.value }
         editMode.value = false
     } catch (e) {
-        notyf.trigger("Échec de la mise à jour", 'error')
+        notyf.trigger("Echec de la mise à jour", 'error')
     }
+}
+
+
+function cancelEdit() {
+    infos.value = { ...originalInfos.value }
+    editMode.value = false
 }
 
 const filteredMissions = computed(() => {
@@ -74,11 +84,11 @@ function seeMore(mission, event) {
         event.stopPropagation()
     }
     if (!mission?._id) {
-        console.error("❌ ID de mission manquant")
+        console.error("ID de mission manquant")
         notyf.trigger("Erreur: ID de mission manquant", "error")
         return
     }
-    console.log("🔍 Navigation vers la mission:", mission._id)
+    console.log("Navigation vers la mission:", mission._id)
     router.push({
       path: `/grouping-analyse/${mission._id}`,
       query: { annee: mission.annee_auditee }
@@ -86,12 +96,12 @@ function seeMore(mission, event) {
 }
 
 function back() {
-    router.push(`/`)
+    router.back()
 }
 
 // Fonctions pour la suppression de mission
 function confirmDeleteMission(mission, event) {
-    event.stopPropagation() // Empêcher le clic de se propager
+    event.stopPropagation() // EmpÃªcher le clic de se propager
     confirmingDelete.value = mission._id
     missionToDelete.value = mission
 }
@@ -120,7 +130,7 @@ async function deleteMission() {
             notyf.trigger(response.data.error || 'Erreur lors de la suppression', 'error')
         }
     } catch (e) {
-        console.error("❌ Erreur lors de la suppression:", e)
+        console.error("Erreur lors de la suppression:", e)
         notyf.trigger(e.response?.data?.error || 'Erreur lors de la suppression de la mission', 'error')
     } finally {
         isDeleting.value = false
@@ -144,8 +154,10 @@ async function deleteMission() {
       </button>
 
       <div class="text-center">
-        <h1 class="text-xl font-bold text-blue-ycube">{{ infos.nom }}</h1>
-        <p class="text-sm text-gray-500">{{ infos.activite }}</p>
+        <h1 class="text-xl font-bold text-blue-ycube">{{ infos.
+company_name
+ }}</h1>
+        <p class="text-sm text-gray-500">{{ infos.sector }}</p>
       </div>
 
       <div class="flex gap-3">
@@ -154,6 +166,14 @@ async function deleteMission() {
           @click="updateClient"
         >
           {{ editMode ? 'Enregistrer' : 'Modifier client' }}
+        </button>
+
+        <button
+          v-if="editMode"
+          class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition"
+          @click="cancelEdit"
+        >
+          Annuler
         </button>
 
         <button
@@ -174,52 +194,75 @@ async function deleteMission() {
       <div class="bg-white shadow rounded-xl p-6 grid grid-cols-2 gap-6">
 
         <div>
-          <label class="text-gray-500 text-sm">Client</label>
-          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.nom }}</p>
-          <input v-else v-model="infos.nom" class="border p-2 rounded w-full" />
+          <label class="text-gray-500 text-sm">Entreprise</label>
+          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.
+company_name
+ }}</p>
+          <input v-else v-model="infos.
+company_name
+" class="border p-2 rounded w-full" />
         </div>
+
+        <div>
+  <label class="text-gray-500 text-sm">Responsable</label>
+
+  <p v-if="!editMode" class="font-semibold text-blue-ycube">
+    {{ infos.civility }} {{ infos.responsable_name }} - {{ infos.responsable_function }}
+  </p>
+
+  <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-2">
+    <input v-model="infos.civility" class="border p-2 rounded w-full" placeholder="Civilité" />
+    <input v-model="infos.responsable_name" class="border p-2 rounded w-full" placeholder="Nom responsable" />
+    <input v-model="infos.responsable_function" class="border p-2 rounded w-full" placeholder="Fonction" />
+  </div>
+</div>
+
 
         <div>
           <label class="text-gray-500 text-sm">Forme juridique</label>
-          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.forme_juridique }}</p>
-          <input v-else v-model="infos.forme_juridique" class="border p-2 rounded w-full" />
+          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.legal_form
+ }}</p>
+          <input v-else v-model="infos.legal_form
+" class="border p-2 rounded w-full" />
         </div>
 
         <div>
-          <label class="text-gray-500 text-sm">Activité</label>
-          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.activite }}</p>
-          <input v-else v-model="infos.activite" class="border p-2 rounded w-full" />
+          <label class="text-gray-500 text-sm">Secteur d'activité</label>
+          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.sector }}</p>
+          <input v-else v-model="infos.sector" class="border p-2 rounded w-full" />
         </div>
 
         <div>
           <label class="text-gray-500 text-sm">N°CC</label>
-          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.n_cc }}</p>
-          <input v-else v-model="infos.n_cc" class="border p-2 rounded w-full" />
+          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.RCCM
+ }}</p>
+          <input v-else v-model="infos.RCCM
+" class="border p-2 rounded w-full" />
         </div>
 
         <div>
           <label class="text-gray-500 text-sm">Adresse</label>
-          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.adresse }}</p>
-          <input v-else v-model="infos.adresse" class="border p-2 rounded w-full" />
+          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.address }}</p>
+          <input v-else v-model="infos.address" class="border p-2 rounded w-full" />
         </div>
 
         <div>
-          <label class="text-gray-500 text-sm">Capital</label>
-          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.capital }}</p>
-          <input v-else v-model="infos.capital" class="border p-2 rounded w-full" />
+          <label class="text-gray-500 text-sm">Date de création</label>
+          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.creation_date
+ }}</p>
+          <input v-else v-model="infos.creation_date
+" class="border p-2 rounded w-full" />
         </div>
 
         <div>
-          <label class="text-gray-500 text-sm">Siège social</label>
-          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.siege_social }}</p>
-          <input v-else v-model="infos.siege_social" class="border p-2 rounded w-full" />
+          <label class="text-gray-500 text-sm">Pays</label>
+          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.country
+ }}</p>
+          <input v-else v-model="infos.country
+" class="border p-2 rounded w-full" />
         </div>
 
-        <div>
-          <label class="text-gray-500 text-sm">Référentiel comptable</label>
-          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.referentiel }}</p>
-          <input v-else v-model="infos.referentiel" class="border p-2 rounded w-full" />
-        </div>
+        
 
       </div>
 
