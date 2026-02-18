@@ -37,7 +37,7 @@ onBeforeUnmount(() => {
     <router-view />
     <div
       v-if="isPageLoading"
-      class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20"
+      class="fixed inset-0 z-9999 flex items-center justify-center bg-black/20"
     >
       <div class="flex items-center gap-3 rounded-xl bg-white px-6 py-4 shadow-lg">
         <span class="h-5 w-5 animate-spin rounded-full border-2 border-green-ycube-2 border-t-transparent"></span>

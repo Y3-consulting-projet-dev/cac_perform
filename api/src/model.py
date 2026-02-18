@@ -576,6 +576,46 @@ class Mission(Document):
                 raise Exception("Aucune feuille trouvée dans le fichier Excel")
 
             print(f"📊 Traitement de la feuille '{sheet_name}' avec {sheet.max_row} lignes et {sheet.max_column} colonnes")
+
+            def _parse_number(value):
+                """Conversion robuste des montants Excel (nombres ou textes formatés)."""
+                try:
+                    if value is None:
+                        return 0.0
+                    if isinstance(value, (int, float)):
+                        return float(value)
+
+                    s = str(value).strip()
+                    if not s:
+                        return 0.0
+                    s = s.replace('\u00a0', '').replace(' ', '')
+                    s = s.replace('–', '-').replace('—', '-')
+                    if s in ('-', '--'):
+                        return 0.0
+
+                    neg = False
+                    if s.startswith('(') and s.endswith(')'):
+                        neg = True
+                        s = s[1:-1]
+
+                    # Harmoniser séparateurs décimaux/milliers
+                    if ',' in s and '.' in s:
+                        if s.rfind(',') > s.rfind('.'):
+                            s = s.replace('.', '').replace(',', '.')
+                        else:
+                            s = s.replace(',', '')
+                    elif ',' in s:
+                        # Si une seule virgule et 1-2 décimales -> décimal, sinon millier
+                        parts = s.split(',')
+                        if len(parts) == 2 and len(parts[1]) <= 2:
+                            s = s.replace(',', '.')
+                        else:
+                            s = s.replace(',', '')
+
+                    val = float(s)
+                    return -val if neg else val
+                except Exception:
+                    return 0.0
             
             # Détection automatique du format et des colonnes
             print(f"🔍 Analyse du format de la feuille '{sheet_name}'...")
@@ -672,10 +712,10 @@ class Mission(Document):
                         ligne['libelle'] = str(row[1] or '').strip()
                         
                         # Format Sage: solde_n1, mouvement_debit, mouvement_credit, solde_n
-                        solde_n1 = float(row[2] or 0)
-                        mouvement_debit = float(row[3] or 0)
-                        mouvement_credit = float(row[4] or 0)
-                        solde_n = float(row[5] or 0)
+                        solde_n1 = _parse_number(row[2])
+                        mouvement_debit = _parse_number(row[3])
+                        mouvement_credit = _parse_number(row[4])
+                        solde_n = _parse_number(row[5])
                         
                         # Calculer les soldes d'ouverture et de clôture
                         ligne['debit_initial'] = max(0, solde_n1) if solde_n1 > 0 else 0
@@ -793,8 +833,8 @@ class Mission(Document):
                         ligne['libelle'] = row[1] or ''
                         
                         # Format balance : on vérifie d'abord si les mouvements sont dans le fichier
-                        ligne['debit_initial'] = float(row[2] or 0)
-                        ligne['credit_initial'] = float(row[3] or 0)
+                        ligne['debit_initial'] = _parse_number(row[2])
+                        ligne['credit_initial'] = _parse_number(row[3])
                         
                         # Vérifier si le fichier Excel contient les colonnes de mouvements
                         # Format 1 (avec mouvements) : debit_initial, credit_initial, debit_mvt, credit_mvt, debit_fin, credit_fin
@@ -802,21 +842,21 @@ class Mission(Document):
                         try:
                             # Essayer de lire les mouvements depuis le fichier (colonnes 4 et 5)
                             if len(row) > 5 and (row[4] is not None or row[5] is not None):
-                                ligne['debit_mvt'] = float(row[4] or 0)
-                                ligne['credit_mvt'] = float(row[5] or 0)
+                                ligne['debit_mvt'] = _parse_number(row[4])
+                                ligne['credit_mvt'] = _parse_number(row[5])
                                 # Utiliser l'ordre détecté pour les colonnes finales
                                 if colonnes_inversees_balance_simple and len(row) > 7:
-                                    ligne['credit_fin'] = float(row[6] or 0)
-                                    ligne['debit_fin'] = float(row[7] or 0)
+                                    ligne['credit_fin'] = _parse_number(row[6])
+                                    ligne['debit_fin'] = _parse_number(row[7])
                                 else:
-                                    ligne['debit_fin'] = float(row[6] or 0)
-                                    ligne['credit_fin'] = float(row[7] or 0)
+                                    ligne['debit_fin'] = _parse_number(row[6])
+                                    ligne['credit_fin'] = _parse_number(row[7])
                             else:
                                 # Format sans mouvements : utiliser solde_final = solde_initial + mouvements
                                 # Pour la vérification d'identité, on utilise l'équation : 
                                 # (debit_fin - credit_fin) = (debit_initial - credit_initial) + (debit_mvt - credit_mvt)
-                                ligne['debit_fin'] = float(row[4] or 0)
-                                ligne['credit_fin'] = float(row[5] or 0)
+                                ligne['debit_fin'] = _parse_number(row[4])
+                                ligne['credit_fin'] = _parse_number(row[5])
                                 
                                 # Calculer le solde initial et final
                                 solde_initial = ligne['debit_initial'] - ligne['credit_initial']
@@ -845,8 +885,8 @@ class Mission(Document):
                             # Si erreur, utiliser le format simple sans mouvements
                             ligne['debit_mvt'] = 0
                             ligne['credit_mvt'] = 0
-                            ligne['debit_fin'] = float(row[4] or 0)
-                            ligne['credit_fin'] = float(row[5] or 0)
+                            ligne['debit_fin'] = _parse_number(row[4])
+                            ligne['credit_fin'] = _parse_number(row[5])
                         
                         ligne['solde_reel'] = ligne['debit_fin'] - ligne['credit_fin']
                         ligne['solde'] = abs(ligne['solde_reel'])
@@ -967,20 +1007,20 @@ class Mission(Document):
                         ligne = {}
                         ligne['numero_compte'] = str(row[0])
                         ligne['libelle'] = row[1] or ''
-                        ligne['debit_initial'] = float(row[2] or 0)
-                        ligne['credit_initial'] = float(row[3] or 0)
-                        ligne['debit_mvt'] = float(row[4] or 0)
-                        ligne['credit_mvt'] = float(row[5] or 0)
+                        ligne['debit_initial'] = _parse_number(row[2])
+                        ligne['credit_initial'] = _parse_number(row[3])
+                        ligne['debit_mvt'] = _parse_number(row[4])
+                        ligne['credit_mvt'] = _parse_number(row[5])
                         
                         # Utiliser l'ordre détecté précédemment
                         if colonnes_inversees:
                             # Format avec "Solde crédit" (col 7) puis "Solde débit" (col 8)
-                            ligne['credit_fin'] = float(row[6] or 0)
-                            ligne['debit_fin'] = float(row[7] or 0)
+                            ligne['credit_fin'] = _parse_number(row[6])
+                            ligne['debit_fin'] = _parse_number(row[7])
                         else:
                             # Format standard avec "Débit fin" puis "Crédit fin"
-                            ligne['debit_fin'] = float(row[6] or 0)
-                            ligne['credit_fin'] = float(row[7] or 0)
+                            ligne['debit_fin'] = _parse_number(row[6])
+                            ligne['credit_fin'] = _parse_number(row[7])
                         
                         ligne['solde_reel'] = ligne['debit_fin'] - ligne['credit_fin']
                         ligne['solde'] = abs(ligne['solde_reel'])
@@ -1025,8 +1065,8 @@ class Mission(Document):
                     f"- Les numéros de compte ne sont pas vides et commencent par un chiffre\n"
                     f"- Les lignes vides ou sans numéro de compte sont ignorées"
                 )
-                print(f"❌ {error_msg}")
-                raise Exception(error_msg)
+                print(f"⚠️ {error_msg}")
+                pending_error_msg = error_msg
                     
         except Exception as e:
             print(f"Erreur lors du traitement du fichier Excel: {str(e)}")
@@ -1039,10 +1079,126 @@ class Mission(Document):
                 db = get_db()
             raise e
 
-        # Double vérification avant insertion
+        # Double v?rification avant insertion
+        if len(data) == 0:
+            # Fallback: parsing tr?s permissif sur toutes les feuilles
+            def _to_float(v):
+                try:
+                    return float(str(v).replace(' ', '').replace(' ', '').replace(',', '.'))
+                except Exception:
+                    return 0.0
+
+            def _looks_like_account(v):
+                if v is None:
+                    return False
+                s = str(v).strip()
+                if not s:
+                    return False
+                if 'compte' in s.lower():
+                    return False
+                return s.isdigit() and len(s) >= 2
+
+            def _flex_parse_sheet(ws):
+                rows = list(ws.iter_rows(values_only=True))
+                if not rows:
+                    return []
+                max_cols = max(len(r) for r in rows if r) if rows else 0
+                if max_cols == 0:
+                    return []
+
+                # detect account column (max numeric account-like values)
+                col_scores = []
+                for c in range(max_cols):
+                    score = 0
+                    for r in rows[:200]:
+                        if c < len(r) and _looks_like_account(r[c]):
+                            score += 1
+                    col_scores.append(score)
+                if not col_scores or max(col_scores) == 0:
+                    return []
+                acc_col = col_scores.index(max(col_scores))
+
+                # detect libelle column (stringy)
+                lib_scores = []
+                for c in range(max_cols):
+                    if c == acc_col:
+                        lib_scores.append(-1)
+                        continue
+                    score = 0
+                    for r in rows[:200]:
+                        if c < len(r) and isinstance(r[c], str) and r[c].strip():
+                            score += 1
+                    lib_scores.append(score)
+                lib_col = lib_scores.index(max(lib_scores)) if lib_scores and max(lib_scores) > 0 else None
+
+                # detect numeric columns
+                num_cols = []
+                for c in range(max_cols):
+                    score = 0
+                    for r in rows[:200]:
+                        if c < len(r) and isinstance(r[c], (int, float)):
+                            score += 1
+                        elif c < len(r) and isinstance(r[c], str):
+                            s = r[c].strip().replace(' ', '').replace(' ', '')
+                            if s.replace(',', '.').replace('-', '').isdigit():
+                                score += 1
+                    if score > 0:
+                        num_cols.append((c, score))
+                num_cols = [c for c, _ in sorted(num_cols, key=lambda x: x[0])]
+
+                debit_initial_col = credit_initial_col = debit_mvt_col = credit_mvt_col = None
+                debit_fin_col = credit_fin_col = None
+
+                if len(num_cols) >= 2:
+                    debit_fin_col, credit_fin_col = num_cols[-2], num_cols[-1]
+                if len(num_cols) >= 4:
+                    debit_initial_col, credit_initial_col = num_cols[0], num_cols[1]
+                if len(num_cols) >= 6:
+                    debit_mvt_col, credit_mvt_col = num_cols[2], num_cols[3]
+
+                out = []
+                for r in rows:
+                    if acc_col >= len(r):
+                        continue
+                    if not _looks_like_account(r[acc_col]):
+                        continue
+                    numero = str(r[acc_col]).strip()
+                    libelle = ''
+                    if lib_col is not None and lib_col < len(r) and r[lib_col] is not None:
+                        libelle = str(r[lib_col]).strip()
+
+                    ligne = {
+                        'numero_compte': numero,
+                        'libelle': libelle,
+                        'debit_initial': _to_float(r[debit_initial_col]) if debit_initial_col is not None and debit_initial_col < len(r) else 0.0,
+                        'credit_initial': _to_float(r[credit_initial_col]) if credit_initial_col is not None and credit_initial_col < len(r) else 0.0,
+                        'debit_mvt': _to_float(r[debit_mvt_col]) if debit_mvt_col is not None and debit_mvt_col < len(r) else 0.0,
+                        'credit_mvt': _to_float(r[credit_mvt_col]) if credit_mvt_col is not None and credit_mvt_col < len(r) else 0.0,
+                        'debit_fin': _to_float(r[debit_fin_col]) if debit_fin_col is not None and debit_fin_col < len(r) else 0.0,
+                        'credit_fin': _to_float(r[credit_fin_col]) if credit_fin_col is not None and credit_fin_col < len(r) else 0.0,
+                    }
+                    ligne['solde_reel'] = ligne['debit_fin'] - ligne['credit_fin']
+                    ligne['solde'] = abs(ligne['solde_reel'])
+                    ligne['sign_solde'] = "D" if ligne['debit_fin'] >= ligne['credit_fin'] else "C"
+                    out.append(ligne)
+                return out
+
+            best = []
+            best_name = None
+            for ws_name in workbook.sheetnames:
+                ws = workbook[ws_name]
+                cand = _flex_parse_sheet(ws)
+                if len(cand) > len(best):
+                    best = cand
+                    best_name = ws_name
+
+            if best:
+                print(f"? Fallback: {len(best)} lignes extraites depuis '{best_name}' (parsing permissif)")
+                data = best
+
         if len(data) == 0:
             filename = balance.filename if hasattr(balance, 'filename') else 'fichier inconnu'
-            raise Exception(f"Aucune donnée valide trouvée dans le fichier '{filename}'. Vérifiez le format du fichier Excel.")
+            raise Exception(pending_error_msg or f"Aucune donn?e valide trouv?e dans le fichier '{filename}'. V?rifiez le format du fichier Excel.")
 
         # S'assurer que db est défini avant d'utiliser
         try:
@@ -1060,23 +1216,34 @@ class Mission(Document):
         return inserted_id, data
 
     # ---------- Grouping ----------
+    # ---------- Grouping ----------
+    # ---------- Grouping ----------
     def create_grouping(self, balances_rapprochee, referentiel="syscohada"):
         if not isinstance(balances_rapprochee, list):
-            raise TypeError("balances_rapprochee doit être une liste")
+            raise TypeError("balances_rapprochee doit ??tre une liste")
 
-        print(f"📊 Balances reçues : {len(balances_rapprochee)} comptes")
+        print(f"?? Balances re?ues : {len(balances_rapprochee)} comptes")
 
         # =============================
-        # 1️⃣ Charger le référentiel (DB ou autre source)
+        # 1?? Charger le r?f?rentiel (DB ou autre source)
         # =============================
         referentiel_groupes = self.get_referentiel_groupes(referentiel)
 
         if not referentiel_groupes:
-            raise ValueError(f"Aucun référentiel trouvé pour '{referentiel}'")
+            raise ValueError(f"Aucun r?f?rentiel trouv? pour '{referentiel}'")
 
-        print(f"📘 Référentiel '{referentiel}' chargé : {len(referentiel_groupes)} groupes")
+        # Nouveau format: dictionnaire avec grands_groupes / sous_groupes
+        if isinstance(referentiel_groupes, dict):
+            grands_groupes = referentiel_groupes.get("grands_groupes", [])
+            sous_groupes = referentiel_groupes.get("sous_groupes", [])
+        else:
+            # Fallback ancien format (liste plate)
+            grands_groupes = []
+            sous_groupes = referentiel_groupes
 
-        # Index par préfixe
+        print(f"?? R?f?rentiel '{referentiel}' charg? : {len(grands_groupes)} grands groupes, {len(sous_groupes)} sous-groupes")
+
+        # Index par pr?fixe pour les sous-groupes
         groupes = {g["compte"]: {
             **g,
             "solde_n": 0,
@@ -1084,10 +1251,10 @@ class Mission(Document):
             "variation": 0,
             "variation_percent": 0,
             "comptes": []
-        } for g in referentiel_groupes}
+        } for g in sous_groupes}
 
         # =============================
-        # 2️⃣ Regrouper les comptes
+        # 2?? Regrouper les comptes
         # =============================
         for item in balances_rapprochee:
             numero = str(item.get("numero_compte", "")).strip()
@@ -1098,27 +1265,19 @@ class Mission(Document):
             if not prefixe.isdigit():
                 continue
 
-            # 🔹 Groupe inexistant → création automatique
+            # Ignorer les comptes hors r?f?rentiel
             if prefixe not in groupes:
-                groupes[prefixe] = {
-                    "compte": prefixe,
-                    "nature": self.detect_nature(prefixe),
-                    "libelle": f"AUTRES - COMPTE {prefixe}",
-                    "solde_n": 0,
-                    "solde_n1": 0,
-                    "variation": 0,
-                    "variation_percent": 0,
-                    "comptes": []
-                }
-                print(f"➕ Groupe auto-créé : {prefixe}")
+                continue
 
             solde_n = item.get("solde_n", 0) or 0
             solde_n1 = item.get("solde_n1", 0) or 0
 
-            groupes[prefixe]["solde_n"] += solde_n
-            groupes[prefixe]["solde_n1"] += solde_n1
+            target_group = groupes[prefixe]
 
-            groupes[prefixe]["comptes"].append({
+            target_group["solde_n"] += solde_n
+            target_group["solde_n1"] += solde_n1
+
+            target_group["comptes"].append({
                 "numero_compte": numero,
                 "libelle": item.get("libelle", ""),
                 "solde_n": solde_n,
@@ -1127,9 +1286,9 @@ class Mission(Document):
             })
 
         # =============================
-        # 3️⃣ Calculs finaux
+        # 3?? Calculs finaux sur les sous-groupes
         # =============================
-        for group in groupes.values():
+        def finalize_group(group):
             group["variation"] = group["solde_n"] - group["solde_n1"]
 
             if group["solde_n1"] == 0:
@@ -1141,13 +1300,63 @@ class Mission(Document):
 
             group["comptes"].sort(key=lambda x: x["numero_compte"])
             group["comptes_detaille"] = group["comptes"]  # compat front
+            return group
+
+        for group in groupes.values():
+            finalize_group(group)
 
         # =============================
-        # 4️⃣ Résultat final
+        # 4?? R?sultat final: grands groupes uniquement
         # =============================
-        result = sorted(groupes.values(), key=lambda x: x["compte"])
+        result = []
 
-        print(f"✅ Grouping généré : {len(result)} groupes")
+        # Index sous-groupes par libelle_groupe
+        sous_by_grand_label = {}
+        for g in sous_groupes:
+            label = g.get("libelle_groupe")
+            if not label:
+                continue
+            sous_by_grand_label.setdefault(label, []).append(g.get("compte"))
+
+        for grand in grands_groupes:
+            children = grand.get("children") or grand.get("comptes") or sous_by_grand_label.get(grand.get("libelle"), [])
+            child_groups = [groupes.get(c) for c in children if c in groupes]
+
+            # Skip empty grand groups
+            if not child_groups:
+                continue
+
+            solde_n = sum(c["solde_n"] for c in child_groups)
+            solde_n1 = sum(c["solde_n1"] for c in child_groups)
+            variation = solde_n - solde_n1
+            variation_percent = (variation / solde_n1) * 100 if solde_n1 else 0
+
+            # D?tails du grand groupe = sous-groupes (agr?g?s)
+            details = [
+                {
+                    "numero_compte": c["compte"],
+                    "libelle": c.get("libelle", ""),
+                    "solde_n": c["solde_n"],
+                    "solde_n1": c["solde_n1"],
+                    "variation": c["variation"]
+                }
+                for c in child_groups
+            ]
+            details.sort(key=lambda x: x.get("numero_compte") or "")
+
+            grand_row = {
+                **grand,
+                "solde_n": solde_n,
+                "solde_n1": solde_n1,
+                "variation": variation,
+                "variation_percent": variation_percent,
+                "comptes": details,
+                "comptes_detaille": details
+            }
+
+            result.append(grand_row)
+
+        print(f"? Grouping g?n?r? : {len(result)} grands groupes")
 
         return result
 
@@ -1178,17 +1387,82 @@ class Mission(Document):
 
     # ---------- Benchmarks ----------
     def get_benchmarks(self, id_mission):
-        db = get_db()  # Obtenir la connexion à la base de données
+        db = get_db()  # Obtenir la connexion ? la base de donn?es
         try:
             mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
-            efi = mission['efi']
+            efi = mission.get('efi') or mission.get('etats_financiers_preliminaires', {}).get('efi') or {}
+
+            def _find_efi_value(section, keywords):
+                try:
+                    items = efi.get(section, [])
+                    for it in items:
+                        lib = str(it.get('libelle', '')).lower()
+                        if any(k in lib for k in keywords):
+                            return int(it.get('net_solde_n', 0) or 0)
+                except Exception:
+                    return None
+                return None
+
+            def _find_efi_value_by_ref(section, refs):
+                try:
+                    items = efi.get(section, [])
+                    refs_set = {str(r).strip().upper() for r in refs}
+                    for it in items:
+                        ref = str(it.get('ref', '')).strip().upper()
+                        if ref in refs_set:
+                            return int(it.get('net_solde_n', 0) or 0)
+                except Exception:
+                    return None
+                return None
 
             bench = {}
-            bench['total_assets'] = int(efi['actif'][-1]['net_solde_n'])
-            bench['profit_before_tax'] = int(efi['pnl'][33]['net_solde_n']) + int(efi['pnl'][38]['net_solde_n'])
-            bench['revenue'] = int(efi['pnl'][7]['net_solde_n'])
-            bench['ebitda'] = int(efi['pnl'][23]['net_solde_n'])
+            # Chaque benchmark est alimenté par une référence EFI dédiée (mapping_efi.json),
+            # avec fallback conservateur si la ref n'est pas trouvée.
+            total_assets = _find_efi_value_by_ref('actif', ['BZ'])
+            if total_assets is None:
+                try:
+                    total_assets = int(efi.get('actif', [])[-1].get('net_solde_n', 0) or 0)
+                except Exception:
+                    total_assets = 0
+            bench['total_assets'] = int(total_assets or 0)
+
+            revenue = _find_efi_value_by_ref('pnl', ['XB'])
+            if revenue is None:
+                try:
+                    revenue = int(efi.get('pnl', [])[7].get('net_solde_n', 0) or 0)
+                except Exception:
+                    revenue = 0
+            bench['revenue'] = int(revenue or 0)
+
+            ebitda = _find_efi_value_by_ref('pnl', ['XD'])
+            if ebitda is None:
+                ebitda = _find_efi_value('pnl', ['excedent brut d\'exploitation', 'ebe', 'ebitda'])
+            bench['ebitda'] = int(ebitda or 0)
+
+            net_result = _find_efi_value_by_ref('pnl', ['XI'])
+            taxes_result = _find_efi_value_by_ref('pnl', ['RS'])
+            if net_result is not None and taxes_result is not None:
+                profit_before_tax = int(net_result) - int(taxes_result)
+            else:
+                try:
+                    profit_before_tax = int(efi.get('pnl', [])[33].get('net_solde_n', 0) or 0) + int(efi.get('pnl', [])[38].get('net_solde_n', 0) or 0)
+                except Exception:
+                    profit_before_tax = 0
+            bench['profit_before_tax'] = int(profit_before_tax or 0)
+
             bench['expenses'] = self.total_charges(id_mission)
+
+            total_equity = _find_efi_value_by_ref('passif', ['CP'])
+            if total_equity is None:
+                total_equity = _find_efi_value('passif', ['capitaux propres', 'equity', 'net assets'])
+            bench['total_equity_net_assets'] = int(total_equity or 0)
+
+            # Proxy "cash flows from operations" basé sur le résultat d'exploitation (ref XE),
+            # distinct de l'EBITDA/EBE (ref XD).
+            cfo_value = _find_efi_value_by_ref('pnl', ['XE'])
+            if cfo_value is None:
+                cfo_value = _find_efi_value('pnl', ['cash flow', 'flux de tresorerie', 'flux de trésorerie'])
+            bench['cash_flows_from_operations'] = int(cfo_value or 0)
             return bench
         except Exception as e:
             print(f"An error there: {str(e)}")
@@ -1203,11 +1477,50 @@ class Mission(Document):
         if not verify:
             return 0
 
+        # Validation des facteurs par benchmark (ex: 5-10% => exclut 1-4)
+        factor_ranges = {
+            "ebitda": (3, 5),
+            "expenses": (3, 5),
+            "profit_before_tax": (5, 10),
+            "revenue": (0.8, 2),
+            "total_assets": (1, 2),
+            "total_equity_net_assets": (1.0, 3.0),
+            "cash_flows_from_operations": (3.0, 5.0)
+        }
+        try:
+            benchmark = materialities.get("benchmark")
+            factor_raw = materialities.get("factor")
+            if benchmark in factor_ranges and factor_raw is not None:
+                factor = float(factor_raw)
+                min_f, max_f = factor_ranges[benchmark]
+                if factor < min_f or factor > max_f:
+                    print(f"WARNING: Facteur {factor}% hors plage [{min_f}, {max_f}] pour {benchmark}")
+                    return 0
+        except Exception:
+            pass
+
         # Vérifier si le benchmark existe déjà
         existing_materiality = verify.get('materiality', [])
         benchmark_exists = any(item.get('benchmark') == materialities['benchmark'] for item in existing_materiality)
-        
-        # Forcer des valeurs toujours positives pour les seuils (règle métier)
+
+        # Assurer un champ commentaire (optionnel)
+        if 'commentaire' not in materialities:
+            materialities['commentaire'] = ""
+
+        # Calcul de la performance materiality selon le niveau de risque (si fourni)
+        try:
+            risk_level = (materialities.get('risk_level') or '').lower().strip()
+            mat_val = float(materialities.get('materiality', 0) or 0)
+            if risk_level in ('?lev?', 'eleve'):
+                materialities['performance_materiality'] = mat_val * 0.6
+            elif risk_level in ('mod?r?', 'modere'):
+                materialities['performance_materiality'] = mat_val * 0.7
+            elif risk_level == 'faible':
+                materialities['performance_materiality'] = mat_val * 0.8
+        except Exception:
+            pass
+
+        # Forcer des valeurs toujours positives pour les seuils (r?gle m?tier)
         try:
             materialities['materiality'] = abs(int(materialities.get('materiality', 0) or 0))
             materialities['performance_materiality'] = abs(int(materialities.get('performance_materiality', 0) or 0))
@@ -1216,16 +1529,17 @@ class Mission(Document):
             pass
 
         if benchmark_exists:
-            # Mettre à jour le benchmark existant
+            # Mettre ? jour le benchmark existant
             update = db.Mission1.update_one(
                 {"_id": ObjectId(id_mission), "materiality.benchmark": materialities['benchmark']},
                 {"$set": {"materiality.$": materialities}}
             )
-            return update.modified_count
+            # Consid?rer comme succ?s m?me si aucune modification effective
+            return 1 if update.matched_count > 0 else 0
         else:
             # Ajouter un nouveau benchmark
             update = db.Mission1.update_one(query, {"$push": {"materiality": materialities}})
-            return update.modified_count
+            return 1 if update.matched_count > 0 else 0
 
     def validate_materiality(self, id_mission, benchmark):
         db = get_db()  # Obtenir la connexion à la base de données
@@ -1781,7 +2095,8 @@ class Mission(Document):
             # - 12 (Report à nouveau) : peut être débiteur ou créditeur selon le résultat
             # - 109 (Associés non appelé) : peut être débiteur
             # - 129 (Report à nouveau débiteur) : peut être débiteur
-            if numero_compte.startswith('105') or numero_compte.startswith('12') or numero_compte.startswith('109') or numero_compte.startswith('129'):
+            # - 1309 (Primes de remboursement des obligations) : peut être débiteur
+            if numero_compte.startswith('105') or numero_compte.startswith('12') or numero_compte.startswith('109') or numero_compte.startswith('129') or numero_compte.startswith('1309'):
                 return 'BOTH'  # Peut être débiteur ou créditeur selon le cas
             return 'C'  # Créditeur normal pour la classe 1
         
@@ -2967,6 +3282,27 @@ class Mission(Document):
         lignes_ignorees = 0
         lignes_ignorees_none = 0
         lignes_ignorees_vide = 0
+
+        def _normalize_compte_key(raw_value):
+            if raw_value is None:
+                return None
+            s = str(raw_value).strip()
+            if not s or s == "None" or s.lower() == "nan":
+                return None
+            # Normaliser les formats fréquents d'import Excel: "401.0" -> "401"
+            if s.endswith(".0"):
+                s = s[:-2]
+            # Supprimer les espaces internes accidentels
+            s = s.replace(" ", "")
+            return s or None
+
+        def _to_float(value):
+            try:
+                if value is None or value == "":
+                    return 0.0
+                return float(value)
+            except Exception:
+                return 0.0
         
         if not lines:
             print("[INDEX_BY_COMPTE] liste de lignes vide")
@@ -2990,15 +3326,30 @@ class Mission(Document):
                 lignes_ignorees_none += 1
                 continue
             
-            # Convertir en string et nettoyer (inclure "0" comme numéro valide)
-            num_str = str(num_compte).strip()
-            
-            if not num_str or num_str == "None" or num_str.lower() == "nan":
+            num_str = _normalize_compte_key(num_compte)
+            if not num_str:
                 lignes_ignorees_vide += 1
                 continue
-                
-            # Ajouter au index
-            index[num_str] = x
+
+            # Agréger les doublons du même compte au lieu d'écraser la ligne précédente.
+            # Cela évite de "perdre" des comptes lorsque la balance contient plusieurs lignes par numéro.
+            if num_str not in index:
+                row = dict(x)
+                row["numero_compte"] = num_str
+                index[num_str] = row
+            else:
+                row = index[num_str]
+                for fld in (
+                    "debit_initial",
+                    "credit_initial",
+                    "debit_mouvement",
+                    "credit_mouvement",
+                    "debit_fin",
+                    "credit_fin",
+                ):
+                    row[fld] = _to_float(row.get(fld, 0)) + _to_float(x.get(fld, 0))
+                if not row.get("libelle") and x.get("libelle"):
+                    row["libelle"] = x.get("libelle")
         
         print(f"[INDEX_BY_COMPTE] {len(index)} comptes indexes")
         if lignes_ignorees > 0:
@@ -3095,7 +3446,15 @@ class Mission(Document):
                     bd["annee"] = annee_auditee - idx
             
             # Trier les balances par année (du plus ancien au plus récent)
-            balance_docs.sort(key=lambda x: x.get("annee", 0))
+            # en gérant les années stockées en string ou formats mixtes.
+            def _year_sort_key(v):
+                y = v.get("annee", 0)
+                try:
+                    return int(str(y).strip())
+                except Exception:
+                    return -10**9
+
+            balance_docs.sort(key=_year_sort_key)
             
             # Identifier N et N-1
             if len(balance_docs) < 2:
@@ -3206,6 +3565,49 @@ class Mission(Document):
 
             # Créer une liste de tous les comptes (sans filtrage sur les classes)
             tous_comptes = []
+
+            def is_compte_130(numero_compte):
+                # Autoriser uniquement le compte 130 (résultat en instance d'affectation),
+                # pas les sous-comptes type 1309.
+                digits = ''.join(ch for ch in str(numero_compte or "") if ch.isdigit())
+                normalized = digits.lstrip('0') or '0'
+                return normalized == "130"
+
+            def _to_float(v):
+                try:
+                    if v is None or v == "":
+                        return 0.0
+                    return float(v)
+                except Exception:
+                    return 0.0
+
+            def _get_opening_solde(row):
+                # Ouverture N: priorité au couple débit/crédit initial.
+                di = _to_float(row.get("debit_initial", 0))
+                ci = _to_float(row.get("credit_initial", 0))
+                if di != 0 or ci != 0:
+                    return di - ci
+
+                # Fallbacks selon formats de balance importés.
+                if "solde_n1" in row and row.get("solde_n1") not in (None, ""):
+                    return _to_float(row.get("solde_n1", 0))
+                if "solde_reel" in row and row.get("solde_reel") not in (None, ""):
+                    return _to_float(row.get("solde_reel", 0))
+                return 0.0
+
+            def _get_closing_solde(row):
+                # Clôture N-1: priorité au couple débit/crédit fin.
+                df = _to_float(row.get("debit_fin", 0))
+                cf = _to_float(row.get("credit_fin", 0))
+                if df != 0 or cf != 0:
+                    return df - cf
+
+                # Fallbacks selon formats de balance importés.
+                if "solde_n" in row and row.get("solde_n") not in (None, ""):
+                    return _to_float(row.get("solde_n", 0))
+                if "solde_reel" in row and row.get("solde_reel") not in (None, ""):
+                    return _to_float(row.get("solde_reel", 0))
+                return 0.0
             
             print(f"🔍 Début du traitement: {len(idxN)} comptes en N, {len(idxN1)} comptes en N-1")
             
@@ -3221,51 +3623,73 @@ class Mission(Document):
             # 1. Traiter tous les comptes présents en N
             for num, ln in idxN.items():
                 try:
-                    # Pour l'ouverture N, utiliser debit_initial et credit_initial de N
-                    di = float(ln.get("debit_initial", 0) or 0)
-                    ci = float(ln.get("credit_initial", 0) or 0)
-                    ouvN = di - ci
+                    # Pour l'ouverture N, utiliser les colonnes d'ouverture avec fallback robuste
+                    ouvN = _get_opening_solde(ln)
 
                     prev = idxN1.get(num)
                     if prev:
-                        # Pour la clôture N-1, utiliser debit_fin et credit_fin de N-1
-                        df = float(prev.get("debit_fin", 0) or 0)
-                        cf = float(prev.get("credit_fin", 0) or 0)
-                        clotN1 = df - cf
-                        # Nouvelle convention: Écart = Ouverture N - Clôture N-1
+                        # Pour N-1, utiliser le solde de clôture avec fallback robuste
+                        clotN1 = _get_closing_solde(prev)
+                        # Convention métier: Écart = Ouverture N - Clôture N-1
                         ecart = ouvN - clotN1
                         
                         # Afficher les 5 premiers comptes pour debug
                         if len(tous_comptes) < 5:
-                            print(f"  📋 Compte {num}: ouvN={ouvN} (di={di}-ci={ci}), clotN1={clotN1} (df={df}-cf={cf}), ecart={ecart} (ouvN - clotN1)")
+                            print(f"  📋 Compte {num}: ouvN={ouvN}, clotN1={clotN1}, ecart={ecart} (ouvN - clotN1)")
                         
                         # Ajouter tous les comptes, pas seulement ceux avec des écarts
+                        ecart_normal_130 = (ecart != 0 and is_compte_130(num))
                         tous_comptes.append({
                             "numero_compte": num,
                             "libelle": ln.get("libelle", ""),
                             "ouverture_n": ouvN,
                             "cloture_n1": clotN1,
                             "ecart": ecart,
-                            "status": "ecart" if ecart != 0 else "ok",
-                            "message": f"Ouverture N {ouvN} ≠ Clôture N-1 {clotN1}" if ecart != 0 else f"Ouverture N {ouvN} = Clôture N-1 {clotN1}",
-                            "justification": f"Écart de {ecart} entre l'ouverture de l'exercice N ({ouvN}) et la clôture de l'exercice N-1 ({clotN1})." if ecart != 0 else "Aucun écart détecté.",
-                            "conclusion_audit": "Écart significatif détecté - Nécessite une justification et une documentation des causes de cette variation." if ecart != 0 else "Aucune anomalie détectée."
+                            "status": "ok_130" if ecart_normal_130 else ("ecart" if ecart != 0 else "ok"),
+                            "message": (
+                                f"Écart normal sur le compte 130 : Ouverture N {ouvN} vs Clôture N-1 {clotN1}"
+                                if ecart_normal_130 else
+                                (f"Ouverture N {ouvN} ≠ Clôture N-1 {clotN1}" if ecart != 0 else f"Ouverture N {ouvN} = Clôture N-1 {clotN1}")
+                            ),
+                            "justification": (
+                                f"Le compte 130 (résultat en instance d'affectation) peut varier entre la clôture N-1 ({clotN1}) et l'ouverture N ({ouvN}). Écart normal: {ecart}."
+                                if ecart_normal_130 else
+                                (f"Écart de {ecart} entre l'ouverture de l'exercice N ({ouvN}) et la clôture de l'exercice N-1 ({clotN1})." if ecart != 0 else "Aucun écart détecté.")
+                            ),
+                            "conclusion_audit": (
+                                "Aucune anomalie détectée: variation normale du compte 130 liée à l'affectation du résultat."
+                                if ecart_normal_130 else
+                                ("Écart significatif détecté - Nécessite une justification et une documentation des causes de cette variation." if ecart != 0 else "Aucune anomalie détectée.")
+                            )
                         })
                         comptes_ajoutes += 1
                     else:
                         # Compte nouveau (présent en N, absent en N-1)
                         # Nouvelle convention: Écart = Ouverture N - 0
                         ecart = ouvN
+                        nouveau_normal_130 = is_compte_130(num)
                         tous_comptes.append({
                             "numero_compte": num,
                             "libelle": ln.get("libelle", ""),
                             "ouverture_n": ouvN,
                             "cloture_n1": None,
                             "ecart": ecart,
-                            "status": "nouveau",
-                            "message": "Compte présent en N mais absent en N-1",
-                            "justification": f"Le compte {num} est présent dans l'exercice N avec un solde d'ouverture de {ouvN}, mais n'existait pas dans l'exercice N-1. Cela peut indiquer une création de compte, un reclassement ou une erreur de saisie.",
-                            "conclusion_audit": "Compte nouvellement créé ou reclassé - Vérifier la légitimité de cette création et documenter les raisons."
+                            "status": "ok_130" if nouveau_normal_130 else "nouveau",
+                            "message": (
+                                "Variation normale du compte 130 (présent en N, absent en N-1)"
+                                if nouveau_normal_130 else
+                                "Compte présent en N mais absent en N-1"
+                            ),
+                            "justification": (
+                                f"Le compte 130 (résultat en instance d'affectation) peut légitimement varier entre N-1 et N. Solde d'ouverture N: {ouvN}."
+                                if nouveau_normal_130 else
+                                f"Le compte {num} est présent dans l'exercice N avec un solde d'ouverture de {ouvN}, mais n'existait pas dans l'exercice N-1. Cela peut indiquer une création de compte, un reclassement ou une erreur de saisie."
+                            ),
+                            "conclusion_audit": (
+                                "Aucune anomalie détectée: variation normale du compte 130."
+                                if nouveau_normal_130 else
+                                "Compte nouvellement créé ou reclassé - Vérifier la légitimité de cette création et documenter les raisons."
+                            )
                         })
                         comptes_ajoutes += 1
                 except Exception as e:
@@ -3283,23 +3707,34 @@ class Mission(Document):
                 try:
                     # Si le compte n'existe pas en N, c'est un écart
                     if num not in idxN:
-                        df = float(ln.get("debit_fin", 0) or 0)
-                        cf = float(ln.get("credit_fin", 0) or 0)
-                        clotN1 = df - cf
+                        clotN1 = _get_closing_solde(ln)
                         
-                        # Nouvelle convention: Écart = Ouverture N (0) - Clôture N-1
+                        # Convention métier: Écart = Ouverture N (0) - Clôture N-1
                         ecart_suppr = -clotN1
 
+                        supprime_normal_130 = is_compte_130(num)
                         tous_comptes.append({
                             "numero_compte": num,
                             "libelle": ln.get("libelle", ""),
                             "ouverture_n": None,
                             "cloture_n1": clotN1,
                             "ecart": ecart_suppr,  # Écart = 0 - Clôture N-1 (absent en N)
-                            "status": "supprime",
-                            "message": "Compte présent en N-1 mais absent en N",
-                            "justification": f"Le compte {num} était présent dans l'exercice N-1 avec un solde de clôture de {clotN1}, mais n'existe plus dans l'exercice N. Cela peut indiquer une suppression de compte, un reclassement ou une erreur de saisie.",
-                            "conclusion_audit": "Compte supprimé ou reclassé - Vérifier la légitimité de cette suppression et documenter les raisons."
+                            "status": "ok_130" if supprime_normal_130 else "supprime",
+                            "message": (
+                                "Variation normale du compte 130 (présent en N-1, absent en N)"
+                                if supprime_normal_130 else
+                                "Compte présent en N-1 mais absent en N"
+                            ),
+                            "justification": (
+                                f"Le compte 130 (résultat en instance d'affectation) peut légitimement varier entre N-1 et N. Solde de clôture N-1: {clotN1}."
+                                if supprime_normal_130 else
+                                f"Le compte {num} était présent dans l'exercice N-1 avec un solde de clôture de {clotN1}, mais n'existe plus dans l'exercice N. Cela peut indiquer une suppression de compte, un reclassement ou une erreur de saisie."
+                            ),
+                            "conclusion_audit": (
+                                "Aucune anomalie détectée: variation normale du compte 130."
+                                if supprime_normal_130 else
+                                "Compte supprimé ou reclassé - Vérifier la légitimité de cette suppression et documenter les raisons."
+                            )
                         })
                         comptes_ajoutes += 1
                 except Exception as e:
@@ -3585,6 +4020,9 @@ class Mission(Document):
             for compte in rapport_standard.get("comptes", []):
                 compte_ajuste = compte.copy()
                 numero_compte = compte["numero_compte"]
+                digits = ''.join(ch for ch in str(numero_compte or "") if ch.isdigit())
+                normalized = digits.lstrip('0') or '0'
+                is_compte_130 = normalized == "130"
                 
                 # Chercher les reclassements qui affectent ce compte
                 for reclassement in reclassements:
@@ -3609,10 +4047,16 @@ class Mission(Document):
                         # Recalculer l'écart
                         if (compte_ajuste["ouverture_n"] is not None and 
                             compte_ajuste["cloture_n1"] is not None):
-                            compte_ajuste["ecart"] = compte_ajuste["cloture_n1"] - compte_ajuste["ouverture_n"]
+                            # Conserver la même convention que le contrôle standard:
+                            # écart = ouverture N - clôture N-1
+                            compte_ajuste["ecart"] = compte_ajuste["ouverture_n"] - compte_ajuste["cloture_n1"]
                         
                         # Mettre à jour le statut
-                        if abs(compte_ajuste["ecart"]) < 0.01:  # Tolérance pour les erreurs d'arrondi
+                        if is_compte_130 and abs(compte_ajuste["ecart"]) >= 0.01:
+                            compte_ajuste["status"] = "ok_130"
+                            compte_ajuste["message"] = "Écart normal maintenu sur le compte 130"
+                            compte_ajuste["conclusion_audit"] = "Aucune anomalie détectée: variation normale du compte 130."
+                        elif abs(compte_ajuste["ecart"]) < 0.01:  # Tolérance pour les erreurs d'arrondi
                             compte_ajuste["status"] = "ok_reclasse"
                             compte_ajuste["message"] = f"Écart résolu par reclassement"
                             compte_ajuste["conclusion_audit"] = "Écart justifié par reclassement documenté."

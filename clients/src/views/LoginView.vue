@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="w-screen h-screen bg-gradient-to-r from-blue-ycube to-green-ycube flex">
 
     <!-- COLONNE GAUCHE -->
@@ -7,7 +7,7 @@
       <h1 class="text-3xl font-bold">Bienvenue sur Outil CAC PREFORM</h1>
       <img src="/src/assets/logo5.png" alt="" class="w-80 my-8">
       <h3 class="text-xl tracking-wide text-center">
-        Accordez à votre espace de travail en un clic
+        Accédez à votre espace de travail en un clic
       </h3>
     </div>
 
@@ -114,7 +114,7 @@ async function login() {
     const user = await loginApi(payload)
 
     if (user) {
-      notyf.trigger("Connexion rÃ©ussie", "success")
+      notyf.trigger("Connexion réussie", "success")
       router.push('/')
     } else {
       errorMessage.value = "Identifiants invalides"

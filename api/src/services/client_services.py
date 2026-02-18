@@ -1,4 +1,4 @@
-﻿"""
+"""
 Services pour la gestion des clients
 Contient toute la logique métier
 """
@@ -16,7 +16,7 @@ from src.schemas.client_schemas import (
     serialize_client_list
 )
 
-# Utilisation de la configuration centralisÃ©e
+# Utilisation de la configuration centralisée
 from src.utils.database import get_db
 
 

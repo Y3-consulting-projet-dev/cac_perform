@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="p-6 h-full w-full min-h-screen">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
       <div>
@@ -68,7 +68,7 @@
             :disabled="currentPage === 1"
             @click="prevPage"
           >
-            Precedent
+            Precedenteeee
           </button>
           <button
             class="px-3 py-1 border rounded disabled:opacity-50"
