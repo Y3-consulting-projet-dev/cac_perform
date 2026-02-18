@@ -52,7 +52,7 @@ export async function uploadFile(
 
   try {
     const response = await axios.post(
-      'http://localhost:5000/api/v1/missions',
+      'http://localhost:5000/api/v1/missions/',
       formData,
       {
         headers: {

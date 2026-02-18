@@ -1,1988 +1,403 @@
 {
-  "syscohada": {
-    "grands_groupes": [
-      {
-        "compte": "13",
-        "comptes": [
-          "13",
-          "14",
-          "15",
-          "101",
-          "102",
-          "103",
-          "104",
-          "105",
-          "106",
-          "109",
-          "111",
-          "112",
-          "113",
-          "118",
-          "121",
-          "129",
-          "131",
-          "139"
-        ],
-        "nature": "Passif",
-        "ref": "CJ",
-        "libelle": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "16",
-        "comptes": [
-          "16",
-          "17",
-          "19",
-          "181",
-          "182",
-          "183",
-          "184"
-        ],
-        "nature": "Passif",
-        "ref": "DA",
-        "libelle": "TOTAL  DETTES FINANCIERES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "22",
-        "comptes": [
-          "22",
-          "231",
-          "232",
-          "233",
-          "234",
-          "235",
-          "237",
-          "238",
-          "240",
-          "241",
-          "242",
-          "243",
-          "244",
-          "245",
-          "246",
-          "247",
-          "248",
-          "249",
-          "251",
-          "252",
-          "282",
-          "292",
-          "2391",
-          "2392",
-          "2393",
-          "2491",
-          "2492",
-          "2493",
-          "2494",
-          "2495",
-          "2496",
-          "2497",
-          "2498",
-          "2830",
-          "2831",
-          "2832",
-          "2834",
-          "2835",
-          "2838",
-          "2840",
-          "2841",
-          "2844",
-          "2845",
-          "2847",
-          "2848",
-          "2934",
-          "2935",
-          "2938",
-          "2939"
-        ],
-        "nature": "Actif",
-        "ref": "AJ",
-        "libelle": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "26",
-        "comptes": [
-          "26",
-          "27",
-          "296",
-          "297"
-        ],
-        "nature": "Actif",
-        "ref": "AR",
-        "libelle": "IMMOBILISATIONS FINANCIÈRES"
-      },
-      {
-        "compte": "31",
-        "comptes": [
-          "31",
-          "32",
-          "33",
-          "34",
-          "35",
-          "36",
-          "37",
-          "38",
-          "39",
-          "485",
-          "488",
-          "498"
-        ],
-        "nature": "Actif",
-        "ref": "BB",
-        "libelle": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "50",
-        "comptes": [
-          "50",
-          "51",
-          "52",
-          "57",
-          "581",
-          "582",
-          "585",
-          "590",
-          "591",
-          "52D",
-          "53D",
-          "54D",
-          "55D"
-        ],
-        "nature": "Actif",
-        "ref": "BQ",
-        "libelle": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "61",
-        "comptes": [
-          "61",
-          "62",
-          "63",
-          "64",
-          "65",
-          "71",
-          "72",
-          "73",
-          "75",
-          "602",
-          "604",
-          "605",
-          "608",
-          "781",
-          "6032",
-          "6033"
-        ],
-        "nature": "Compte de résultat",
-        "ref": "RG",
-        "libelle": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "66",
-        "comptes": [
-          "66"
-        ],
-        "nature": "Compte de résultat",
-        "ref": "RK",
-        "libelle": "EXCEDENT BRUT D'EXPLOITATION (XC+RK)"
-      },
-      {
-        "compte": "67",
-        "comptes": [
-          "67",
-          "77",
-          "697",
-          "787",
-          "797"
-        ],
-        "nature": "Compte de résultat",
-        "ref": "RM",
-        "libelle": "RESULTAT  FINANCIER  (somme TK à RN)"
-      },
-      {
-        "compte": "81",
-        "comptes": [
-          "81",
-          "82",
-          "83",
-          "84",
-          "85",
-          "86",
-          "88"
-        ],
-        "nature": "Compte de résultat",
-        "ref": "RO",
-        "libelle": "RESULTAT HORS ACTIVITES ORDINAIRES (somme TN à RP)"
-      },
-      {
-        "compte": "87",
-        "comptes": [
-          "87",
-          "89"
-        ],
-        "nature": "Compte de résultat",
-        "ref": "RQ",
-        "libelle": "RESULTAT NET (XG+XH+RQ+RS)"
-      },
-      {
-        "compte": "185",
-        "comptes": [
-          "185",
-          "401",
-          "402",
-          "404",
-          "408",
-          "419",
-          "481",
-          "482",
-          "484",
-          "599",
-          "4990",
-          "4991",
-          "4997",
-          "4998",
-          "42C",
-          "43C",
-          "44C",
-          "45C",
-          "46C",
-          "471C",
-          "472C",
-          "473C",
-          "474C",
-          "475C",
-          "476C",
-          "477C",
-          "47C"
-        ],
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "211",
-        "comptes": [
-          "211",
-          "212",
-          "213",
-          "214",
-          "215",
-          "216",
-          "217",
-          "2180",
-          "2181",
-          "2182",
-          "2183",
-          "2184",
-          "2188",
-          "2191",
-          "2193",
-          "2811",
-          "2812",
-          "2813",
-          "2815",
-          "2816",
-          "2818",
-          "2915",
-          "2916"
-        ],
-        "nature": "Actif",
-        "ref": "AE",
-        "libelle": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "409",
-        "comptes": [
-          "409",
-          "411",
-          "412",
-          "413",
-          "414",
-          "415",
-          "416",
-          "418",
-          "491",
-          "492",
-          "494",
-          "497",
-          "185D",
-          "42D",
-          "43D",
-          "44D",
-          "45D",
-          "46D",
-          "471D",
-          "472D",
-          "473D",
-          "474D",
-          "475D",
-          "476D",
-          "477D"
-        ],
-        "nature": "Actif",
-        "ref": "BH",
-        "libelle": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "478",
-        "comptes": [
-          "478",
-          "479"
-        ],
-        "nature": "Actif",
-        "ref": "BU",
-        "libelle": "Non défini"
-      },
-      {
-        "compte": "601",
-        "comptes": [
-          "601",
-          "701",
-          "6031"
-        ],
-        "nature": "Compte de résultat",
-        "ref": "RA",
-        "libelle": "MARGE  COMMERCIALE  (Somme TA à RB)"
-      },
-      {
-        "compte": "681",
-        "comptes": [
-          "681",
-          "691",
-          "791",
-          "798",
-          "799"
-        ],
-        "nature": "Compte de résultat",
-        "ref": "RL",
-        "libelle": "RESULTAT D'EXPLOITATION (XD+TJ+ RL)"
-      },
-      {
-        "compte": "702",
-        "comptes": [
-          "702",
-          "703",
-          "704",
-          "705",
-          "706",
-          "707"
-        ],
-        "nature": "Compte de résultat",
-        "ref": "TB",
-        "libelle": "CHIFFRE D'AFFAIRES (A + B + C + D)"
-      },
-      {
-        "compte": "52C",
-        "comptes": [
-          "52C",
-          "53C",
-          "56C"
-        ],
-        "nature": "Passif",
-        "ref": "DR",
-        "libelle": "TOTAL   TRESORERIE-PASSIF"
-      }
+    "syscohada": [
+        {
+            "compte": "10",
+            "nature": "bilan",
+            "libelle": "CAPITAL"
+           },
+           {
+            "compte": "11",
+            "nature": "bilan",
+            "libelle": "RÉSERVES"
+           },
+           {
+            "compte": "12",
+            "nature": "bilan",
+            "libelle": "REPORT À NOUVEAU"
+           },
+           {
+            "compte": "13",
+            "nature": "bilan",
+            "libelle": "RÉSULTAT NET DE L'EXERCICE"
+           },
+           {
+            "compte": "14",
+            "nature": "bilan",
+            "libelle": "SUBVENTIONS D'INVESTISSEMENT"
+           },
+           {
+            "compte": "15",
+            "nature": "bilan",
+            "libelle": "PROVISIONS RÉGLEMENTÉES ET FONDS ASSIMILÉS"
+           },
+           {
+            "compte": "16",
+            "nature": "bilan",
+            "libelle": "EMPRUNTS ET DETTES ASSIMILÉES"
+           },
+           {
+            "compte": "17",
+            "nature": "bilan",
+            "libelle": "DETTES DE LOCATION ACQUISITION"
+           },
+           {
+            "compte": "18",
+            "nature": "bilan",
+            "libelle": "DETTES LIÉES À DES PARTICIPATIONS ET COMPTES DE LIAISON DES ÉTABLISSEMENTS ET SOCIÉTÉS EN PARTICIPATION"
+           },
+           {
+            "compte": "19",
+            "nature": "bilan",
+            "libelle": "PROVISIONS POUR RISQUES ET CHARGES"
+           },
+           {
+            "compte": "20",
+            "nature": "bilan",
+            "libelle": "AUTRES ACTIFS NON COURANTS"
+           },
+           {
+            "compte": "21",
+            "nature": "bilan",
+            "libelle": "IMMOBILISATIONS INCORPORELLES"
+           },
+           {
+            "compte": "22",
+            "nature": "bilan",
+            "libelle": "TERRAINS"
+           },
+           {
+            "compte": "23",
+            "nature": "bilan",
+            "libelle": "BÂTIMENTS, INSTALLATIONS TECHNIQUES ET AGENCEMENTS"
+           },
+           {
+            "compte": "24",
+            "nature": "bilan",
+            "libelle": "MATÉRIEL, MOBILIER ET ACTIFS BIOLOGIQUES"
+           },
+           {
+            "compte": "25",
+            "nature": "bilan",
+            "libelle": "AVANCES ET ACOMPTES VERSÉS SUR IMMOBILISATIONS"
+           },
+           {
+            "compte": "26",
+            "nature": "bilan",
+            "libelle": "TITRES DE PARTICIPATION"
+           },
+           {
+            "compte": "27",
+            "nature": "bilan",
+            "libelle": "AUTRES IMMOBILISATIONS FINANCIÈRES"
+           },
+           {
+            "compte": "28",
+            "nature": "bilan",
+            "libelle": "AMORTISSEMENTS"
+           },
+           {
+            "compte": "29",
+            "nature": "bilan",
+            "libelle": "DÉPRÉCIATIONS DES IMMOBILISATIONS"
+           },
+           {
+            "compte": "30",
+            "nature": "bilan",
+            "libelle": "AUTRES PROVISIONS DÉPRÉCIATIONS ACTIFS NON COURANTS"
+           },
+           {
+            "compte": "31",
+            "nature": "bilan",
+            "libelle": "STOCKS DE MARCHANDISES"
+           },
+           {
+            "compte": "32",
+            "nature": "bilan",
+            "libelle": "STOCKS DE MATIÈRES PREMIERES ET FOURNITURES LIÉES"
+           },
+           {
+            "compte": "33",
+            "nature": "bilan",
+            "libelle": "STOCKS D'AUTRES APPROVISIONNEMENTS"
+           },
+           {
+            "compte": "34",
+            "nature": "bilan",
+            "libelle": "STOCKS DE PRODUITS EN COURS"
+           },
+           {
+            "compte": "35",
+            "nature": "bilan",
+            "libelle": "STOCKS DE SERVICES EN COURS"
+           },
+           {
+            "compte": "36",
+            "nature": "bilan",
+            "libelle": "STOCKS DE PRODUITS FINIS"
+           },
+           {
+            "compte": "37",
+            "nature": "bilan",
+            "libelle": "STOCKS DE PRODUITS INTERMÉDIAIRES ET RÉSIDUELS"
+           },
+           {
+            "compte": "38",
+            "nature": "bilan",
+            "libelle": "STOCKS EN COURS DE ROUTE, EN CONSIGNATION OU EN DÉPÔT"
+           },
+           {
+            "compte": "39",
+            "nature": "bilan",
+            "libelle": "DÉPRÉCIATIONS DE STOCKS"
+           },
+           {
+            "compte": "40",
+            "nature": "bilan",
+            "libelle": "FOURNISSEURS ET COMPTES RATTACHÉS"
+           },
+           {
+            "compte": "41",
+            "nature": "bilan",
+            "libelle": "CLIENTS ET COMPTES RATTACHÉS"
+           },
+           {
+            "compte": "42",
+            "nature": "bilan",
+            "libelle": "PERSONNEL"
+           },
+           {
+            "compte": "43",
+            "nature": "bilan",
+            "libelle": "ORGANISMES SOCIAUX"
+           },
+           {
+            "compte": "44",
+            "nature": "bilan",
+            "libelle": "ÉTAT ET COLLECTIVITÉS PUBLIQUES"
+           },
+           {
+            "compte": "45",
+            "nature": "bilan",
+            "libelle": "ORGANISMES INTERNATIONAUX"
+           },
+           {
+            "compte": "46",
+            "nature": "bilan",
+            "libelle": "APPORTEURS ASSOCIÉS ET GROUPE"
+           },
+           {
+            "compte": "47",
+            "nature": "bilan",
+            "libelle": "DÉBITEURS ET CRÉDITEURS DIVERS"
+           },
+           {
+            "compte": "48",
+            "nature": "bilan",
+            "libelle": "CRÉANCES ET DETTES HORS ACTIVITÉS ORDINAIRES (H.A.O.)"
+           },
+           {
+            "compte": "49",
+            "nature": "bilan",
+            "libelle": "DÉPRÉCIATIONS ET PROVISIONS POUR RISQUES A COURT TERME - TIERS"
+           },
+           {
+            "compte": "50",
+            "nature": "bilan",
+            "libelle": "TITRES DE PLACEMENT"
+           },
+           {
+            "compte": "51",
+            "nature": "bilan",
+            "libelle": "VALEURS À ENCAISSER"
+           },
+           {
+            "compte": "52",
+            "nature": "bilan",
+            "libelle": "BANQUES"
+           },
+           {
+            "compte": "53",
+            "nature": "bilan",
+            "libelle": "ÉTABLISSEMENTS FINANCIERS ET ASSIMILÉS"
+           },
+           {
+            "compte": "54",
+            "nature": "bilan",
+            "libelle": "INSTRUMENTS DE TRÉSORERIE"
+           },
+           {
+            "compte": "55",
+            "nature": "bilan",
+            "libelle": "INSTRUMENTS DE MONNAIE ELECTRONIQUE"
+           },
+           {
+            "compte": "56",
+            "nature": "bilan",
+            "libelle": "BANQUES, CRÉDITS DE TRÉSORERIE ET D'ESCOMPTE"
+           },
+           {
+            "compte": "57",
+            "nature": "bilan",
+            "libelle": "CAISSE"
+           },
+           {
+            "compte": "58",
+            "nature": "bilan",
+            "libelle": "RÉGIES D'AVANCES, ACCRÉDITIFS ET VIREMENTS INTERNES"
+           },
+           {
+            "compte": "59",
+            "nature": "bilan",
+            "libelle": "DÉPRÉCIATIONS ET PROVISIONS POUR RISQUES A COURT TERME - TRESORERIE"
+           },
+           {
+            "compte": "60",
+            "nature": "pnl",
+            "libelle": "ACHATS ET VARIATIONS DE STOCKS"
+           },
+           {
+            "compte": "61",
+            "nature": "pnl",
+            "libelle": "TRANSPORTS"
+           },
+           {
+            "compte": "62",
+            "nature": "pnl",
+            "libelle": "SERVICES EXTÉRIEURS"
+           },
+           {
+            "compte": "63",
+            "nature": "pnl",
+            "libelle": "AUTRES SERVICES EXTÉRIEURS"
+           },
+           {
+            "compte": "64",
+            "nature": "pnl",
+            "libelle": "IMPÔTS ET TAXES"
+           },
+           {
+            "compte": "65",
+            "nature": "pnl",
+            "libelle": "AUTRES CHARGES"
+           },
+           {
+            "compte": "66",
+            "nature": "pnl",
+            "libelle": "CHARGES DE PERSONNEL"
+           },
+           {
+            "compte": "67",
+            "nature": "pnl",
+            "libelle": "FRAIS FINANCIERS ET CHARGES ASSIMILÉES"
+           },
+           {
+            "compte": "68",
+            "nature": "pnl",
+            "libelle": "DOTATIONS AUX AMORTISSEMENTS"
+           },
+           {
+            "compte": "69",
+            "nature": "pnl",
+            "libelle": "DOTATIONS AUX PROVISIONS"
+           },
+           {
+            "compte": "70",
+            "nature": "pnl",
+            "libelle": "VENTES"
+           },
+           {
+            "compte": "71",
+            "nature": "pnl",
+            "libelle": "SUBVENTIONS D'EXPLOITATION"
+           },
+           {
+            "compte": "72",
+            "nature": "pnl",
+            "libelle": "PRODUCTION IMMOBILISÉE"
+           },
+           {
+            "compte": "73",
+            "nature": "pnl",
+            "libelle": "VARIATIONS DE STOCKS DE BIENS ET DE SERVICES PRODUITS"
+           },
+           {
+            "compte": "74",
+            "nature": "pnl",
+            "libelle": "PROVISIONS GESTIONNAIRES ET AUTRES REGULARISATIONS"
+           },
+           {
+            "compte": "75",
+            "nature": "pnl",
+            "libelle": "AUTRES PRODUITS"
+           },
+           {
+            "compte": "76",
+            "nature": "pnl",
+            "libelle": "PRODUITS FINANCIERS DIVERS"
+           },
+           {
+            "compte": "77",
+            "nature": "pnl",
+            "libelle": "REVENUS FINANCIERS ET ASSIMILÉS"
+           },
+           {
+            "compte": "78",
+            "nature": "pnl",
+            "libelle": "TRANSFERTS DE CHARGES"
+           },
+           {
+            "compte": "79",
+            "nature": "pnl",
+            "libelle": "REPRISES DE PROVISIONS"
+           },
+           {
+            "compte": "81",
+            "nature": "pnl",
+            "libelle": "VALEURS COMPTABLES DES CESSIONS D'IMMOBILISATIONS"
+           },
+           {
+            "compte": "82",
+            "nature": "pnl",
+            "libelle": "PRODUITS DES CESSIONS D'IMMOBILISATIONS"
+           },
+           {
+            "compte": "83",
+            "nature": "pnl",
+            "libelle": "CHARGES HORS ACTIVITÉS ORDINAIRES"
+           },
+           {
+            "compte": "84",
+            "nature": "pnl",
+            "libelle": "PRODUITS HORS ACTIVITÉS ORDINAIRES"
+           },
+           {
+            "compte": "85",
+            "nature": "pnl",
+            "libelle": "DOTATIONS HORS ACTIVITÉS ORDINAIRES"
+           },
+           {
+            "compte": "86",
+            "nature": "pnl",
+            "libelle": "REPRISES HORS ACTIVITÉS ORDINAIRES"
+           },
+           {
+            "compte": "87",
+            "nature": "pnl",
+            "libelle": "PARTICIPATION DES TRAVAILLEURS"
+           },
+           
+           {
+            "compte": "88",
+            "nature": "pnl",
+            "libelle": "SUBVENTIONS D'ÉQUILIBRE"
+           },
+           {
+            "compte": "89",
+            "nature": "pnl",
+            "libelle": "IMPÔTS SUR LE RÉSULTAT"
+           }
     ],
-    "sous_groupes": [
-      {
-        "compte": "13",
-        "nature": "Passif",
-        "ref": "CJ",
-        "libelle": "Résultat net de l'exercice",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "14",
-        "nature": "Passif",
-        "ref": "CL",
-        "libelle": "Subventions  d'investissement",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "15",
-        "nature": "Passif",
-        "ref": "CM",
-        "libelle": "Provisions  réglementées",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "101",
-        "nature": "Passif",
-        "ref": "CA",
-        "libelle": "Capital",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "102",
-        "nature": "Passif",
-        "ref": "CA",
-        "libelle": "Capital",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "103",
-        "nature": "Passif",
-        "ref": "CA",
-        "libelle": "Capital",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "104",
-        "nature": "Passif",
-        "ref": "CA",
-        "libelle": "Capital",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "105",
-        "nature": "Passif",
-        "ref": "CD",
-        "libelle": "Primes liées au capital social",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "106",
-        "nature": "Passif",
-        "ref": "CE",
-        "libelle": "Ecarts de réévaluation",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "109",
-        "nature": "Passif",
-        "ref": "CB",
-        "libelle": "Apporteurs capital non appelé (-)",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "111",
-        "nature": "Passif",
-        "ref": "CF",
-        "libelle": "Réserves indisponibles",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "112",
-        "nature": "Passif",
-        "ref": "CF",
-        "libelle": "Réserves indisponibles",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "113",
-        "nature": "Passif",
-        "ref": "CF",
-        "libelle": "Réserves indisponibles",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "118",
-        "nature": "Passif",
-        "ref": "CG",
-        "libelle": "Réserves libres",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "121",
-        "nature": "Passif",
-        "ref": "CH",
-        "libelle": "Report à nouveau",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "129",
-        "nature": "Passif",
-        "ref": "CH",
-        "libelle": "Report à nouveau",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "131",
-        "nature": "Passif",
-        "ref": "CJ",
-        "libelle": "Résultat net de l'exercice",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "139",
-        "nature": "Passif",
-        "ref": "CJ",
-        "libelle": "Résultat net de l'exercice",
-        "libelle_groupe": "TOTAL  CAPITAUX PROPRES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "16",
-        "nature": "Passif",
-        "ref": "DA",
-        "libelle": "Emprunts et dettes financières diverses",
-        "libelle_groupe": "TOTAL  DETTES FINANCIERES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "17",
-        "nature": "Passif",
-        "ref": "DB",
-        "libelle": "Dettes de location-acquisition",
-        "libelle_groupe": "TOTAL  DETTES FINANCIERES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "19",
-        "nature": "Passif",
-        "ref": "DC",
-        "libelle": "Provisions pour risques et charges",
-        "libelle_groupe": "TOTAL  DETTES FINANCIERES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "181",
-        "nature": "Passif",
-        "ref": "DA",
-        "libelle": "Emprunts et dettes financières diverses",
-        "libelle_groupe": "TOTAL  DETTES FINANCIERES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "182",
-        "nature": "Passif",
-        "ref": "DA",
-        "libelle": "Emprunts et dettes financières diverses",
-        "libelle_groupe": "TOTAL  DETTES FINANCIERES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "183",
-        "nature": "Passif",
-        "ref": "DA",
-        "libelle": "Emprunts et dettes financières diverses",
-        "libelle_groupe": "TOTAL  DETTES FINANCIERES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "184",
-        "nature": "Passif",
-        "ref": "DA",
-        "libelle": "Emprunts et dettes financières diverses",
-        "libelle_groupe": "TOTAL  DETTES FINANCIERES ET  RESSOURCES ASSIMILEES"
-      },
-      {
-        "compte": "22",
-        "nature": "Actif",
-        "ref": "AJ",
-        "libelle": "Terrains",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "231",
-        "nature": "Actif",
-        "ref": "AK",
-        "libelle": "Bâtiments",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "232",
-        "nature": "Actif",
-        "ref": "AK",
-        "libelle": "Bâtiments",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "233",
-        "nature": "Actif",
-        "ref": "AK",
-        "libelle": "Bâtiments",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "234",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "235",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "237",
-        "nature": "Actif",
-        "ref": "AK",
-        "libelle": "Bâtiments",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "238",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "240",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "241",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "242",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "243",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "244",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "245",
-        "nature": "Actif",
-        "ref": "AN",
-        "libelle": "Matériel de transport",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "246",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "247",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "248",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "249",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "251",
-        "nature": "Actif",
-        "ref": "AP",
-        "libelle": "AVANCES ET ACOMPTES VERSES SUR IMMOBILISATIONS",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "252",
-        "nature": "Actif",
-        "ref": "AP",
-        "libelle": "AVANCES ET ACOMPTES VERSES SUR IMMOBILISATIONS",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "282",
-        "nature": "Actif",
-        "ref": "AJ",
-        "libelle": "Terrains",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "292",
-        "nature": "Actif",
-        "ref": "AJ",
-        "libelle": "Terrains",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2391",
-        "nature": "Actif",
-        "ref": "AK",
-        "libelle": "Bâtiments",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2392",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2393",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2491",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2492",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2493",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2494",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2495",
-        "nature": "Actif",
-        "ref": "AN",
-        "libelle": "Matériel de transport",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2496",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2497",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2498",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2830",
-        "nature": "Actif",
-        "ref": "AK",
-        "libelle": "Bâtiments",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2831",
-        "nature": "Actif",
-        "ref": "AK",
-        "libelle": "Bâtiments",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2832",
-        "nature": "Actif",
-        "ref": "AK",
-        "libelle": "Bâtiments",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2834",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2835",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2838",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2840",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2841",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2844",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2845",
-        "nature": "Actif",
-        "ref": "AN",
-        "libelle": "Matériel de transport",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2847",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2848",
-        "nature": "Actif",
-        "ref": "AM",
-        "libelle": "Matériel, mobilier et actifs biologiques",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2934",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2935",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2938",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "2939",
-        "nature": "Actif",
-        "ref": "AL",
-        "libelle": "Aménagements,  agencements  et installations",
-        "libelle_groupe": "IMMOBILISATIONS CORPORELLES"
-      },
-      {
-        "compte": "26",
-        "nature": "Actif",
-        "ref": "AR",
-        "libelle": "Titres de participation",
-        "libelle_groupe": "IMMOBILISATIONS FINANCIÈRES"
-      },
-      {
-        "compte": "27",
-        "nature": "Actif",
-        "ref": "AS",
-        "libelle": "Autres  immobilisations financières",
-        "libelle_groupe": "IMMOBILISATIONS FINANCIÈRES"
-      },
-      {
-        "compte": "296",
-        "nature": "Actif",
-        "ref": "AR",
-        "libelle": "Titres de participation",
-        "libelle_groupe": "IMMOBILISATIONS FINANCIÈRES"
-      },
-      {
-        "compte": "297",
-        "nature": "Actif",
-        "ref": "AS",
-        "libelle": "Autres  immobilisations financières",
-        "libelle_groupe": "IMMOBILISATIONS FINANCIÈRES"
-      },
-      {
-        "compte": "31",
-        "nature": "Actif",
-        "ref": "BB",
-        "libelle": "STOCKS ET ENCOURS",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "32",
-        "nature": "Actif",
-        "ref": "BB",
-        "libelle": "STOCKS ET ENCOURS",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "33",
-        "nature": "Actif",
-        "ref": "BB",
-        "libelle": "STOCKS ET ENCOURS",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "34",
-        "nature": "Actif",
-        "ref": "BB",
-        "libelle": "STOCKS ET ENCOURS",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "35",
-        "nature": "Actif",
-        "ref": "BB",
-        "libelle": "STOCKS ET ENCOURS",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "36",
-        "nature": "Actif",
-        "ref": "BB",
-        "libelle": "STOCKS ET ENCOURS",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "37",
-        "nature": "Actif",
-        "ref": "BB",
-        "libelle": "STOCKS ET ENCOURS",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "38",
-        "nature": "Actif",
-        "ref": "BB",
-        "libelle": "STOCKS ET ENCOURS",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "39",
-        "nature": "Actif",
-        "ref": "BB",
-        "libelle": "STOCKS ET ENCOURS",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "485",
-        "nature": "Actif",
-        "ref": "BA",
-        "libelle": "ACTIF  CIRCULANT HAO",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "488",
-        "nature": "Actif",
-        "ref": "BA",
-        "libelle": "ACTIF  CIRCULANT HAO",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "498",
-        "nature": "Actif",
-        "ref": "BA",
-        "libelle": "ACTIF  CIRCULANT HAO",
-        "libelle_groupe": "TOTAL  ACTIF CIRCULANT"
-      },
-      {
-        "compte": "50",
-        "nature": "Actif",
-        "ref": "BQ",
-        "libelle": "Titres de placement",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "51",
-        "nature": "Actif",
-        "ref": "BR",
-        "libelle": "Valeurs à encaisser",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "52",
-        "nature": "Actif",
-        "ref": "BS",
-        "libelle": "Banques, chèques postaux, caisse et assimilés",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "57",
-        "nature": "Actif",
-        "ref": "BS",
-        "libelle": "Banques, chèques postaux, caisse et assimilés",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "581",
-        "nature": "Actif",
-        "ref": "BS",
-        "libelle": "Banques, chèques postaux, caisse et assimilés",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "582",
-        "nature": "Actif",
-        "ref": "BS",
-        "libelle": "Banques, chèques postaux, caisse et assimilés",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "585",
-        "nature": "Actif",
-        "ref": "BS",
-        "libelle": "Banques, chèques postaux, caisse et assimilés",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "590",
-        "nature": "Actif",
-        "ref": "BQ",
-        "libelle": "Titres de placement",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "591",
-        "nature": "Actif",
-        "ref": "BR",
-        "libelle": "Valeurs à encaisser",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "52D",
-        "nature": "Actif",
-        "ref": "BS",
-        "libelle": "Banques, chèques postaux, caisse et assimilés",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "53D",
-        "nature": "Actif",
-        "ref": "BS",
-        "libelle": "Banques, chèques postaux, caisse et assimilés",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "54D",
-        "nature": "Actif",
-        "ref": "BS",
-        "libelle": "Banques, chèques postaux, caisse et assimilés",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "55D",
-        "nature": "Actif",
-        "ref": "BS",
-        "libelle": "Banques, chèques postaux, caisse et assimilés",
-        "libelle_groupe": "TOTAL   TRESORERIE-ACTIF"
-      },
-      {
-        "compte": "61",
-        "nature": "Compte de résultat",
-        "ref": "RG",
-        "libelle": "Transports",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "62",
-        "nature": "Compte de résultat",
-        "ref": "RH",
-        "libelle": "Services extérieurs",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "63",
-        "nature": "Compte de résultat",
-        "ref": "RH",
-        "libelle": "Services extérieurs",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "64",
-        "nature": "Compte de résultat",
-        "ref": "RI",
-        "libelle": "Impôts et taxes",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "65",
-        "nature": "Compte de résultat",
-        "ref": "RJ",
-        "libelle": "Autres charges",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "71",
-        "nature": "Compte de résultat",
-        "ref": "TG",
-        "libelle": "Subventions d’exploitation",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "72",
-        "nature": "Compte de résultat",
-        "ref": "TF",
-        "libelle": "Production immobilisée",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "73",
-        "nature": "Compte de résultat",
-        "ref": "TE",
-        "libelle": "Production stockée (ou déstockage)",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "75",
-        "nature": "Compte de résultat",
-        "ref": "TH",
-        "libelle": "Autres produits",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "602",
-        "nature": "Compte de résultat",
-        "ref": "RC",
-        "libelle": "Achats de matières premières et fournitures liées",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "604",
-        "nature": "Compte de résultat",
-        "ref": "RE",
-        "libelle": "Autres achats",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "605",
-        "nature": "Compte de résultat",
-        "ref": "RE",
-        "libelle": "Autres achats",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "608",
-        "nature": "Compte de résultat",
-        "ref": "RE",
-        "libelle": "Autres achats",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "781",
-        "nature": "Compte de résultat",
-        "ref": "TI",
-        "libelle": "Transferts de charges d'exploitation",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "6032",
-        "nature": "Compte de résultat",
-        "ref": "RD",
-        "libelle": "Variation de stocks de matières premières et fournitures liées",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "6033",
-        "nature": "Compte de résultat",
-        "ref": "RF",
-        "libelle": "Variation de stocks d’autres approvisionnements",
-        "libelle_groupe": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)"
-      },
-      {
-        "compte": "66",
-        "nature": "Compte de résultat",
-        "ref": "RK",
-        "libelle": "Charges de personnel",
-        "libelle_groupe": "EXCEDENT BRUT D'EXPLOITATION (XC+RK)"
-      },
-      {
-        "compte": "67",
-        "nature": "Compte de résultat",
-        "ref": "RM",
-        "libelle": "Frais financiers et charges assimilées",
-        "libelle_groupe": "RESULTAT  FINANCIER  (somme TK à RN)"
-      },
-      {
-        "compte": "77",
-        "nature": "Compte de résultat",
-        "ref": "TK",
-        "libelle": "Revenus financiers et assimilés",
-        "libelle_groupe": "RESULTAT  FINANCIER  (somme TK à RN)"
-      },
-      {
-        "compte": "697",
-        "nature": "Compte de résultat",
-        "ref": "RN",
-        "libelle": "Dotations aux provisions et aux dépréciations financières",
-        "libelle_groupe": "RESULTAT  FINANCIER  (somme TK à RN)"
-      },
-      {
-        "compte": "787",
-        "nature": "Compte de résultat",
-        "ref": "TM",
-        "libelle": "Transferts de charges financières",
-        "libelle_groupe": "RESULTAT  FINANCIER  (somme TK à RN)"
-      },
-      {
-        "compte": "797",
-        "nature": "Compte de résultat",
-        "ref": "TL",
-        "libelle": "Reprises de provisions  et dépréciations financières",
-        "libelle_groupe": "RESULTAT  FINANCIER  (somme TK à RN)"
-      },
-      {
-        "compte": "81",
-        "nature": "Compte de résultat",
-        "ref": "RO",
-        "libelle": "Valeurs comptables des cessions d'immobilisations",
-        "libelle_groupe": "RESULTAT HORS ACTIVITES ORDINAIRES (somme TN à RP)"
-      },
-      {
-        "compte": "82",
-        "nature": "Compte de résultat",
-        "ref": "TN",
-        "libelle": "Produits des cessions d'immobilisations",
-        "libelle_groupe": "RESULTAT HORS ACTIVITES ORDINAIRES (somme TN à RP)"
-      },
-      {
-        "compte": "83",
-        "nature": "Compte de résultat",
-        "ref": "RP",
-        "libelle": "Autres Charges HAO",
-        "libelle_groupe": "RESULTAT HORS ACTIVITES ORDINAIRES (somme TN à RP)"
-      },
-      {
-        "compte": "84",
-        "nature": "Compte de résultat",
-        "ref": "TO",
-        "libelle": "Autres Produits HAO",
-        "libelle_groupe": "RESULTAT HORS ACTIVITES ORDINAIRES (somme TN à RP)"
-      },
-      {
-        "compte": "85",
-        "nature": "Compte de résultat",
-        "ref": "RP",
-        "libelle": "Autres Charges HAO",
-        "libelle_groupe": "RESULTAT HORS ACTIVITES ORDINAIRES (somme TN à RP)"
-      },
-      {
-        "compte": "86",
-        "nature": "Compte de résultat",
-        "ref": "TO",
-        "libelle": "Autres Produits HAO",
-        "libelle_groupe": "RESULTAT HORS ACTIVITES ORDINAIRES (somme TN à RP)"
-      },
-      {
-        "compte": "88",
-        "nature": "Compte de résultat",
-        "ref": "TO",
-        "libelle": "Autres Produits HAO",
-        "libelle_groupe": "RESULTAT HORS ACTIVITES ORDINAIRES (somme TN à RP)"
-      },
-      {
-        "compte": "87",
-        "nature": "Compte de résultat",
-        "ref": "RQ",
-        "libelle": "Participation des travailleurs",
-        "libelle_groupe": "RESULTAT NET (XG+XH+RQ+RS)"
-      },
-      {
-        "compte": "89",
-        "nature": "Compte de résultat",
-        "ref": "RS",
-        "libelle": "Impôts sur le résultat",
-        "libelle_groupe": "RESULTAT NET (XG+XH+RQ+RS)"
-      },
-      {
-        "compte": "185",
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "Autres dettes",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "401",
-        "nature": "Passif",
-        "ref": "DJ",
-        "libelle": "Fournisseurs d'exploitation",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "402",
-        "nature": "Passif",
-        "ref": "DJ",
-        "libelle": "Fournisseurs d'exploitation",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "404",
-        "nature": "Passif",
-        "ref": "DJ",
-        "libelle": "Fournisseurs d'exploitation",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "408",
-        "nature": "Passif",
-        "ref": "DJ",
-        "libelle": "Fournisseurs d'exploitation",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "419",
-        "nature": "Passif",
-        "ref": "DI",
-        "libelle": "Clients, avances reçues",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "481",
-        "nature": "Passif",
-        "ref": "DH",
-        "libelle": "Dettes circulantes HAO",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "482",
-        "nature": "Passif",
-        "ref": "DH",
-        "libelle": "Dettes circulantes HAO",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "484",
-        "nature": "Passif",
-        "ref": "DH",
-        "libelle": "Dettes circulantes HAO",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "599",
-        "nature": "Passif",
-        "ref": "DN",
-        "libelle": "Provisions pour risques et charges à court terme",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "4990",
-        "nature": "Passif",
-        "ref": "DN",
-        "libelle": "Provisions pour risques et charges à court terme",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "4991",
-        "nature": "Passif",
-        "ref": "DN",
-        "libelle": "Provisions pour risques et charges à court terme",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "4997",
-        "nature": "Passif",
-        "ref": "DN",
-        "libelle": "Provisions pour risques et charges à court terme",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "4998",
-        "nature": "Passif",
-        "ref": "DH",
-        "libelle": "Dettes circulantes HAO",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "42C",
-        "nature": "Passif",
-        "ref": "DK",
-        "libelle": "Dettes fiscales et sociales",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "43C",
-        "nature": "Passif",
-        "ref": "DK",
-        "libelle": "Dettes fiscales et sociales",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "44C",
-        "nature": "Passif",
-        "ref": "DK",
-        "libelle": "Dettes fiscales et sociales",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "45C",
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "Autres dettes",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "46C",
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "Autres dettes",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "471C",
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "Autres dettes",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "472C",
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "Autres dettes",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "473C",
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "Autres dettes",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "474C",
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "Autres dettes",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "475C",
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "Autres dettes",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "476C",
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "Autres dettes",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "477C",
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "Autres dettes",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "47C",
-        "nature": "Passif",
-        "ref": "DM",
-        "libelle": "Autres dettes",
-        "libelle_groupe": "TOTAL  PASSIF CIRCULANT"
-      },
-      {
-        "compte": "211",
-        "nature": "Actif",
-        "ref": "AE",
-        "libelle": "Frais de développement et de prospection",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "212",
-        "nature": "Actif",
-        "ref": "AF",
-        "libelle": "Brevets, licences, logiciels et droits similaires",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "213",
-        "nature": "Actif",
-        "ref": "AF",
-        "libelle": "Brevets, licences, logiciels et droits similaires",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "214",
-        "nature": "Actif",
-        "ref": "AF",
-        "libelle": "Brevets, licences, logiciels et droits similaires",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "215",
-        "nature": "Actif",
-        "ref": "AG",
-        "libelle": "Fonds commercial et droit au bail",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "216",
-        "nature": "Actif",
-        "ref": "AG",
-        "libelle": "Fonds commercial et droit au bail",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "217",
-        "nature": "Actif",
-        "ref": "AH",
-        "libelle": "Autres  immobilisations incorporelles",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2180",
-        "nature": "Actif",
-        "ref": "AH",
-        "libelle": "Autres  immobilisations incorporelles",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2181",
-        "nature": "Actif",
-        "ref": "AE",
-        "libelle": "Frais de développement et de prospection",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2182",
-        "nature": "Actif",
-        "ref": "AH",
-        "libelle": "Autres  immobilisations incorporelles",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2183",
-        "nature": "Actif",
-        "ref": "AH",
-        "libelle": "Autres  immobilisations incorporelles",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2184",
-        "nature": "Actif",
-        "ref": "AH",
-        "libelle": "Autres  immobilisations incorporelles",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2188",
-        "nature": "Actif",
-        "ref": "AH",
-        "libelle": "Autres  immobilisations incorporelles",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2191",
-        "nature": "Actif",
-        "ref": "AE",
-        "libelle": "Frais de développement et de prospection",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2193",
-        "nature": "Actif",
-        "ref": "AF",
-        "libelle": "Brevets, licences, logiciels et droits similaires",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2811",
-        "nature": "Actif",
-        "ref": "AE",
-        "libelle": "Frais de développement et de prospection",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2812",
-        "nature": "Actif",
-        "ref": "AF",
-        "libelle": "Brevets, licences, logiciels et droits similaires",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2813",
-        "nature": "Actif",
-        "ref": "AF",
-        "libelle": "Brevets, licences, logiciels et droits similaires",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2815",
-        "nature": "Actif",
-        "ref": "AG",
-        "libelle": "Fonds commercial et droit au bail",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2816",
-        "nature": "Actif",
-        "ref": "AG",
-        "libelle": "Fonds commercial et droit au bail",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2818",
-        "nature": "Actif",
-        "ref": "AH",
-        "libelle": "Autres  immobilisations incorporelles",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2915",
-        "nature": "Actif",
-        "ref": "AG",
-        "libelle": "Fonds commercial et droit au bail",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "2916",
-        "nature": "Actif",
-        "ref": "AG",
-        "libelle": "Fonds commercial et droit au bail",
-        "libelle_groupe": "IMMOBILISATIONS INCORPORELLES"
-      },
-      {
-        "compte": "409",
-        "nature": "Actif",
-        "ref": "BH",
-        "libelle": "Fournisseurs avances versées",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "411",
-        "nature": "Actif",
-        "ref": "BI",
-        "libelle": "Clients",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "412",
-        "nature": "Actif",
-        "ref": "BI",
-        "libelle": "Clients",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "413",
-        "nature": "Actif",
-        "ref": "BI",
-        "libelle": "Clients",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "414",
-        "nature": "Actif",
-        "ref": "BI",
-        "libelle": "Clients",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "415",
-        "nature": "Actif",
-        "ref": "BI",
-        "libelle": "Clients",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "416",
-        "nature": "Actif",
-        "ref": "BI",
-        "libelle": "Clients",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "418",
-        "nature": "Actif",
-        "ref": "BI",
-        "libelle": "Clients",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "491",
-        "nature": "Actif",
-        "ref": "BI",
-        "libelle": "Clients",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "492",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "494",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "497",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "185D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "42D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "43D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "44D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "45D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "46D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "471D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "472D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "473D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "474D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "475D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "476D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "477D",
-        "nature": "Actif",
-        "ref": "BJ",
-        "libelle": "Autres créances",
-        "libelle_groupe": "CREANCES ET  EMPLOIS ASSIMILES"
-      },
-      {
-        "compte": "478",
-        "nature": "Actif",
-        "ref": "BU",
-        "libelle": "Ecart de conversion-Actif",
-        "libelle_groupe": "Non défini"
-      },
-      {
-        "compte": "479",
-        "nature": "Passif",
-        "ref": "DV",
-        "libelle": "Ecart de conversion-Passif",
-        "libelle_groupe": "Non défini"
-      },
-      {
-        "compte": "601",
-        "nature": "Compte de résultat",
-        "ref": "RA",
-        "libelle": "Achats de marchandises",
-        "libelle_groupe": "MARGE  COMMERCIALE  (Somme TA à RB)"
-      },
-      {
-        "compte": "701",
-        "nature": "Compte de résultat",
-        "ref": "TA",
-        "libelle": "Ventes de marchandises",
-        "libelle_groupe": "MARGE  COMMERCIALE  (Somme TA à RB)"
-      },
-      {
-        "compte": "6031",
-        "nature": "Compte de résultat",
-        "ref": "RB",
-        "libelle": "Variation de stocks de marchandises",
-        "libelle_groupe": "MARGE  COMMERCIALE  (Somme TA à RB)"
-      },
-      {
-        "compte": "681",
-        "nature": "Compte de résultat",
-        "ref": "RL",
-        "libelle": "Dotations aux amortissements, aux provisions et dépréciations",
-        "libelle_groupe": "RESULTAT D'EXPLOITATION (XD+TJ+ RL)"
-      },
-      {
-        "compte": "691",
-        "nature": "Compte de résultat",
-        "ref": "RL",
-        "libelle": "Dotations aux amortissements, aux provisions et dépréciations",
-        "libelle_groupe": "RESULTAT D'EXPLOITATION (XD+TJ+ RL)"
-      },
-      {
-        "compte": "791",
-        "nature": "Compte de résultat",
-        "ref": "TJ",
-        "libelle": "Reprises d’amortissements, provisions et dépréciations",
-        "libelle_groupe": "RESULTAT D'EXPLOITATION (XD+TJ+ RL)"
-      },
-      {
-        "compte": "798",
-        "nature": "Compte de résultat",
-        "ref": "TJ",
-        "libelle": "Reprises d’amortissements, provisions et dépréciations",
-        "libelle_groupe": "RESULTAT D'EXPLOITATION (XD+TJ+ RL)"
-      },
-      {
-        "compte": "799",
-        "nature": "Compte de résultat",
-        "ref": "TJ",
-        "libelle": "Reprises d’amortissements, provisions et dépréciations",
-        "libelle_groupe": "RESULTAT D'EXPLOITATION (XD+TJ+ RL)"
-      },
-      {
-        "compte": "702",
-        "nature": "Compte de résultat",
-        "ref": "TB",
-        "libelle": "Ventes de produits fabriqués",
-        "libelle_groupe": "CHIFFRE D'AFFAIRES (A + B + C + D)"
-      },
-      {
-        "compte": "703",
-        "nature": "Compte de résultat",
-        "ref": "TB",
-        "libelle": "Ventes de produits fabriqués",
-        "libelle_groupe": "CHIFFRE D'AFFAIRES (A + B + C + D)"
-      },
-      {
-        "compte": "704",
-        "nature": "Compte de résultat",
-        "ref": "TB",
-        "libelle": "Ventes de produits fabriqués",
-        "libelle_groupe": "CHIFFRE D'AFFAIRES (A + B + C + D)"
-      },
-      {
-        "compte": "705",
-        "nature": "Compte de résultat",
-        "ref": "TC",
-        "libelle": "Travaux, services vendus",
-        "libelle_groupe": "CHIFFRE D'AFFAIRES (A + B + C + D)"
-      },
-      {
-        "compte": "706",
-        "nature": "Compte de résultat",
-        "ref": "TC",
-        "libelle": "Travaux, services vendus",
-        "libelle_groupe": "CHIFFRE D'AFFAIRES (A + B + C + D)"
-      },
-      {
-        "compte": "707",
-        "nature": "Compte de résultat",
-        "ref": "TD",
-        "libelle": "Produits accessoires",
-        "libelle_groupe": "CHIFFRE D'AFFAIRES (A + B + C + D)"
-      },
-      {
-        "compte": "52C",
-        "nature": "Passif",
-        "ref": "DR",
-        "libelle": "Banques, établissements financiers\net crédits de trésorerie",
-        "libelle_groupe": "TOTAL   TRESORERIE-PASSIF"
-      },
-      {
-        "compte": "53C",
-        "nature": "Passif",
-        "ref": "DR",
-        "libelle": "Banques, établissements financiers\net crédits de trésorerie",
-        "libelle_groupe": "TOTAL   TRESORERIE-PASSIF"
-      },
-      {
-        "compte": "56C",
-        "nature": "Passif",
-        "ref": "DR",
-        "libelle": "Banques, établissements financiers\net crédits de trésorerie",
-        "libelle_groupe": "TOTAL   TRESORERIE-PASSIF"
-      }
-    ]
-  },
-  "pcb": {
-    "grands_groupes": [],
-    "sous_groupes": []
-  }
+    "pcb": []
+
+    
 }

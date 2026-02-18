@@ -21,6 +21,7 @@ const groupings = computed(() =>
 )
 
 const cols = computed(() => [
+  { label: '#', key: 'compte', align: 'left' },
   { label: 'Intitulé', key: 'libelle', align: 'left' },
   { label: props.annee_auditee, key: 'solde_n', align: 'right' },
   { label: parseInt(props.annee_auditee) - 1, key: 'solde_n1', align: 'right' }

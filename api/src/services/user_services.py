@@ -136,7 +136,7 @@ class UserService:
             # Rechercher l'utilisateur
             user = db.Manager.find_one({"email": validated_data['email']})
             if not user:
-                raise ValueError("Email ou mot de passe incorrect")
+                raise ValueError("Email introuvable")
             
             # Vérifier si le compte est actif
             if not user.get('is_active', True):
@@ -174,7 +174,7 @@ class UserService:
                     update_data['locked_until'] = datetime.now() + timedelta(minutes=30)
                 
                 db.Manager.update_one({"_id": user['_id']}, {"$set": update_data})
-                raise ValueError("Email ou mot de passe incorrect")
+                raise ValueError("Mot de passe incorrect")
             
             # Connexion réussie - mettre à jour les informations
             db.Manager.update_one(
@@ -401,12 +401,6 @@ class UserService:
                 {"$sort": {"count": -1}}
             ]
             
-            # Compter par département
-            pipeline_dept = [
-                {"$group": {"_id": "$departement", "count": {"$sum": 1}}},
-                {"$sort": {"count": -1}}
-            ]
-            
             # Utilisateurs actifs/inactifs
             total_users = db.Manager.count_documents({})
             active_users = db.Manager.count_documents({"is_active": True})
@@ -425,7 +419,6 @@ class UserService:
                 "active_users": active_users,
                 "inactive_users": inactive_users,
                 "by_role": list(db.Manager.aggregate(pipeline_role)),
-                "by_department": list(db.Manager.aggregate(pipeline_dept)),
                 "recent_logins": serialize_user_list(recent_logins)
             }
             

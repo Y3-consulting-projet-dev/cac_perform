@@ -4,12 +4,10 @@ import { useRoute } from 'vue-router';
 import GroupingComponent from '@/components/GroupingComponent.vue';
 import EfiComponent from '@/components/EfiComponent.vue';
 import router from "@/router";
-import { useNotyf } from '@/composables/useNotyf';
 
 
 const axios = inject('axios');
 const route = useRoute();
-const notyf = useNotyf();
 
 const props = defineProps(['missionId', 'grouping']);
 
@@ -63,11 +61,6 @@ const selectedYearCoherence = ref(null);
 const selectedControlType = ref('arithmetique'); // 'arithmetique' ou 'vraisemblance'
 const viewMode = ref('table'); // 'table', 'cards', 'graph', 'compact'
 const intangibiliteReport = ref(null);
-const intangibiliteEcarts = computed(() => {
-  const comptes = intangibiliteReport.value?.comptes;
-  if (!Array.isArray(comptes)) return [];
-  return comptes.filter((c) => c && ["ecart", "nouveau", "supprime", "ecart_partiel"].includes(c.status));
-});
 const classementBilanReport = ref(null);
 const etatsFinanciersReport = ref(null);
 const materialiteReport = ref(null);
@@ -83,7 +76,7 @@ const listBenchmark = ref([
     amount_based_on_factor: null,
     performance_materiality: null,
     thresold: null,
-    text: "Fourchette de facteur attendue : 3-5 % (peut aller jusqu'a 5 % compte tenu de la taille de l'entite). Consultez le guide de materialite pour plus de details."
+    text: "Fourchette de facteur attendue : 3-5 % (peut aller jusqu'à 5 % compte tenu de la taille de l'entité). Consultez le guide de matérialité pour plus de détails."
   },
   {
     id: "expenses",
@@ -93,7 +86,7 @@ const listBenchmark = ref([
     amount_based_on_factor: null,
     performance_materiality: null,
     thresold: null,
-    text: "Fourchette de facteur attendue : 3-5 % (peut aller jusqu'a 5 % compte tenu de la taille de l'entite). Consultez le guide de materialite pour plus de details."
+    text: "Fourchette de facteur attendue : 3-5 % (peut aller jusqu'à 5 % compte tenu de la taille de l'entité). Consultez le guide de matérialité pour plus de détails."
   },
   {
     id: "profit_before_tax",
@@ -103,7 +96,7 @@ const listBenchmark = ref([
     amount_based_on_factor: null,
     performance_materiality: null,
     thresold: null,
-    text: "Fourchette de facteur attendue : 5-10%. Voir le guide de materialite pour plus de details."
+    text: "Fourchette de facteur attendue : 5-10%. Voir le guide de matérialité pour plus de détails."
   },
   {
     id: "revenue",
@@ -113,7 +106,7 @@ const listBenchmark = ref([
     amount_based_on_factor: null,
     performance_materiality: null,
     thresold: null,
-    text: "Fourchette de facteur attendue : 0,8-2 % (peut aller jusqu'a 5 % compte tenu de la taille de l'entite). Consultez le guide de materialite pour plus de details."
+    text: "Fourchette de facteur attendue : 0,8-2 % (peut aller jusqu'à 5 % compte tenu de la taille de l'entité). Consultez le guide de matérialité pour plus de détails."
   },
   {
     id: "total_assets",
@@ -123,30 +116,9 @@ const listBenchmark = ref([
     amount_based_on_factor: null,
     performance_materiality: null,
     thresold: null,
-    text: "Fourchette de facteur attendue : 1-2%. Consultez le guide de materialite pour plus de details."
-  },
-  {
-    id: "total_equity_net_assets",
-    name: "Total equity / net assets",
-    balance_value: null,
-    factor: null,
-    amount_based_on_factor: null,
-    performance_materiality: null,
-    thresold: null,
-    text: "Fourchette de facteur attendue : 1,0-3,0%."
-  },
-  {
-    id: "cash_flows_from_operations",
-    name: "Cash flows from operations",
-    balance_value: null,
-    factor: null,
-    amount_based_on_factor: null,
-    performance_materiality: null,
-    thresold: null,
-    text: "Fourchette de facteur attendue : 3,0-5,0%."
+    text: "Fourchette de facteur attendue : 1-2%. Consultez le guide de matérialité pour plus de détails."
   }
 ]);
-
 
 const listMaterialities = ref([]);
 const selectedBench = ref("");
@@ -157,8 +129,7 @@ const bench = ref({
   amount_based_on_factor: null,
   performance_materiality: null,
   thresold: null,
-  text: "",
-  commentaire: ""
+  text: ""
 });
 
 // Champs pour benchmark personnalisé (option 'Autre')
@@ -167,15 +138,6 @@ bench.value.custom_balance = null;
 
 const FACTOR_PERFORMANCE_MATERIALITY = 0.08;
 const FACTOR_THRESHOLD = 0.05;
-const FACTOR_RANGES = {
-  ebitda: { min: 3, max: 5 },
-  expenses: { min: 3, max: 5 },
-  profit_before_tax: { min: 5, max: 10 },
-  revenue: { min: 0.8, max: 2 },
-  total_assets: { min: 1, max: 2 },
-  total_equity_net_assets: { min: 1.0, max: 3.0 },
-  cash_flows_from_operations: { min: 3.0, max: 5.0 }
-};
 const analyseQualitativeReport = ref(null);
 const presentationComptesSignificatifsReport = ref(null);
 const revueAnalytiqueFinaleReport = ref(null);
@@ -732,26 +694,12 @@ function updateSelectBenchmark() {
   const factor = parseFloat(bench.value.factor);
   // support custom benchmark when selected
   const balance = bench.value.id === 'autre' ? Number(bench.value.custom_balance) : bench.value.balanceValue;
-  if (!Number.isFinite(factor) || !Number.isFinite(Number(balance))) {
-    if (!factor) {
-      errorMsg.value = "";
-    }
-    return;
+  if (factor && balance) {
+    // Calculer la matérialité réelle (peut être négative)
+    bench.value.amount_based_on_factor = Math.round((balance * factor) / 100);
+    bench.value.performance_materiality = Math.round(bench.value.amount_based_on_factor * FACTOR_PERFORMANCE_MATERIALITY);
+    bench.value.thresold = Math.round(bench.value.amount_based_on_factor * FACTOR_THRESHOLD);
   }
-  const range = FACTOR_RANGES[bench.value.id];
-  if (factor && range && (factor < range.min || factor > range.max)) {
-    errorMsg.value = `Le facteur pour ${bench.value.id} doit être compris entre ${range.min}% et ${range.max}%.`;
-    notyf.trigger(errorMsg.value, 'error');
-    bench.value.amount_based_on_factor = null;
-    bench.value.performance_materiality = null;
-    bench.value.thresold = null;
-    return;
-  }
-  errorMsg.value = "";
-  // Calculer la matérialité réelle (peut être négative)
-  bench.value.amount_based_on_factor = Math.round((balance * factor) / 100);
-  bench.value.performance_materiality = Math.round(bench.value.amount_based_on_factor * FACTOR_PERFORMANCE_MATERIALITY);
-  bench.value.thresold = Math.round(bench.value.amount_based_on_factor * FACTOR_THRESHOLD);
 }
 
 // Calculer seuil de signification et enregistrer dans la BD
@@ -759,18 +707,13 @@ async function validerSeuil() {
   loading.value = true; errorMsg.value = "";
   try {
     updateSelectBenchmark();
-    if (errorMsg.value) {
-      loading.value = false;
-      return;
-    }
 
     const field = {
       benchmark: bench.value.id,
       materiality: bench.value.amount_based_on_factor,
       performance_materiality: bench.value.performance_materiality,
       trivial_misstatements: bench.value.thresold,
-      factor: bench.value.factor,
-      commentaire: bench.value.commentaire || ""
+      factor: bench.value.factor
     };
 
     // If user provided a custom benchmark, include its label and balance
@@ -798,8 +741,7 @@ async function validerSeuil() {
         thresold: null,
         text: "",
         custom_label: "",
-        custom_balance: null,
-        commentaire: ""
+        custom_balance: null
       };
     } else {
       errorMsg.value = "Veuillez réessayer";
@@ -1867,7 +1809,7 @@ function formatAmount(value) {
           <div class="overflow-x-auto rounded-xl shadow-xl bg-white border border-gray-100"
             v-if="revueAnalytique.length">
             <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gradient-to-r from-blue-ycube  to-blue-ycube-3">
+              <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
                 <tr>
                   <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte</th>
                   <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Libellé</th>
@@ -1881,11 +1823,11 @@ function formatAmount(value) {
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr v-for="r in revueAnalytique" :key="r.numero_compte"
-                  class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
+                  class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                       <div
-                        class="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                        class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                         <span class="text-xs font-bold text-white">{{ r.numero_compte.charAt(0) }}</span>
                       </div>
                       <div
@@ -2020,7 +1962,7 @@ function formatAmount(value) {
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-4">
                     <div
-                      class="flex-shrink-0 h-12 w-12 bg-gradient-to-br from-blue-ycube-3 to-blue-ycube rounded-lg flex items-center justify-center shadow-md">
+                      class="shrink-0 h-12 w-12 bg-linear-to-br from-blue-ycube-3 to-blue-ycube rounded-lg flex items-center justify-center shadow-md">
                       <span class="text-lg font-bold text-white">{{ annee }}</span>
                     </div>
                     <div>
@@ -2052,7 +1994,7 @@ function formatAmount(value) {
               <div v-if="selectedControlType === 'arithmetique' && yearReport.verification_equilibre"
                 :class="yearReport.equilibre_global ? 'mb-4 bg-emerald-50 border-l-4 border-emerald-400 rounded-md p-4' : 'mb-4 bg-red-50 border-l-4 border-red-400 rounded-md p-4'">
                 <div class="flex items-start">
-                  <div class="flex-shrink-0">
+                  <div class="shrink-0">
                     <svg v-if="yearReport.equilibre_global" class="h-6 w-6 text-emerald-500" fill="none"
                       stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -2114,7 +2056,7 @@ function formatAmount(value) {
               <div v-if="selectedControlType === 'arithmetique' && yearReport.verification_formule"
                 :class="yearReport.verification_formule.statut === 'OK' ? 'mb-4 bg-emerald-50 border-l-4 border-emerald-400 rounded-md p-4' : 'mb-4 bg-amber-50 border-l-4 border-amber-400 rounded-md p-4'">
                 <div class="flex items-start">
-                  <div class="flex-shrink-0">
+                  <div class="shrink-0">
                     <svg v-if="yearReport.verification_formule.statut === 'OK'" class="h-6 w-6 text-emerald-500"
                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -2204,7 +2146,7 @@ function formatAmount(value) {
 
                 <!-- Tableau par classe (1 à 7) -->
                 <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-                  <div class="bg-gradient-to-r from-blue-ycube to-blue-ycube-3 p-4">
+                  <div class="bg-linear-to-r from-blue-ycube to-blue-ycube-3 p-4">
                     <h2 class="text-xl font-bold text-white">Tableau par Classe de Comptes (1 à 7)</h2>
                   </div>
 
@@ -2256,7 +2198,7 @@ function formatAmount(value) {
                               <div v-for="(anomalie, idx) in classe.anomalies_detectees" :key="idx"
                                 class="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg shadow-sm">
                                 <div class="flex items-start gap-2 mb-2">
-                                  <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none"
+                                  <svg class="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none"
                                     stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
@@ -2291,7 +2233,7 @@ function formatAmount(value) {
 
                 <!-- Tableau des comptes à solder -->
                 <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-                  <div class="bg-gradient-to-r from-red-500 to-orange-600 p-4">
+                  <div class="bg-linear-to-r from-red-500 to-orange-600 p-4">
                     <h2 class="text-xl font-bold text-white">Comptes à Solder Obligatoirement</h2>
                   </div>
 
@@ -2344,183 +2286,14 @@ function formatAmount(value) {
               <!-- Affichage conditionnel selon le mode sélectionné -->
 
               <!-- VUE TABLEAU (mode par défaut) - Masqué pour le contrôle de vraisemblance -->
-              <div
-                v-if="viewMode === 'table' && selectedControlType !== 'vraisemblance' && yearReport.erreurs && yearReport.erreurs.length > 0"
-                class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
-                <table class="min-w-full divide-y divide-gray-200">
-                  <thead class="bg-gradient-to-r from-blue-ycube to-blue-ycube-3">
-                    <tr>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Type
-                        d'erreur</th>
-                      <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Compte
-                      </th>
-                      <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Détails
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="(e, i) in yearReport.erreurs" :key="`${annee}-${i}`"
-                      class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 group">
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span
-                          class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-all duration-200"
-                          :class="e.type === 'equilibre' ? 'bg-red-100 text-red-800 border border-red-300' :
-                            e.type === 'identite' ? 'bg-orange-100 text-orange-800 border border-orange-300' :
-                              e.type === 'signe' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' :
-                                e.type === 'arithmetique' ? 'bg-pink-100 text-pink-800 border border-pink-300' :
-                                  e.type === 'completude' ? 'bg-purple-100 text-purple-800 border border-purple-300' :
-                                    e.type === 'compte_non_solde' ? (e.gravite === 'CRITIQUE' ? 'bg-red-200 text-red-900 border-2 border-red-500' : 'bg-amber-100 text-amber-800 border border-amber-300') :
-                                      'bg-gray-100 text-gray-800 border border-gray-300'">
-                          <span class="w-2 h-2 rounded-full mr-2" :class="e.type === 'equilibre' ? 'bg-red-500' :
-                            e.type === 'identite' ? 'bg-orange-500' :
-                              e.type === 'signe' ? 'bg-yellow-500' :
-                                e.type === 'arithmetique' ? 'bg-pink-500' :
-                                  e.type === 'completude' ? 'bg-purple-500' :
-                                    e.type === 'compte_non_solde' ? (e.gravite === 'CRITIQUE' ? 'bg-red-600 animate-pulse' : 'bg-amber-500') :
-                                      'bg-gray-500'"></span>
-                          {{ getTypeLabel(e.type) }}
-                          <span v-if="e.gravite === 'CRITIQUE'" class="ml-2 text-xs font-bold uppercase">⚠️
-                            CRITIQUE</span>
-                        </span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <div v-if="e.numero_compte && e.numero_compte !== '-'"
-                          class="inline-flex items-center px-3 py-1.5 bg-blue-50 rounded-md border border-blue-200 font-mono font-semibold text-blue-900 text-sm">
-                          {{ e.numero_compte }}
-                        </div>
-                        <span v-else class="text-gray-400 text-sm">-</span>
-                      </td>
-                      <td class="px-6 py-4">
-                        <!-- Affichage structuré pour les erreurs arithmétiques -->
-                        <div v-if="e.type === 'arithmetique'" class="space-y-3">
-                          <!-- En-tête avec compte et libellé -->
-                          <div class="bg-gradient-to-r from-pink-50 to-rose-50 p-3 rounded-lg border border-pink-200">
-                            <div class="flex items-center justify-between mb-2">
-                              <div class="flex items-center gap-2">
-                                <span class="text-xs font-semibold text-pink-800 uppercase">Compte</span>
-                                <span class="font-mono font-bold text-pink-900">{{ e.numero_compte }}</span>
-                              </div>
-                              <span
-                                class="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-md font-bold border border-red-300">
-                                🔴 Erreur détectée
-                              </span>
-                            </div>
-                            <div v-if="extractLibelle(e.message)" class="text-sm text-gray-700 font-medium">
-                              {{ extractLibelle(e.message) }}
-                            </div>
-                          </div>
-
-                          <!-- Écart détecté -->
-                          <div class="bg-red-50 p-3 rounded-lg border-l-4 border-red-500">
-                            <div class="flex items-center gap-2 mb-1">
-                              <span class="text-sm font-bold text-red-800">Écart détecté :</span>
-                              <span class="text-lg font-bold text-red-900">{{ extractEcart(e.message) }}</span>
-                            </div>
-                            <p class="text-xs text-red-700 mt-1">{{ extractJustification(e.message) }}</p>
-                          </div>
-
-                          <!-- Détails des valeurs -->
-                          <div class="grid grid-cols-2 gap-3">
-                            <!-- Solde d'ouverture -->
-                            <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                              <div class="text-xs font-semibold text-blue-800 mb-1">Solde d'ouverture</div>
-                              <div class="text-sm font-mono text-blue-900">{{ extractSoldeOuverture(e.message) }}</div>
-                            </div>
-
-                            <!-- Mouvements -->
-                            <div class="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                              <div class="text-xs font-semibold text-purple-800 mb-1">Mouvements de période</div>
-                              <div class="text-sm font-mono text-purple-900">{{ extractMouvements(e.message) }}</div>
-                            </div>
-
-                            <!-- Solde attendu -->
-                            <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
-                              <div class="text-xs font-semibold text-emerald-800 mb-1">Solde attendu</div>
-                              <div class="text-sm font-mono text-emerald-900 font-bold">{{
-                                extractSoldeAttendu(e.message) }}</div>
-                            </div>
-
-                            <!-- Solde réel -->
-                            <div class="bg-amber-50 p-3 rounded-lg border border-amber-200">
-                              <div class="text-xs font-semibold text-amber-800 mb-1">Solde réel</div>
-                              <div class="text-sm font-mono text-amber-900 font-bold">{{ extractSoldeReel(e.message) }}
-                              </div>
-                            </div>
-                          </div>
-
-                          <!-- Formule -->
-                          <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                            <div class="text-xs font-semibold text-gray-700 mb-1">Formule vérifiée</div>
-                            <div class="text-sm font-mono text-gray-800">
-                              Solde de clôture = Solde d'ouverture + Mouvements de période
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Affichage standard pour les autres types d'erreurs -->
-                        <div v-else class="text-sm text-gray-700 leading-relaxed whitespace-pre-line"
-                          :title="e.message || 'Aucun message'">
-                          {{ e.message || 'Aucun message disponible' }}
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <!-- Résumé final avec statut -->
-                <div class="px-6 py-4 border-t-2 border-gray-200 bg-gray-50">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                      <div class="flex items-center gap-2">
-                        <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
-                          </path>
-                        </svg>
-                        <span class="text-base font-semibold text-red-700">⚠️ Anomalies détectées</span>
-                      </div>
-                      <div class="text-sm text-gray-600">
-                        <span class="font-medium">{{ yearReport.erreurs.length }}</span> erreur(s) trouvée(s)
-                      </div>
-                    </div>
-                    <div class="flex items-center gap-6" v-if="yearReport.totaux">
-                      <template v-if="selectedControlType === 'arithmetique'">
-                        <div class="text-sm">
-                          <span class="text-gray-600">Équilibre:</span>
-                          <span class="ml-2 font-semibold"
-                            :class="yearReport.equilibre_global ? 'text-emerald-600' : 'text-red-600'">
-                            {{ yearReport.equilibre_global ? '✅ OK' : '❌ Déséquilibré' }}
-                          </span>
-                        </div>
-                        <div class="text-sm">
-                          <span class="text-gray-600">Erreurs arithmétiques:</span>
-                          <span class="ml-2 font-semibold text-pink-600">{{ yearReport.totaux.nb_erreurs_arithmetique ||
-                            0 }}</span>
-                        </div>
-                      </template>
-                      <template v-else-if="selectedControlType === 'vraisemblance'">
-                        <div class="text-sm">
-                          <span class="text-gray-600">Erreurs de signe:</span>
-                          <span class="ml-2 font-semibold text-yellow-600">{{ yearReport.totaux.nb_erreurs_signe || 0
-                          }}</span>
-                        </div>
-                        <div class="text-sm">
-                          <span class="text-gray-600">Comptes non soldés:</span>
-                          <span class="ml-2 font-semibold text-red-600">{{ yearReport.totaux.nb_erreurs_comptes_soldes
-                            || 0 }}</span>
-                        </div>
-                      </template>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              
 
               <!-- VUE CARTES - Masquée pour le contrôle de vraisemblance -->
               <div
                 v-else-if="viewMode === 'cards' && selectedControlType !== 'vraisemblance' && yearReport.erreurs && yearReport.erreurs.length > 0"
                 class="space-y-4">
                 <!-- Résumé statistique -->
-                <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
+                <div class="bg-linear-to-r from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
                   <div class="flex items-center justify-between flex-wrap gap-4">
                     <div class="flex items-center gap-4">
                       <div class="flex items-center gap-2">
@@ -2619,7 +2392,7 @@ function formatAmount(value) {
                 v-else-if="viewMode === 'graph' && selectedControlType !== 'vraisemblance' && yearReport.erreurs && yearReport.erreurs.length > 0"
                 class="space-y-6">
                 <!-- Résumé statistique -->
-                <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
+                <div class="bg-linear-to-r from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
                   <div class="flex items-center justify-between flex-wrap gap-4">
                     <div class="flex items-center gap-4">
                       <div class="flex items-center gap-2">
@@ -2762,7 +2535,7 @@ function formatAmount(value) {
                 <div class="space-y-2">
                   <div v-for="(e, i) in yearReport.erreurs" :key="`${annee}-${i}`"
                     class="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all">
-                    <span class="w-2 h-2 rounded-full mt-2 flex-shrink-0" :class="e.type === 'equilibre' ? 'bg-red-500' :
+                    <span class="w-2 h-2 rounded-full mt-2 shrink-0" :class="e.type === 'equilibre' ? 'bg-red-500' :
                       e.type === 'identite' ? 'bg-orange-500' :
                         e.type === 'signe' ? 'bg-yellow-500' :
                           e.type === 'arithmetique' ? 'bg-pink-500' :
@@ -2860,8 +2633,8 @@ function formatAmount(value) {
               Périodes analysées : N = {{ intangibiliteReport.periodes.N }}, N-1 = {{
                 intangibiliteReport.periodes['N-1'] }}
             </div>
-            <button v-if="intangibiliteEcarts.length > 0"
-              @click="exportToCsv(intangibiliteEcarts, 'controle_intangibilite')"
+            <button v-if="intangibiliteReport && intangibiliteReport.comptes && intangibiliteReport.comptes.length > 0"
+              @click="exportToCsv(intangibiliteReport.comptes, 'controle_intangibilite')"
               class="mb-3 px-4 py-2 bg-green-ycube text-white rounded-md shadow-md">Télécharger (CSV)</button>
 
             <!-- Afficher un message si le rapport existe mais n'a pas de comptes -->
@@ -2871,18 +2644,12 @@ function formatAmount(value) {
               <div class="text-sm text-yellow-700 font-semibold mb-2">⚠️ Aucun compte trouvé</div>
               <div class="text-sm text-yellow-600">{{ intangibiliteReport.message || "Aucun compte n'a été trouvé dans les balances pour le contrôle d'intangibilité." }}</div>
             </div>
-            <div
-              v-else-if="intangibiliteReport && intangibiliteReport.comptes && intangibiliteReport.comptes.length > 0 && intangibiliteEcarts.length === 0"
-              class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
-              <div class="text-sm text-emerald-700 font-semibold mb-2">✅ Aucun écart à afficher</div>
-              <div class="text-sm text-emerald-600">Tous les comptes sont cohérents entre l'ouverture N et la clôture N-1.</div>
-            </div>
 
             <div
-              v-else-if="intangibiliteEcarts.length > 0"
+              v-else-if="intangibiliteReport && intangibiliteReport.comptes && intangibiliteReport.comptes.length > 0"
               class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
               <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gradient-to-r from-blue-ycube  to-blue-ycube-3">
+                <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
                   <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
                     </th>
@@ -2904,13 +2671,13 @@ function formatAmount(value) {
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="(e, i) in intangibiliteEcarts" :key="i"
-                    class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md"
+                  <tr v-for="(e, i) in intangibiliteReport.comptes" :key="i"
+                    class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md"
                     :class="e.status === 'ok' ? 'bg-green-50' : e.status === 'ecart' ? 'bg-red-50' : e.status === 'nouveau' ? 'bg-blue-50' : e.status === 'supprime' ? 'bg-yellow-50' : ''">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <div
-                          class="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                          class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                           <span class="text-xs font-bold text-white">{{ e.numero_compte.charAt(0) }}</span>
                         </div>
                         <div
@@ -2953,7 +2720,7 @@ function formatAmount(value) {
                         <div
                           class="bg-blue-50 border border-blue-200 rounded-lg p-3 group-hover:bg-blue-100 transition-colors duration-200">
                           <div class="flex items-start space-x-2">
-                            <div class="flex-shrink-0">
+                            <div class="shrink-0">
                               <svg class="w-4 h-4 text-blue-600 mt-0.5" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -2974,7 +2741,7 @@ function formatAmount(value) {
                         <div
                           class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 group-hover:bg-emerald-100 transition-colors duration-200">
                           <div class="flex items-start space-x-2">
-                            <div class="flex-shrink-0">
+                            <div class="shrink-0">
                               <svg class="w-4 h-4 text-emerald-600 mt-0.5" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -3000,7 +2767,7 @@ function formatAmount(value) {
             <div v-else-if="intangibiliteReport && !intangibiliteReport.comptes"
               class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
               <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600">
+                <thead class="bg-linear-to-r from-indigo-600 via-blue-600 to-cyan-600">
                   <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
                     </th>
@@ -3022,10 +2789,10 @@ function formatAmount(value) {
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr class="hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 transition-all duration-300">
+                  <tr class="hover:bg-linear-to-r hover:from-gray-50 hover:to-gray-100 transition-all duration-300">
                     <td colspan="7" class="px-6 py-8 text-center">
                       <div class="flex flex-col items-center space-y-3">
-                        <div class="flex-shrink-0">
+                        <div class="shrink-0">
                           <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
@@ -3131,7 +2898,7 @@ function formatAmount(value) {
             <div v-if="classementBilanReport.classement && classementBilanReport.classement.length"
               class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
               <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gradient-to-r from-blue-ycube  to-blue-ycube-3">
+                <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
                   <tr>
                     <th
                       class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:bg-blue-700 transition-colors duration-200"
@@ -3218,11 +2985,11 @@ function formatAmount(value) {
                   <template v-for="(item, index) in filteredData" :key="index">
                     <!-- Ligne principale -->
                     <tr
-                      class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
+                      class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
                       <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
                           <div
-                            class="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                            class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                             <span class="text-xs font-bold text-white">{{ item.compte.charAt(0) }}</span>
                           </div>
                           <div
@@ -3238,7 +3005,7 @@ function formatAmount(value) {
                       <td class="px-6 py-4 whitespace-nowrap text-center">
                         <span
                           class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
-                          :class="item.nature === 'bilan' ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300' : 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'">
+                          :class="item.nature === 'bilan' ? 'bg-linear-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300' : 'bg-linear-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'">
                           <span class="w-2 h-2 rounded-full mr-2"
                             :class="item.nature === 'bilan' ? 'bg-blue-500' : 'bg-emerald-500'"></span>
                           {{ item.nature }}
@@ -3284,8 +3051,8 @@ function formatAmount(value) {
                         <button @click="toggleDetail(index)"
                           class="inline-flex items-center px-4 py-2 border border-transparent text-xs font-medium rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
                           :class="expandedRows.includes(index)
-                            ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-700 hover:from-red-200 hover:to-red-300 border border-red-300'
-                            : 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 hover:from-blue-200 hover:to-blue-300 border border-blue-300'">
+                            ? 'bg-linear-to-r from-red-100 to-red-200 text-red-700 hover:from-red-200 hover:to-red-300 border border-red-300'
+                            : 'bg-linear-to-r from-blue-100 to-blue-200 text-blue-700 hover:from-blue-200 hover:to-blue-300 border border-blue-300'">
                           <svg class="w-4 h-4 mr-2 transition-transform duration-300"
                             :class="expandedRows.includes(index) ? 'rotate-180' : 'rotate-0'" fill="none"
                             stroke="currentColor" viewBox="0 0 24 24">
@@ -3298,11 +3065,11 @@ function formatAmount(value) {
                     </tr>
 
                     <!-- Ligne de détail -->
-                    <tr v-if="expandedRows.includes(index)" class="bg-gradient-to-r from-gray-50 to-gray-100">
+                    <tr v-if="expandedRows.includes(index)" class="bg-linear-to-r from-gray-50 to-gray-100">
                       <td colspan="8" class="px-6 py-6">
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                           <div class="flex items-center mb-4">
-                            <div class="flex-shrink-0">
+                            <div class="shrink-0">
                               <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
@@ -3502,30 +3269,29 @@ function formatAmount(value) {
                         class="w-full px-3 py-2 border-2 border-gray-300 rounded-md" @input="updateSelectBenchmark" />
                     </div>
                     <div v-else class="px-3 py-2 border-2 border-gray-300 rounded-md bg-gray-50">
-                      {{ selectedBench ? ((bench.balanceValue !== null && bench.balanceValue !== undefined) ? formatAmount(bench.balanceValue) : '') : 'Aucun benchmark choisi' }}
+                      {{ bench.balanceValue ? formatAmount(bench.balanceValue) : 'Aucun benchmark choisi' }}
                     </div>
-                    <div v-if="bench.amount_based_on_factor !== null && bench.amount_based_on_factor < 0"
+                    <div v-if="bench.amount_based_on_factor && bench.amount_based_on_factor < 0"
                       class="mt-1 text-xs text-red-600 font-semibold">
                       ⚠️ ATTENTION: Seuil de matérialité négatif !
                     </div>
                   </div>
 
                   <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">Factor (%)</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Facteur (%)</label>
                     <input v-model="bench.factor" @input="updateSelectBenchmark"
                       class="w-full px-3 py-2 border-2 border-blue-500 rounded-md focus:outline-none focus:border-blue-600"
-                      type="number" step="0.1" placeholder="Enter factor...">
+                      type="number" step="0.1" placeholder="Saisir facteur...">
                     <div v-if="bench.text" class="mt-1 text-xs text-gray-600">
                       <i class="fas fa-info-circle mr-1"></i>{{ bench.text }}
                     </div>
                   </div>
 
                   <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">Comment</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Commantaire</label>
                     <input
-                      v-model="bench.commentaire"
                       class="w-full px-3 py-2 border-2 border-blue-500 rounded-md focus:outline-none focus:border-blue-600"
-                      type="text" placeholder="Enter a comment...">
+                      type="text" placeholder="Entrez un commentaire...">
                   </div>
 
                   <div class="mt-6">
@@ -3547,11 +3313,11 @@ function formatAmount(value) {
                       <tr>
                         <th class="w-[5%] border-2 border-gray-300 p-2">#</th>
                         <th class="w-[20%] border-2 border-gray-300 p-2">Benchmark</th>
-                        <th class="w-[15%] border-2 border-gray-300 p-2">Factor</th>
-                        <th class="w-[20%] border-2 border-gray-300 p-2">Materiality Threshold</th>
-                        <th class="w-[20%] border-2 border-gray-300 p-2">Performance Materiality</th>
-                        <th class="w-[20%] border-2 border-gray-300 p-2">Clearly Trivial Threshold</th>
-                        <th class="w-[20%] border-2 border-gray-300 p-2">Comment</th>
+                        <th class="w-[15%] border-2 border-gray-300 p-2">Facteur</th>
+                        <th class="w-[20%] border-2 border-gray-300 p-2">Seuil de matérialité</th>
+                        <th class="w-[20%] border-2 border-gray-300 p-2">Performance de matérialité</th>
+                        <th class="w-[20%] border-2 border-gray-300 p-2">Seuil pour les inexactitudes manifestement
+                          insignifiantes</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3573,7 +3339,6 @@ function formatAmount(value) {
                         <td class="border-2 border-gray-300 p-2 font-mono"
                           :class="mat.trivial_misstatements < 0 ? 'text-red-600' : 'text-orange-600'">{{
                             mat.trivial_misstatements?.toLocaleString() }}</td>
-                        <td class="border-2 border-gray-300 p-2">{{ mat.commentaire || '' }}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -3616,8 +3381,7 @@ function formatAmount(value) {
             </div>
 
             <!-- Légende -->
-            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4"> 
-            <!-- Légende 
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <h4 class="text-sm font-semibold text-gray-800 mb-2">Légende des benchmarks :</h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-600">
                 <div><strong>profit_before_tax :</strong> Bénéfice avant impôt (5-10%)</div>
@@ -3625,7 +3389,6 @@ function formatAmount(value) {
                 <div><strong>revenue :</strong> Chiffre d'affaires (0.8-2%)</div>
                 <div><strong>total_assets :</strong> Total des actifs (1-2%)</div>
               </div>
-                 -->
             </div>
           </div>
         </div>
@@ -3683,7 +3446,7 @@ function formatAmount(value) {
             <div v-if="analyseQuantitativeReport.analyse && analyseQuantitativeReport.analyse.length"
               class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
               <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gradient-to-r from-blue-ycube to-blue-ycube-3">
+                <thead class="bg-linear-to-r from-blue-ycube to-blue-ycube-3">
                   <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
                     </th>
@@ -3703,11 +3466,11 @@ function formatAmount(value) {
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="(item, index) in analyseQuantitativeReport.analyse" :key="index"
-                    class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
+                    class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <div
-                          class="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                          class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                           <span class="text-xs font-bold text-white">{{ item.compte.charAt(0) }}</span>
                         </div>
                         <div
@@ -3762,7 +3525,7 @@ function formatAmount(value) {
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <span
                         class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
-                        :class="item.is_significant ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300' : 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'">
+                        :class="item.is_significant ? 'bg-linear-to-r from-red-100 to-red-200 text-red-800 border border-red-300' : 'bg-linear-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'">
                         <span class="w-2 h-2 rounded-full mr-2"
                           :class="item.is_significant ? 'bg-red-500' : 'bg-emerald-500'"></span>
                         {{ item.status }}
@@ -3869,7 +3632,7 @@ function formatAmount(value) {
             <div v-if="analyseQualitativeReport.analyse && analyseQualitativeReport.analyse.length"
               class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
               <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gradient-to-r from-blue-ycube  to-blue-ycube-3">
+                <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
                   <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
                     </th>
@@ -3909,11 +3672,11 @@ function formatAmount(value) {
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="(item, index) in analyseQualitativeReport.analyse" :key="index"
-                    class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
+                    class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <div
-                          class="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                          class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                           <span class="text-xs font-bold text-white">{{ item.compte.charAt(0) }}</span>
                         </div>
                         <div
@@ -3955,7 +3718,7 @@ function formatAmount(value) {
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <span
                         class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
-                        :class="item.is_qualitatively_significant ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300' : 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'">
+                        :class="item.is_qualitatively_significant ? 'bg-linear-to-r from-red-100 to-red-200 text-red-800 border border-red-300' : 'bg-linear-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'">
                         <span class="w-2 h-2 rounded-full mr-2"
                           :class="item.is_qualitatively_significant ? 'bg-red-500' : 'bg-emerald-500'"></span>
                         {{ item.status }}
@@ -4053,7 +3816,7 @@ function formatAmount(value) {
               v-if="presentationComptesSignificatifsReport.presentation && presentationComptesSignificatifsReport.presentation.length"
               class="overflow-x-auto rounded-xl shadow-xl bg-white border border-gray-100">
               <table class="min-w-full divide-y divide-gray-200 overflow-auto">
-                <thead class="bg-gradient-to-r from-blue-ycube  to-blue-ycube-3">
+                <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
                   <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
                     </th>
@@ -4075,11 +3838,11 @@ function formatAmount(value) {
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="(item, index) in presentationComptesSignificatifsReport.presentation" :key="index"
-                    class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
+                    class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <div
-                          class="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                          class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                           <span class="text-xs font-bold text-white">{{ item.compte.charAt(0) }}</span>
                         </div>
                         <div
@@ -4116,7 +3879,7 @@ function formatAmount(value) {
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <span
                         class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
-                        :class="item.is_quantitatively_significant ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300' : 'bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 border border-slate-300'">
+                        :class="item.is_quantitatively_significant ? 'bg-linear-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300' : 'bg-linear-to-r from-slate-100 to-slate-200 text-slate-800 border border-slate-300'">
                         <span class="w-2 h-2 rounded-full mr-2"
                           :class="item.is_quantitatively_significant ? 'bg-blue-500' : 'bg-slate-500'"></span>
                         {{ item.is_quantitatively_significant ? 'Oui' : 'Non' }}
@@ -4125,7 +3888,7 @@ function formatAmount(value) {
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <span
                         class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
-                        :class="item.is_qualitatively_significant ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300' : 'bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 border border-slate-300'">
+                        :class="item.is_qualitatively_significant ? 'bg-linear-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300' : 'bg-linear-to-r from-slate-100 to-slate-200 text-slate-800 border border-slate-300'">
                         <span class="w-2 h-2 rounded-full mr-2"
                           :class="item.is_qualitatively_significant ? 'bg-blue-500' : 'bg-slate-500'"></span>
                         {{ item.is_qualitatively_significant ? 'Oui' : 'Non' }}
@@ -4297,7 +4060,7 @@ function formatAmount(value) {
             <div v-if="revueAnalytiqueFinaleReport.revue && revueAnalytiqueFinaleReport.revue.length"
               class="overflow-x-auto rounded-xl shadow-xl bg-white border border-gray-100">
               <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600">
+                <thead class="bg-linear-to-r from-indigo-600 via-blue-600 to-cyan-600">
                   <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
                     </th>
@@ -4325,11 +4088,11 @@ function formatAmount(value) {
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="(item, index) in revueAnalytiqueFinaleReport.revue" :key="index"
-                    class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
+                    class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <div
-                          class="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                          class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                           <span class="text-xs font-bold text-white">{{ item.compte.charAt(0) }}</span>
                         </div>
                         <div
@@ -4478,4 +4241,3 @@ function formatAmount(value) {
 
   </div>
 </template>
-
