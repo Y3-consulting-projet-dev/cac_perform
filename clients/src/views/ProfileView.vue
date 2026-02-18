@@ -18,7 +18,8 @@ const form = ref({
   lastname: '',
   email: '',
   role: '',
-  grade: ''
+  grade: '',
+  departement: ''
 })
 
 watch(
@@ -30,7 +31,8 @@ watch(
         lastname: newUser.lastname || '',
         email: newUser.email || '',
         role: newUser.role || '',
-        grade: newUser.grade || ''
+        grade: newUser.grade || '',
+        departement: newUser.departement || ''
       }
     }
   },
@@ -129,6 +131,7 @@ async function updatePassword() {
 
         <div class="mt-6 w-full text-left space-y-2 text-sm">
           <p><strong>Email :</strong> {{ user.email }}</p>
+          <p><strong>Département :</strong> {{ user.departement }}</p>
         </div>
       </div>
 
@@ -177,6 +180,18 @@ async function updatePassword() {
                 <option>Senior</option>
                 <option>Expert</option>
                 <option>Directeur</option>
+              </select>
+            </div>
+            <div>
+              <label class="uppercase font-semibold text-[#022a41]">Département</label>
+              <select v-model="form.departement" placeholder="Grade"
+                class="w-full mt-2 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-ycube">
+                <option disabled value="">Choisir</option>
+                <option>Audit</option>
+                <option>Conseil</option>
+                <option>Expertise Comptable</option>
+                <option>Juridique</option>
+                <option>Administration</option>
               </select>
             </div>
           </div>

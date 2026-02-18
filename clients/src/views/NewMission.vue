@@ -121,12 +121,12 @@ function back() {
                 <div class="flex space-x-6">
   <div class="w-1/2">
     <label class="text-xs uppercase font-bold">Début du mandat</label>
-    <input v-model="field.date_debut_mandat" type="date" class="w-full border-2 border-blue-ycube rounded-lg pl-2 focus:outline-none focus:ring-0 h-10" />
+    <input v-model="field.date_debut_mandat" type="date" class="input" />
   </div>
 
   <div class="w-1/2">
     <label class="text-xs uppercase font-bold">Fin du mandat</label>
-    <input v-model="field.date_fin_mandat" type="date" class="w-full border-2 border-blue-ycube rounded-lg pl-2 focus:outline-none focus:ring-0 h-10" />
+    <input v-model="field.date_fin_mandat" type="date" class="input" />
   </div>
 </div>
 

@@ -9,7 +9,7 @@ from functools import wraps
 import jwt
 
 from src.services.user_services import UserService
-from src.schemas.user_schemas import ROLES, GRADES
+from src.schemas.user_schemas import ROLES, GRADES, DEPARTEMENTS
 
 def jwt_required(f):
     """Décorateur pour vérifier l'authentification JWT"""
@@ -252,7 +252,8 @@ class UserMetadataResource(Resource):
         """Récupère les métadonnées disponibles"""
         return jsonify({
             "roles": ROLES,
-            "grades": GRADES
+            "grades": GRADES,
+            "departements": DEPARTEMENTS
         }), 200
 
 class UserLogoutResource(Resource):
