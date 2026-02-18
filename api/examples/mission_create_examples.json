@@ -1,0 +1,227 @@
+{
+  "description": "Exemples pour la création de mission via l'API /api/v1/missions/",
+  "note": "IMPORTANT: Cette API utilise multipart/form-data pour les fichiers. Les exemples ci-dessous montrent la structure des données.",
+  
+  "example_1_mission_2024": {
+    "description": "Création d'une mission pour l'année 2024",
+    "method": "POST",
+    "url": "http://localhost:5000/api/v1/missions/",
+    "content_type": "multipart/form-data",
+    "form_data": {
+      "files[]": [
+        "Balance_2024.xlsx",
+        "Balance_2023.xlsx"
+      ],
+      "annee_auditee": "2024",
+      "id_client": "65a1b2c3d4e5f6789abcdef0",
+      "date_debut": "2024-01-01",
+      "date_fin": "2024-12-31"
+    },
+    "expected_response": {
+      "success": true,
+      "message": "Mission créée avec succès",
+      "data": {
+        "_id": "65a1b2c3d4e5f6789abcdef1",
+        "mission": {
+          "id_client": "65a1b2c3d4e5f6789abcdef0",
+          "annee_auditee": "2024",
+          "date_debut": "2024-01-01",
+          "date_fin": "2024-12-31",
+          "balances": [
+            "65a1b2c3d4e5f6789abcdef2",
+            "65a1b2c3d4e5f6789abcdef3"
+          ],
+          "balance_variation": {},
+          "grouping": {},
+          "efi": {},
+          "materiality": []
+        }
+      }
+    }
+  },
+  
+  "example_2_mission_2023": {
+    "description": "Création d'une mission pour l'année 2023",
+    "form_data": {
+      "files[]": [
+        "Balance_2023.xlsx",
+        "Balance_2022.xlsx"
+      ],
+      "annee_auditee": "2023",
+      "id_client": "65a1b2c3d4e5f6789abcdef0",
+      "date_debut": "2023-01-01",
+      "date_fin": "2023-12-31"
+    }
+  },
+  
+  "example_3_mission_avec_3_balances": {
+    "description": "Création d'une mission avec 3 fichiers de balance",
+    "form_data": {
+      "files[]": [
+        "Balance_2024.xlsx",
+        "Balance_2023.xlsx",
+        "Balance_2022.xlsx"
+      ],
+      "annee_auditee": "2024",
+      "id_client": "65a1b2c3d4e5f6789abcdef0",
+      "date_debut": "2024-01-01",
+      "date_fin": "2024-12-31"
+    }
+  },
+  
+  "error_examples": {
+    "error_400_fichiers_manquants": {
+      "description": "Erreur si moins de 2 fichiers",
+      "response": {
+        "success": false,
+        "error": "Au moins 2 fichiers de balance sont requis (N et N-1)"
+      },
+      "status_code": 400
+    },
+    
+    "error_400_champs_manquants": {
+      "description": "Erreur si des champs sont manquants",
+      "response": {
+        "success": false,
+        "error": "Erreurs de validation",
+        "errors": {
+          "date_debut": ["La date de début est requise"],
+          "annee_auditee": ["L'année auditée est requise"]
+        }
+      },
+      "status_code": 400
+    },
+    
+    "error_400_client_introuvable": {
+      "description": "Erreur si le client n'existe pas",
+      "response": {
+        "success": false,
+        "error": "Client avec l'ID 'xxx' introuvable"
+      },
+      "status_code": 400
+    },
+    
+    "error_400_dates_invalides": {
+      "description": "Erreur si la date de début est après la date de fin",
+      "response": {
+        "success": false,
+        "error": "Erreurs de validation",
+        "errors": {
+          "_schema": ["La date de début doit être antérieure à la date de fin"]
+        }
+      },
+      "status_code": 400
+    }
+  },
+  
+  "success_response_structure": {
+    "success": true,
+    "message": "Mission créée avec succès",
+    "data": {
+      "_id": "string - ID de la mission créée",
+      "mission": {
+        "id_client": "string - ID du client",
+        "annee_auditee": "string - Année auditée (ex: '2024')",
+        "date_debut": "string - Date de début (YYYY-MM-DD)",
+        "date_fin": "string - Date de fin (YYYY-MM-DD)",
+        "balances": [
+          "array - IDs des balances créées"
+        ],
+        "balance_variation": {},
+        "grouping": {},
+        "efi": {},
+        "materiality": [
+          "array - Matérialités"
+        ]
+      }
+    }
+  },
+  
+  "field_descriptions": {
+    "files[]": {
+      "type": "File[]",
+      "required": true,
+      "min_count": 2,
+      "description": "Fichiers Excel (.xlsx) de balance. Le premier fichier est la balance N (année auditée), le second est la balance N-1 (année précédente)",
+      "format": "Excel avec 6 colonnes: Numéro | Libellé | Débit initial | Crédit initial | Débit final | Crédit final"
+    },
+    "annee_auditee": {
+      "type": "String",
+      "required": true,
+      "format": "4 chiffres (ex: '2024')",
+      "description": "Année pour laquelle la mission est créée"
+    },
+    "id_client": {
+      "type": "String",
+      "required": true,
+      "format": "ObjectId MongoDB (24 caractères hexadécimaux)",
+      "description": "ID du client propriétaire de la mission",
+      "example": "65a1b2c3d4e5f6789abcdef0"
+    },
+    "date_debut": {
+      "type": "String",
+      "required": true,
+      "format": "YYYY-MM-DD",
+      "description": "Date de début de la mission",
+      "example": "2024-01-01"
+    },
+    "date_fin": {
+      "type": "String",
+      "required": true,
+      "format": "YYYY-MM-DD",
+      "description": "Date de fin de la mission",
+      "example": "2024-12-31",
+      "constraint": "Doit être postérieure à date_debut"
+    }
+  },
+  
+  "curl_example": {
+    "description": "Exemple de commande cURL pour tester l'API",
+    "command": "curl -X POST http://localhost:5000/api/v1/missions/ -F 'files[]=@Balance_2024.xlsx' -F 'files[]=@Balance_2023.xlsx' -F 'annee_auditee=2024' -F 'id_client=65a1b2c3d4e5f6789abcdef0' -F 'date_debut=2024-01-01' -F 'date_fin=2024-12-31'"
+  },
+  
+  "insomnia_config": {
+    "method": "POST",
+    "url": "http://localhost:5000/api/v1/missions/",
+    "body_type": "Multipart Form",
+    "fields": [
+      {
+        "key": "files[]",
+        "type": "File",
+        "value": "Balance_2024.xlsx",
+        "description": "Premier fichier - Balance N"
+      },
+      {
+        "key": "files[]",
+        "type": "File",
+        "value": "Balance_2023.xlsx",
+        "description": "Deuxième fichier - Balance N-1"
+      },
+      {
+        "key": "annee_auditee",
+        "type": "Text",
+        "value": "2024",
+        "description": "Année auditée"
+      },
+      {
+        "key": "id_client",
+        "type": "Text",
+        "value": "65a1b2c3d4e5f6789abcdef0",
+        "description": "ID du client (remplacer par un ID valide)"
+      },
+      {
+        "key": "date_debut",
+        "type": "Text",
+        "value": "2024-01-01",
+        "description": "Date de début"
+      },
+      {
+        "key": "date_fin",
+        "type": "Text",
+        "value": "2024-12-31",
+        "description": "Date de fin"
+      }
+    ]
+  }
+}
+

@@ -1,0 +1,3809 @@
+[{
+  "_id": {
+    "$oid": "6882174ab2709a17a650eb36"
+  },
+  "id_client": "688216b76fcfc7ed5faf4d75",
+  "annee_auditee": "2022",
+  "date_debut": "2025-07-01",
+  "date_fin": "2025-08-08",
+  "balances": [
+    "68821749b2709a17a650eb34",
+    "6882174ab2709a17a650eb35"
+  ],
+  "balance_variation": [
+    {
+      "numero_compte": "10110000",
+      "libelle": "CAPITAL SOUSCRIT, NON APPELE",
+      "solde_n": 0,
+      "solde_n1": -5000000
+    },
+    {
+      "numero_compte": "10130000",
+      "libelle": "Capital souscrit,appel ,vers ,non a",
+      "solde_n": -5000000,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "12910000",
+      "libelle": "REPORT A NOUVEAU DEBITEUR",
+      "solde_n": 8347464,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "17300000",
+      "libelle": "CREDIT BAIL MOBILIER",
+      "solde_n": -12095989,
+      "solde_n1": -14816755
+    },
+    {
+      "numero_compte": "19600000",
+      "libelle": "PROV PR PENSIONS ET OBLIG SIMILAIRE",
+      "solde_n": -3539021,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "21310000",
+      "libelle": "LOGICIEL",
+      "solde_n": 131682,
+      "solde_n1": 131682
+    },
+    {
+      "numero_compte": "24422200",
+      "libelle": "MATERIEL INFORMATIQUE",
+      "solde_n": 10142557,
+      "solde_n1": 1461873
+    },
+    {
+      "numero_compte": "24440000",
+      "libelle": "Mobilier de bureau",
+      "solde_n": 4455200,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "24441100",
+      "libelle": "MOBILIER DE BUREAU",
+      "solde_n": 806400,
+      "solde_n1": 65000
+    },
+    {
+      "numero_compte": "24510000",
+      "libelle": "MATERIEL AUTOMOBILE",
+      "solde_n": 6183160,
+      "solde_n1": 2000000
+    },
+    {
+      "numero_compte": "24560000",
+      "libelle": "MATERIEL TRANSPORT",
+      "solde_n": 22900000,
+      "solde_n1": 19406780
+    },
+    {
+      "numero_compte": "27510000",
+      "libelle": "DEPOT CAUTION LOYER",
+      "solde_n": 6100000,
+      "solde_n1": 2700000
+    },
+    {
+      "numero_compte": "27580000",
+      "libelle": "AUTRES DEPOTS ET CAUTIONNEMENT",
+      "solde_n": 4155167,
+      "solde_n1": 1840000
+    },
+    {
+      "numero_compte": "28134000",
+      "libelle": "AMORT LOGICIEL",
+      "solde_n": -72876,
+      "solde_n1": -7035
+    },
+    {
+      "numero_compte": "28440000",
+      "libelle": "MOBILIER DE BUREAU",
+      "solde_n": -56431,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "28441000",
+      "libelle": "AMORT MAT DE BUREAU",
+      "solde_n": -19671,
+      "solde_n1": -3240
+    },
+    {
+      "numero_compte": "28442000",
+      "libelle": "AMORT MAT INFORMATIQUE",
+      "solde_n": -3046243,
+      "solde_n1": -227617
+    },
+    {
+      "numero_compte": "28450000",
+      "libelle": "AMORT MAT TRANSPORT",
+      "solde_n": -12355429,
+      "solde_n1": -2490565
+    },
+    {
+      "numero_compte": "40110000",
+      "libelle": "FOURNISSEURS DETTE EN CPTE",
+      "solde_n": -2279950,
+      "solde_n1": -1386906
+    },
+    {
+      "numero_compte": "40120000",
+      "libelle": "FOURNISSEURS GROUPE",
+      "solde_n": 0,
+      "solde_n1": -4850100
+    },
+    {
+      "numero_compte": "40810000",
+      "libelle": "FRS FACTURE NON PARV",
+      "solde_n": 0,
+      "solde_n1": -1062000
+    },
+    {
+      "numero_compte": "40910000",
+      "libelle": "FRS AVANCE ET ACOMPTE",
+      "solde_n": 8800000,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "41120000",
+      "libelle": "CLIENT-GROUPE",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131000",
+      "libelle": "FRAIS AVANCE ET FORUN AU PERSO",
+      "solde_n": 0,
+      "solde_n1": 1065287
+    },
+    {
+      "numero_compte": "42131010",
+      "libelle": " Mrs S Diomandé",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131020",
+      "libelle": "DIOMANDE MOUSSA",
+      "solde_n": 984996,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131030",
+      "libelle": "Mrs Zako ",
+      "solde_n": 664615,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131040",
+      "libelle": "Appia Soumahoro",
+      "solde_n": 1813736,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131050",
+      "libelle": "Adiey TIEMELE RAYMOND",
+      "solde_n": 174000,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131060",
+      "libelle": "JOSEPHINE GLORION",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131070",
+      "libelle": "FOFANA AKRA",
+      "solde_n": 270000,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131080",
+      "libelle": "m.Ndjore",
+      "solde_n": -83068,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131090",
+      "libelle": "s.Coulibaly",
+      "solde_n": 695527,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131100",
+      "libelle": "A Cynthia",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131110",
+      "libelle": "NIKIEMA",
+      "solde_n": -1100,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131120",
+      "libelle": "Isaac Degbou",
+      "solde_n": 672600,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131130",
+      "libelle": "ADINGRA KOFFI CONSTANT",
+      "solde_n": 471700,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131140",
+      "libelle": "MERESSO YAO ROSE ARM--",
+      "solde_n": -299721,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131150",
+      "libelle": "KOUASSI LENOIR MARTI--",
+      "solde_n": 900,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42131160",
+      "libelle": "ROMERO",
+      "solde_n": -31285,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "42211000",
+      "libelle": "REMUNERATIONS DUES PUR PROJ",
+      "solde_n": -606,
+      "solde_n1": -3
+    },
+    {
+      "numero_compte": "42811000",
+      "libelle": "PROVISIONS POUR CONGES A PAYER",
+      "solde_n": -7728731,
+      "solde_n1": -1395743
+    },
+    {
+      "numero_compte": "42812000",
+      "libelle": "PROVISION BONUS A PAYER",
+      "solde_n": -13199461,
+      "solde_n1": -6030353
+    },
+    {
+      "numero_compte": "42813000",
+      "libelle": "PROV 13EME MOIS A PAYER",
+      "solde_n": 0,
+      "solde_n1": -4650421
+    },
+    {
+      "numero_compte": "42814000",
+      "libelle": "AUTRES PROV",
+      "solde_n": -1917574,
+      "solde_n1": -745816
+    },
+    {
+      "numero_compte": "42860000",
+      "libelle": "AUTRES CHARGES A PAYER",
+      "solde_n": -1,
+      "solde_n1": -748185
+    },
+    {
+      "numero_compte": "42861000",
+      "libelle": "INTERESSEMENT 2022",
+      "solde_n": -22892310,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "43112000",
+      "libelle": "ALLOCATION FAMILIALE PRESTATIO",
+      "solde_n": -52325,
+      "solde_n1": -32200
+    },
+    {
+      "numero_compte": "43123000",
+      "libelle": "ACCIDENT DE TRAVAIL",
+      "solde_n": -27300,
+      "solde_n1": -12600
+    },
+    {
+      "numero_compte": "43133000",
+      "libelle": "RETRAIT GENERALE",
+      "solde_n": -2927204,
+      "solde_n1": -2158773
+    },
+    {
+      "numero_compte": "43180000",
+      "libelle": "CMU COUVERTURE MALADIE UNIVERS",
+      "solde_n": -34000,
+      "solde_n1": -25000
+    },
+    {
+      "numero_compte": "44283000",
+      "libelle": "TAXE D'APPRENTISSAGE",
+      "solde_n": -101260,
+      "solde_n1": -77900
+    },
+    {
+      "numero_compte": "44284000",
+      "libelle": "TAXE FORMATION PROFESSIONNELLE",
+      "solde_n": -151900,
+      "solde_n1": -60487
+    },
+    {
+      "numero_compte": "44285000",
+      "libelle": "IS PATRONAL",
+      "solde_n": -687278,
+      "solde_n1": -1537149
+    },
+    {
+      "numero_compte": "44420000",
+      "libelle": "TVA CT",
+      "solde_n": 0,
+      "solde_n1": -1121006
+    },
+    {
+      "numero_compte": "44600000",
+      "libelle": "TEE 2022",
+      "solde_n": -772014,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "44710000",
+      "libelle": "IMPOT GENERAL SUR LE REVENUE",
+      "solde_n": -3783955,
+      "solde_n1": -3196805
+    },
+    {
+      "numero_compte": "44720000",
+      "libelle": "IS SALARIALE",
+      "solde_n": -303899,
+      "solde_n1": -235861
+    },
+    {
+      "numero_compte": "44730000",
+      "libelle": "CONTRIBUTION NATIONALE",
+      "solde_n": -1827629,
+      "solde_n1": -706869
+    },
+    {
+      "numero_compte": "44780000",
+      "libelle": "Certificat de Patente transport ",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "44781000",
+      "libelle": "RETENUE BNC",
+      "solde_n": 1,
+      "solde_n1": -967898
+    },
+    {
+      "numero_compte": "44860000",
+      "libelle": "Provision TEE à juin 2022",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "46600000",
+      "libelle": "GROUPE COMPTE COURANT",
+      "solde_n": -29657163,
+      "solde_n1": -25579024
+    },
+    {
+      "numero_compte": "47110000",
+      "libelle": "D biteurs divers",
+      "solde_n": -65167,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "47111000",
+      "libelle": "DEBITEURS DIVERS",
+      "solde_n": 0,
+      "solde_n1": -1205739
+    },
+    {
+      "numero_compte": "47311000",
+      "libelle": "MANDATS IOS CDI",
+      "solde_n": 0,
+      "solde_n1": 4690
+    },
+    {
+      "numero_compte": "47600000",
+      "libelle": "CHARGES CONSTATEES D'AVANCE",
+      "solde_n": 9640577,
+      "solde_n1": 6731905
+    },
+    {
+      "numero_compte": "47700000",
+      "libelle": "Produits constaté d'avance",
+      "solde_n": -3,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "48120000",
+      "libelle": "CREANCE ET DETTE HAO IMM COR",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "51400000",
+      "libelle": "CHEQUE A LENCAISSEMENT ",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "52110000",
+      "libelle": "SGBCI",
+      "solde_n": 34206274,
+      "solde_n1": 35527917
+    },
+    {
+      "numero_compte": "55110000",
+      "libelle": "CAISSE ELECTRONIQUE YUP",
+      "solde_n": 0,
+      "solde_n1": 235000
+    },
+    {
+      "numero_compte": "55110100",
+      "libelle": "JULAYA",
+      "solde_n": 12112,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "57110000",
+      "libelle": "CAISSE LOCAL",
+      "solde_n": 1025521,
+      "solde_n1": 310718
+    },
+    {
+      "numero_compte": "58500000",
+      "libelle": "Virement banque   Caisse",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "60110000",
+      "libelle": "Achat de marchandises",
+      "solde_n": 3398325,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "60210000",
+      "libelle": "Matieres premieres ",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "60510000",
+      "libelle": "Fournitures non stockables - Eau",
+      "solde_n": 28542,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "60520000",
+      "libelle": "Fournitures non stockables - Electr",
+      "solde_n": 189340,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "60530000",
+      "libelle": "Fournitures non stockables - Autr  ",
+      "solde_n": 1000000,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "60531000",
+      "libelle": "GASOIL",
+      "solde_n": 6613097,
+      "solde_n1": 2768091
+    },
+    {
+      "numero_compte": "60540000",
+      "libelle": "Fournitures d'entret non stockables",
+      "solde_n": 44175,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "60550000",
+      "libelle": "Fournitures de burea non stockables",
+      "solde_n": 1076405,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "60560000",
+      "libelle": "Achats de petit mat riel et outilla",
+      "solde_n": 3325129,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "60571000",
+      "libelle": "ACHAT DE SERVICES",
+      "solde_n": 1703500,
+      "solde_n1": 424240
+    },
+    {
+      "numero_compte": "60580000",
+      "libelle": "Achats de travaux, mat riels et  qu",
+      "solde_n": 490334,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "61610000",
+      "libelle": "TRANSPORT DE PLIS",
+      "solde_n": 176600,
+      "solde_n1": 95000
+    },
+    {
+      "numero_compte": "61810000",
+      "libelle": "Voyages et d placements",
+      "solde_n": 3821091,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "61811000",
+      "libelle": "FRAIS DE TAXI ET DE COURSE",
+      "solde_n": 2457054,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "61812000",
+      "libelle": "PEAGE ROUTIERS",
+      "solde_n": 272600,
+      "solde_n1": 102250
+    },
+    {
+      "numero_compte": "61832000",
+      "libelle": "Transport administratif",
+      "solde_n": 663568,
+      "solde_n1": 462250
+    },
+    {
+      "numero_compte": "62220000",
+      "libelle": "LOYER MENSUEL",
+      "solde_n": 21578322,
+      "solde_n1": 8927242
+    },
+    {
+      "numero_compte": "62231000",
+      "libelle": "LOCATION DE MATERIEL",
+      "solde_n": 5501000,
+      "solde_n1": 13868351
+    },
+    {
+      "numero_compte": "62330000",
+      "libelle": "CREDIT BAIL MOBILIER",
+      "solde_n": 0,
+      "solde_n1": 950222
+    },
+    {
+      "numero_compte": "62430000",
+      "libelle": "Maintenance mat informatique",
+      "solde_n": 70000,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "62435000",
+      "libelle": "MAINTENANCE MAT DE TRANSPORT",
+      "solde_n": 3739356,
+      "solde_n1": 965093
+    },
+    {
+      "numero_compte": "62480000",
+      "libelle": "AUTRES ENTRE ET REPART",
+      "solde_n": 1904767,
+      "solde_n1": 34000
+    },
+    {
+      "numero_compte": "62510000",
+      "libelle": "Assurances multirisques",
+      "solde_n": 515799,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "62520000",
+      "libelle": "Assurances mat riel de transport",
+      "solde_n": 1118306,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "62580000",
+      "libelle": "Autres primes d'assurances",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "62580100",
+      "libelle": "Assurance santé",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "62580200",
+      "libelle": "Assurance individuel accident",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "62580300",
+      "libelle": "responsabilité civile",
+      "solde_n": 431149,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "62660000",
+      "libelle": "DOCUMENTATION TECHNIQUE",
+      "solde_n": 93900,
+      "solde_n1": 32000
+    },
+    {
+      "numero_compte": "62720000",
+      "libelle": "CATALOGUE, IMPRIMES PUBLICITAI",
+      "solde_n": 225200,
+      "solde_n1": 599855
+    },
+    {
+      "numero_compte": "62770000",
+      "libelle": "SEMINAIRES ET ATELIER",
+      "solde_n": 5137550,
+      "solde_n1": 1906610
+    },
+    {
+      "numero_compte": "62811000",
+      "libelle": "FRAIS DE TELEPHONE PROFESSIONE",
+      "solde_n": 3306623,
+      "solde_n1": 836781
+    },
+    {
+      "numero_compte": "62880000",
+      "libelle": "FRAIS D'INTERNET",
+      "solde_n": 668489,
+      "solde_n1": 160155
+    },
+    {
+      "numero_compte": "63170000",
+      "libelle": "FRAIS TRFERT MOBILE MONEY",
+      "solde_n": 32067,
+      "solde_n1": 30277
+    },
+    {
+      "numero_compte": "63180000",
+      "libelle": "Autres frais bancaires",
+      "solde_n": 2272089,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "63240000",
+      "libelle": "Honoraires des professions reglmt e",
+      "solde_n": 50000,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "63242000",
+      "libelle": "HONORAIRES COMPTABLE",
+      "solde_n": 7100000,
+      "solde_n1": 74218
+    },
+    {
+      "numero_compte": "63243000",
+      "libelle": "HONORAIRES CONSEILLERS JURIQIQ",
+      "solde_n": 2461503,
+      "solde_n1": 3771201
+    },
+    {
+      "numero_compte": "63246000",
+      "libelle": "HONORAIRES GESTION RH",
+      "solde_n": 500000,
+      "solde_n1": 967926
+    },
+    {
+      "numero_compte": "63248000",
+      "libelle": "AUTRES HONORAIRES ET CONSEILS",
+      "solde_n": 8593750,
+      "solde_n1": 20955642
+    },
+    {
+      "numero_compte": "63270000",
+      "libelle": "REMUNERATIONS DES AUTRES PREST",
+      "solde_n": 3061920,
+      "solde_n1": 12152645
+    },
+    {
+      "numero_compte": "63281000",
+      "libelle": "DIVERS FRAIS",
+      "solde_n": 20000,
+      "solde_n1": 851576
+    },
+    {
+      "numero_compte": "63300000",
+      "libelle": "Frais de formation du personel",
+      "solde_n": 3428873,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "63430000",
+      "libelle": "Redevances pour logiciels",
+      "solde_n": 714000,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "63710000",
+      "libelle": "PERSONNEL INTERMEDIAIRE",
+      "solde_n": -1936043,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "63810000",
+      "libelle": "Frais de recrutement",
+      "solde_n": 11030116,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "63830000",
+      "libelle": "R ceptions",
+      "solde_n": 6750231,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "63841000",
+      "libelle": "MISSIONS ET HEBERGEMTS CDI",
+      "solde_n": 24697360,
+      "solde_n1": 9971194
+    },
+    {
+      "numero_compte": "63842000",
+      "libelle": "MISSIONS ET HEBERGEMNT A L'ETR",
+      "solde_n": 3047254,
+      "solde_n1": 2833790
+    },
+    {
+      "numero_compte": "64130000",
+      "libelle": "IMPOTS SUR SALAIRE",
+      "solde_n": 10666201,
+      "solde_n1": 4338992
+    },
+    {
+      "numero_compte": "64180000",
+      "libelle": "AUTRES IMPOTS ET TAXES DIRECTS",
+      "solde_n": 9306380,
+      "solde_n1": 1113252
+    },
+    {
+      "numero_compte": "64620000",
+      "libelle": "DROIT DE TIMBRE",
+      "solde_n": 2758,
+      "solde_n1": 2100
+    },
+    {
+      "numero_compte": "64680000",
+      "libelle": "Autres droits d'enregistrem",
+      "solde_n": 1028600,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "64780000",
+      "libelle": "contravention pour exces de vitesse",
+      "solde_n": 14100,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "65600000",
+      "libelle": "PERTE DE CHANGE SUR CREANCE",
+      "solde_n": 6216,
+      "solde_n1": 39878
+    },
+    {
+      "numero_compte": "65880000",
+      "libelle": "AUTRES CHARGES DIVERS",
+      "solde_n": 1175853,
+      "solde_n1": 74
+    },
+    {
+      "numero_compte": "66110000",
+      "libelle": "SALAIRES BASE LOCAL",
+      "solde_n": 166405172,
+      "solde_n1": 57143248
+    },
+    {
+      "numero_compte": "66111000",
+      "libelle": "salaire brut augmentation retr",
+      "solde_n": 2085819,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "66120000",
+      "libelle": "PRIMES LOCAL",
+      "solde_n": 13220054,
+      "solde_n1": 39248298
+    },
+    {
+      "numero_compte": "66130000",
+      "libelle": "CONGES PAYES LOCAL",
+      "solde_n": 24327713,
+      "solde_n1": 3215093
+    },
+    {
+      "numero_compte": "66140000",
+      "libelle": "Jours de recherche",
+      "solde_n": 2078072,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "66181000",
+      "libelle": "BONUS PAYEE",
+      "solde_n": 27186155,
+      "solde_n1": 3803328
+    },
+    {
+      "numero_compte": "66330000",
+      "libelle": "INDEMNITE D'EXPATRIATION",
+      "solde_n": 675428,
+      "solde_n1": 478480
+    },
+    {
+      "numero_compte": "66340000",
+      "libelle": "INDEMNITE DE TRANSPORT",
+      "solde_n": 5773176,
+      "solde_n1": 2225239
+    },
+    {
+      "numero_compte": "66350000",
+      "libelle": "INTERESSEMENT 2022",
+      "solde_n": 22892310,
+      "solde_n1": 6030353
+    },
+    {
+      "numero_compte": "66355000",
+      "libelle": "13EME MOIS-GRATIF",
+      "solde_n": 4618192,
+      "solde_n1": 4750771
+    },
+    {
+      "numero_compte": "66410000",
+      "libelle": "CNPS PATR LOCAL",
+      "solde_n": 14556037,
+      "solde_n1": 8059741
+    },
+    {
+      "numero_compte": "66420000",
+      "libelle": "CNPS PAT EXPAT",
+      "solde_n": 1885801,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "66840000",
+      "libelle": "M decine du travail et pharmacie",
+      "solde_n": 260480,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "66845000",
+      "libelle": "ASSURANCE MALADIE DU PERSONNEL",
+      "solde_n": 0,
+      "solde_n1": 745816
+    },
+    {
+      "numero_compte": "66850000",
+      "libelle": "ASSUR ET ORGANISMES DE SANTE",
+      "solde_n": 11000,
+      "solde_n1": 3112430
+    },
+    {
+      "numero_compte": "66850100",
+      "libelle": "Police d assurance maladie",
+      "solde_n": 14225390,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "66850200",
+      "libelle": "Assurance individuel accident (149)",
+      "solde_n": 262505,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "66870000",
+      "libelle": "PENALITES CNPS",
+      "solde_n": 29891,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "67220000",
+      "libelle": "INTERET LOYER LOCATION ACQUISI",
+      "solde_n": 1031103,
+      "solde_n1": 264749
+    },
+    {
+      "numero_compte": "68120000",
+      "libelle": "DOT AUX AMORT IMM INCORP",
+      "solde_n": 65841,
+      "solde_n1": 7035
+    },
+    {
+      "numero_compte": "68130000",
+      "libelle": "DOT AUX AMORT IMM CORP",
+      "solde_n": 12497688,
+      "solde_n1": 4236339
+    },
+    {
+      "numero_compte": "68131000",
+      "libelle": "Cession moto-Cayat/Pur",
+      "solde_n": 0,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "69110000",
+      "libelle": "Pidr 2022",
+      "solde_n": 3539021,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "70620000",
+      "libelle": "Service vendus hors région",
+      "solde_n": -475950722,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "75600000",
+      "libelle": "Taux de change UGX /CFA",
+      "solde_n": -425,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "75800000",
+      "libelle": "PRODUITS DIVERS",
+      "solde_n": -609615,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "84100000",
+      "libelle": "Acquisition Moto Cayat",
+      "solde_n": -2283160,
+      "solde_n1": 0
+    },
+    {
+      "numero_compte": "88000000",
+      "libelle": "instance affectation",
+      "solde_n": 0,
+      "solde_n1": 0
+    }
+  ],
+  "grouping": [
+    {
+      "compte": "10",
+      "nature": "bilan",
+      "libelle": "CAPITAL",
+      "solde_n": -5000000,
+      "solde_n1": -5000000,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "11",
+      "nature": "bilan",
+      "libelle": "RÉSERVES",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "12",
+      "nature": "bilan",
+      "libelle": "REPORT À NOUVEAU",
+      "solde_n": 8347464,
+      "solde_n1": 0,
+      "variation": 8347464,
+      "variation_percent": 100,
+      "materiality": true,
+      "significant": true,
+      "mat_sign": "matériel significatif"
+    },
+    {
+      "compte": "13",
+      "nature": "bilan",
+      "libelle": "RÉSULTAT NET DE L'EXERCICE",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "14",
+      "nature": "bilan",
+      "libelle": "SUBVENTIONS D'INVESTISSEMENT",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": true,
+      "mat_sign": "non matériel significatif"
+    },
+    {
+      "compte": "15",
+      "nature": "bilan",
+      "libelle": "PROVISIONS RÉGLEMENTÉES ET FONDS ASSIMILÉS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "16",
+      "nature": "bilan",
+      "libelle": "EMPRUNTS ET DETTES ASSIMILÉES",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "17",
+      "nature": "bilan",
+      "libelle": "DETTES DE LOCATION ACQUISITION",
+      "solde_n": -12095989,
+      "solde_n1": -14816755,
+      "variation": 2720766,
+      "variation_percent": -18.362765666301428,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "18",
+      "nature": "bilan",
+      "libelle": "DETTES LIÉES À DES PARTICIPATIONS ET COMPTES DE LIAISON DES ÉTABLISSEMENTS ET SOCIÉTÉS EN PARTICIPATION",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "19",
+      "nature": "bilan",
+      "libelle": "PROVISIONS POUR RISQUES ET CHARGES",
+      "solde_n": -3539021,
+      "solde_n1": 0,
+      "variation": -3539021,
+      "variation_percent": 100,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "21",
+      "nature": "bilan",
+      "libelle": "IMMOBILISATIONS INCORPORELLES",
+      "solde_n": 131682,
+      "solde_n1": 131682,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "22",
+      "nature": "bilan",
+      "libelle": "TERRAINS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "23",
+      "nature": "bilan",
+      "libelle": "BÂTIMENTS, INSTALLATIONS TECHNIQUES ET AGENCEMENTS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "24",
+      "nature": "bilan",
+      "libelle": "MATÉRIEL, MOBILIER ET ACTIFS BIOLOGIQUES",
+      "solde_n": 44487317,
+      "solde_n1": 22933653,
+      "variation": 21553664,
+      "variation_percent": 93.98268997965566,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "25",
+      "nature": "bilan",
+      "libelle": "AVANCES ET ACOMPTES VERSÉS SUR IMMOBILISATIONS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "26",
+      "nature": "bilan",
+      "libelle": "TITRES DE PARTICIPATION",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "27",
+      "nature": "bilan",
+      "libelle": "AUTRES IMMOBILISATIONS FINANCIÈRES",
+      "solde_n": 10255167,
+      "solde_n1": 4540000,
+      "variation": 5715167,
+      "variation_percent": 125.8847356828194,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "28",
+      "nature": "bilan",
+      "libelle": "AMORTISSEMENTS",
+      "solde_n": -15550650,
+      "solde_n1": -2728457,
+      "variation": -12822193,
+      "variation_percent": 469.94301174619943,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "29",
+      "nature": "bilan",
+      "libelle": "DÉPRÉCIATIONS DES IMMOBILISATIONS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": true,
+      "mat_sign": "non matériel significatif"
+    },
+    {
+      "compte": "31",
+      "nature": "bilan",
+      "libelle": "STOCKS DE MARCHANDISES",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "32",
+      "nature": "bilan",
+      "libelle": "STOCKS DE MATIÈRES PREMIERES ET FOURNITURES LIÉES",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "33",
+      "nature": "bilan",
+      "libelle": "STOCKS D'AUTRES APPROVISIONNEMENTS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "34",
+      "nature": "bilan",
+      "libelle": "STOCKS DE PRODUITS EN COURS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "35",
+      "nature": "bilan",
+      "libelle": "STOCKS DE SERVICES EN COURS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "36",
+      "nature": "bilan",
+      "libelle": "STOCKS DE PRODUITS FINIS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "37",
+      "nature": "bilan",
+      "libelle": "STOCKS DE PRODUITS INTERMÉDIAIRES ET RÉSIDUELS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "38",
+      "nature": "bilan",
+      "libelle": "STOCKS EN COURS DE ROUTE, EN CONSIGNATION OU EN DÉPÔT",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "39",
+      "nature": "bilan",
+      "libelle": "DÉPRÉCIATIONS DE STOCKS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "40",
+      "nature": "bilan",
+      "libelle": "FOURNISSEURS ET COMPTES RATTACHÉS",
+      "solde_n": 6520050,
+      "solde_n1": -7299006,
+      "variation": 13819056,
+      "variation_percent": -189.32791670537057,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "41",
+      "nature": "bilan",
+      "libelle": "CLIENTS ET COMPTES RATTACHÉS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "42",
+      "nature": "bilan",
+      "libelle": "PERSONNEL",
+      "solde_n": -40405783,
+      "solde_n1": -12505234,
+      "variation": -27900549,
+      "variation_percent": 223.11097097423368,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "43",
+      "nature": "bilan",
+      "libelle": "ORGANISMES SOCIAUX",
+      "solde_n": -3040829,
+      "solde_n1": -2228573,
+      "variation": -812256,
+      "variation_percent": 36.44735891532384,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "44",
+      "nature": "bilan",
+      "libelle": "ÉTAT ET COLLECTIVITÉS PUBLIQUES",
+      "solde_n": -7627934,
+      "solde_n1": -7903975,
+      "variation": 276041,
+      "variation_percent": -3.49243260511325,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "45",
+      "nature": "bilan",
+      "libelle": "ORGANISMES INTERNATIONAUX",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "46",
+      "nature": "bilan",
+      "libelle": "APPORTEURS ASSOCIÉS ET GROUPE",
+      "solde_n": -29657163,
+      "solde_n1": -25579024,
+      "variation": -4078139,
+      "variation_percent": 15.943294005275574,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "47",
+      "nature": "bilan",
+      "libelle": "DÉBITEURS ET CRÉDITEURS DIVERS",
+      "solde_n": 9575407,
+      "solde_n1": 5530856,
+      "variation": 4044551,
+      "variation_percent": 73.12703494721251,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "48",
+      "nature": "bilan",
+      "libelle": "CRÉANCES ET DETTES HORS ACTIVITÉS ORDINAIRES (H.A.O.)",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "49",
+      "nature": "bilan",
+      "libelle": "DÉPRÉCIATIONS ET PROVISIONS POUR RISQUES A COURT TERME - TIERS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "50",
+      "nature": "bilan",
+      "libelle": "TITRES DE PLACEMENT",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "51",
+      "nature": "bilan",
+      "libelle": "VALEURS À ENCAISSER",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "52",
+      "nature": "bilan",
+      "libelle": "BANQUES",
+      "solde_n": 34206274,
+      "solde_n1": 35527917,
+      "variation": -1321643,
+      "variation_percent": -3.720012631193661,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "53",
+      "nature": "bilan",
+      "libelle": "ÉTABLISSEMENTS FINANCIERS ET ASSIMILÉS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "54",
+      "nature": "bilan",
+      "libelle": "INSTRUMENTS DE TRÉSORERIE",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "55",
+      "nature": "bilan",
+      "libelle": "INSTRUMENTS DE MONNAIE ELECTRONIQUE",
+      "solde_n": 12112,
+      "solde_n1": 235000,
+      "variation": -222888,
+      "variation_percent": -94.84595744680851,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "56",
+      "nature": "bilan",
+      "libelle": "BANQUES, CRÉDITS DE TRÉSORERIE ET D'ESCOMPTE",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "57",
+      "nature": "bilan",
+      "libelle": "CAISSE",
+      "solde_n": 1025521,
+      "solde_n1": 310718,
+      "variation": 714803,
+      "variation_percent": 230.0487902213583,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "58",
+      "nature": "bilan",
+      "libelle": "RÉGIES D'AVANCES, ACCRÉDITIFS ET VIREMENTS INTERNES",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": true,
+      "mat_sign": "non matériel significatif"
+    },
+    {
+      "compte": "59",
+      "nature": "bilan",
+      "libelle": "DÉPRÉCIATIONS ET PROVISIONS POUR RISQUES A COURT TERME - TRESORERIE",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "60",
+      "nature": "pnl",
+      "libelle": "ACHATS ET VARIATIONS DE STOCKS",
+      "solde_n": 17868847,
+      "solde_n1": 3192331,
+      "variation": 14676516,
+      "variation_percent": 459.74292766007034,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "61",
+      "nature": "pnl",
+      "libelle": "TRANSPORTS",
+      "solde_n": 7390913,
+      "solde_n1": 659500,
+      "variation": 6731413,
+      "variation_percent": 1020.6843062926459,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "62",
+      "nature": "pnl",
+      "libelle": "SERVICES EXTÉRIEURS",
+      "solde_n": 44290461,
+      "solde_n1": 28280309,
+      "variation": 16010152,
+      "variation_percent": 56.61236586912823,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "63",
+      "nature": "pnl",
+      "libelle": "AUTRES SERVICES EXTÉRIEURS",
+      "solde_n": 71823120,
+      "solde_n1": 51608469,
+      "variation": 20214651,
+      "variation_percent": 39.16925146529729,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "64",
+      "nature": "pnl",
+      "libelle": "IMPÔTS ET TAXES",
+      "solde_n": 21018039,
+      "solde_n1": 5454344,
+      "variation": 15563695,
+      "variation_percent": 285.34494707337853,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "65",
+      "nature": "pnl",
+      "libelle": "AUTRES CHARGES",
+      "solde_n": 1182069,
+      "solde_n1": 39952,
+      "variation": 1142117,
+      "variation_percent": 2858.7229675610733,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "66",
+      "nature": "pnl",
+      "libelle": "CHARGES DE PERSONNEL",
+      "solde_n": 300493195,
+      "solde_n1": 128812797,
+      "variation": 171680398,
+      "variation_percent": 133.27899245911104,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "67",
+      "nature": "pnl",
+      "libelle": "FRAIS FINANCIERS ET CHARGES ASSIMILÉES",
+      "solde_n": 1031103,
+      "solde_n1": 264749,
+      "variation": 766354,
+      "variation_percent": 289.4643605830428,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "68",
+      "nature": "pnl",
+      "libelle": "DOTATIONS AUX AMORTISSEMENTS",
+      "solde_n": 12563529,
+      "solde_n1": 4243374,
+      "variation": 8320155,
+      "variation_percent": 196.0740439093985,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "69",
+      "nature": "pnl",
+      "libelle": "DOTATIONS AUX PROVISIONS",
+      "solde_n": 3539021,
+      "solde_n1": 0,
+      "variation": 3539021,
+      "variation_percent": 100,
+      "materiality": true,
+      "significant": false,
+      "mat_sign": "matériel non significatif"
+    },
+    {
+      "compte": "70",
+      "nature": "pnl",
+      "libelle": "VENTES",
+      "solde_n": -475950722,
+      "solde_n1": 0,
+      "variation": -475950722,
+      "variation_percent": 100,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "71",
+      "nature": "pnl",
+      "libelle": "SUBVENTIONS D'EXPLOITATION",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "72",
+      "nature": "pnl",
+      "libelle": "PRODUCTION IMMOBILISÉE",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "73",
+      "nature": "pnl",
+      "libelle": "VARIATIONS DE STOCKS DE BIENS ET DE SERVICES PRODUITS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "75",
+      "nature": "pnl",
+      "libelle": "AUTRES PRODUITS",
+      "solde_n": -610040,
+      "solde_n1": 0,
+      "variation": -610040,
+      "variation_percent": 100,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "77",
+      "nature": "pnl",
+      "libelle": "REVENUS FINANCIERS ET ASSIMILÉS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "78",
+      "nature": "pnl",
+      "libelle": "TRANSFERTS DE CHARGES",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "79",
+      "nature": "pnl",
+      "libelle": "REPRISES DE PROVISIONS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "81",
+      "nature": "pnl",
+      "libelle": "VALEURS COMPTABLES DES CESSIONS D'IMMOBILISATIONS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "82",
+      "nature": "pnl",
+      "libelle": "PRODUITS DES CESSIONS D'IMMOBILISATIONS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "83",
+      "nature": "pnl",
+      "libelle": "CHARGES HORS ACTIVITÉS ORDINAIRES",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "84",
+      "nature": "pnl",
+      "libelle": "PRODUITS HORS ACTIVITÉS ORDINAIRES",
+      "solde_n": -2283160,
+      "solde_n1": 0,
+      "variation": -2283160,
+      "variation_percent": 100,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "85",
+      "nature": "pnl",
+      "libelle": "DOTATIONS HORS ACTIVITÉS ORDINAIRES",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "86",
+      "nature": "pnl",
+      "libelle": "REPRISES HORS ACTIVITÉS ORDINAIRES",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "87",
+      "nature": "pnl",
+      "libelle": "PARTICIPATION DES TRAVAILLEURS",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "88",
+      "nature": "pnl",
+      "libelle": "SUBVENTIONS D'ÉQUILIBRE",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    },
+    {
+      "compte": "89",
+      "nature": "pnl",
+      "libelle": "IMPÔTS SUR LE RÉSULTAT",
+      "solde_n": 0,
+      "solde_n1": 0,
+      "variation": 0,
+      "variation_percent": 0,
+      "materiality": false,
+      "significant": false,
+      "mat_sign": "non matériel non significatif"
+    }
+  ],
+  "efi": {
+    "actif": [
+      {
+        "ref": "AD",
+        "libelle": "IMMOBILISATIONS INCORPORELLES",
+        "compte_to_be_used": "['211', '2191', '212', '213', '214', '2193', '215', '216', '217', '218', '2198']['2811', '2818', '2911', '2918', '2919', '2812', '2813', '2814', '2912', '2913', '2914', '2815', '2816', '2915', '2916', '2817', '2818', '2917', '2918'][][][]",
+        "compte_to_be_used_off": [
+          "2913",
+          "2813",
+          "2814",
+          "2912",
+          "2817",
+          "2915",
+          "2198",
+          "2815",
+          "2191",
+          "2911",
+          "2919",
+          "2818",
+          "212",
+          "2914",
+          "2816",
+          "2193",
+          "215",
+          "217",
+          "218",
+          "211",
+          "216",
+          "2918",
+          "213",
+          "2917",
+          "214",
+          "2812",
+          "2811",
+          "2916"
+        ],
+        "brut_solde_n": 131682,
+        "amor_solde_n": -72876,
+        "net_solde_n": 58806,
+        "net_solde_n1": 124647
+      },
+      {
+        "ref": "AE",
+        "libelle": "Frais de développement et de prospection",
+        "compte_to_be_used": "['211', '2181', '2191']['2811', '2818', '2911', '2918', '2919'][][][]",
+        "compte_to_be_used_off": [
+          "2918",
+          "2191",
+          "2911",
+          "2919",
+          "211",
+          "2818",
+          "2181",
+          "2811"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "AF",
+        "libelle": "Brevets, licences, logiciels et droits similaires",
+        "compte_to_be_used": "['212', '213', '214', '2193']['2812', '2813', '2814', '2912', '2913', '2914', '2919'][][][]",
+        "compte_to_be_used_off": [
+          "2913",
+          "2813",
+          "2814",
+          "2912",
+          "213",
+          "2919",
+          "214",
+          "2914",
+          "212",
+          "2812",
+          "2193"
+        ],
+        "brut_solde_n": 131682,
+        "amor_solde_n": -72876,
+        "net_solde_n": 58806,
+        "net_solde_n1": 124647
+      },
+      {
+        "ref": "AG",
+        "libelle": "Fonds commercial et droit au bail",
+        "compte_to_be_used": "['215', '216']['2815', '2816', '2915', '2916'][][][]",
+        "compte_to_be_used_off": [
+          "215",
+          "2815",
+          "2915",
+          "216",
+          "2816",
+          "2916"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "AH",
+        "libelle": "Autres immobilisations incorporelles",
+        "compte_to_be_used": "['217', '218', '2198']['2817', '2818', '2917', '2918', '2919']['2181'][]['2181']",
+        "compte_to_be_used_off": [
+          "2918",
+          "217",
+          "2817",
+          "2198",
+          "218",
+          "2917",
+          "2919",
+          "2818",
+          "2181"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "AI",
+        "libelle": "IMMOBILISATIONS  CORPORELLES",
+        "compte_to_be_used": "['22', '231', '232', '233', '237', '2391', '234', '235', '238', '2392', '2393', '24', '245', '2495', '251', '252']['282', '292', '2831', '2832', '2833', '2837', '2931', '2932', '2937', '2939', '2834', '2835', '2838', '2934', '2935', '2938', '2938', '284', '294', '2949', '2845', '2945', '2951', '2952'][][][]",
+        "compte_to_be_used_off": [
+          "234",
+          "2845",
+          "2833",
+          "2834",
+          "24",
+          "2952",
+          "22",
+          "233",
+          "2951",
+          "292",
+          "2391",
+          "2831",
+          "235",
+          "2938",
+          "251",
+          "2838",
+          "2837",
+          "2934",
+          "2935",
+          "2932",
+          "2937",
+          "2939",
+          "237",
+          "252",
+          "2949",
+          "2835",
+          "2931",
+          "2392",
+          "284",
+          "2495",
+          "238",
+          "245",
+          "2945",
+          "294",
+          "2832",
+          "2393",
+          "232",
+          "231",
+          "282"
+        ],
+        "brut_solde_n": 44487317,
+        "amor_solde_n": -15477774,
+        "net_solde_n": 29009543,
+        "net_solde_n1": 20212231
+      },
+      {
+        "ref": "AJ",
+        "libelle": "Terrains (1) dont Placement Net :",
+        "compte_to_be_used": "['22']['282', '292'][][][]",
+        "compte_to_be_used_off": [
+          "22",
+          "292",
+          "282"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "AK",
+        "libelle": "Bâtiments(1)dont Placement Net :",
+        "compte_to_be_used": "['231', '232', '233', '237', '2391']['2831', '2832', '2833', '2837', '2931', '2932', '2937', '2939'][][][]",
+        "compte_to_be_used_off": [
+          "2837",
+          "2833",
+          "2391",
+          "2831",
+          "2932",
+          "2937",
+          "2939",
+          "237",
+          "2832",
+          "233",
+          "232",
+          "231",
+          "2931"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "AL",
+        "libelle": "Aménagements,  agencements  et installations",
+        "compte_to_be_used": "['234', '235', '238', '2392', '2393']['2834', '2835', '2838', '2934', '2935', '2938', '2938'][][][]",
+        "compte_to_be_used_off": [
+          "234",
+          "2392",
+          "238",
+          "2834",
+          "2934",
+          "2938",
+          "235",
+          "2935",
+          "2838",
+          "2393",
+          "2835"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "AM",
+        "libelle": "Matériel, mobilier et actifs biologiques",
+        "compte_to_be_used": "['24']['284', '294', '2949']['245', '2495']['2845', '2945', '2949']['245', '2495', '2845', '2945', '2949']",
+        "compte_to_be_used_off": [
+          "284",
+          "2845",
+          "2495",
+          "24",
+          "245",
+          "2945",
+          "294",
+          "2949"
+        ],
+        "brut_solde_n": 73570477,
+        "amor_solde_n": -27833203,
+        "net_solde_n": 45737274,
+        "net_solde_n1": 39128446
+      },
+      {
+        "ref": "AN",
+        "libelle": "Matériel de transport",
+        "compte_to_be_used": "['245', '2495']['2845', '2945', '2949'][][][]",
+        "compte_to_be_used_off": [
+          "2845",
+          "2495",
+          "245",
+          "2945",
+          "2949"
+        ],
+        "brut_solde_n": 29083160,
+        "amor_solde_n": -12355429,
+        "net_solde_n": 16727731,
+        "net_solde_n1": 18916215
+      },
+      {
+        "ref": "AP",
+        "libelle": "AVANCES ET ACOMPTES VERSES SUR IMMOBILISATIONS",
+        "compte_to_be_used": "['251', '252']['2951', '2952'][][][]",
+        "compte_to_be_used_off": [
+          "2952",
+          "2951",
+          "251",
+          "252"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "AQ",
+        "libelle": "IMMOBILISATIONS FINANCIERES",
+        "compte_to_be_used": "['26', '27']['296', '297'][][][]",
+        "compte_to_be_used_off": [
+          "26",
+          "296",
+          "297",
+          "27"
+        ],
+        "brut_solde_n": 10255167,
+        "amor_solde_n": 0,
+        "net_solde_n": 10255167,
+        "net_solde_n1": 4540000
+      },
+      {
+        "ref": "AR",
+        "libelle": "Titres de participation",
+        "compte_to_be_used": "['26']['296'][][][]",
+        "compte_to_be_used_off": [
+          "26",
+          "296"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "AS",
+        "libelle": "Autres  immobilisations financières",
+        "compte_to_be_used": "['27']['297'][][][]",
+        "compte_to_be_used_off": [
+          "27",
+          "297"
+        ],
+        "brut_solde_n": 10255167,
+        "amor_solde_n": 0,
+        "net_solde_n": 10255167,
+        "net_solde_n1": 4540000
+      },
+      {
+        "ref": "AZ",
+        "libelle": "TOTAL ACTIF IMMOBILISE",
+        "compte_to_be_used": "['211', '2181', '2191', '212', '213', '214', '2193', '215', '216', '217', '218', '2198', '22', '231', '232', '233', '237', '2391', '234', '235', '238', '2392', '2393', '24', '245', '2495', '251', '252', '26', '27']['2811', '2818', '2911', '2918', '2919', '2812', '2813', '2814', '2912', '2913', '2914', '2815', '2816', '2915', '2916', '2817', '2818', '2917', '2918', '282', '292', '2831', '2832', '2833', '2837', '2931', '2932', '2937', '2939', '2834', '2835', '2838', '2934', '2935', '2938', '2938', '284', '294', '2949', '2845', '2945', '2951', '2952', '296', '297'][][][]",
+        "compte_to_be_used_off": [
+          "234",
+          "2913",
+          "2813",
+          "2833",
+          "2814",
+          "2845",
+          "2912",
+          "2834",
+          "24",
+          "2915",
+          "2198",
+          "2817",
+          "2952",
+          "22",
+          "2951",
+          "2393",
+          "292",
+          "2815",
+          "2391",
+          "297",
+          "2191",
+          "235",
+          "2911",
+          "2831",
+          "2938",
+          "2919",
+          "296",
+          "2818",
+          "212",
+          "2914",
+          "251",
+          "2838",
+          "2816",
+          "2193",
+          "2837",
+          "215",
+          "2934",
+          "27",
+          "217",
+          "2935",
+          "218",
+          "211",
+          "282",
+          "2932",
+          "2937",
+          "2939",
+          "216",
+          "237",
+          "252",
+          "2949",
+          "2835",
+          "2931",
+          "2392",
+          "26",
+          "2495",
+          "284",
+          "238",
+          "2918",
+          "213",
+          "245",
+          "2917",
+          "2945",
+          "214",
+          "294",
+          "2812",
+          "2181",
+          "2832",
+          "233",
+          "232",
+          "231",
+          "2811",
+          "2916"
+        ],
+        "brut_solde_n": 54874166,
+        "amor_solde_n": -15550650,
+        "net_solde_n": 39323516,
+        "net_solde_n1": 24876878
+      },
+      {
+        "ref": "BA",
+        "libelle": "ACTIF CIRCULANT HAO",
+        "compte_to_be_used": "['485', '488']['498'][][][]",
+        "compte_to_be_used_off": [
+          "488",
+          "485",
+          "498"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "BB",
+        "libelle": "STOCKS ET ENCOURS",
+        "compte_to_be_used": "['31', '32', '33', '34', '35', '36', '37', '38']['39'][][][]",
+        "compte_to_be_used_off": [
+          "32",
+          "33",
+          "35",
+          "34",
+          "36",
+          "31",
+          "38",
+          "37",
+          "39"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "BG",
+        "libelle": "CREANCES ET EMPLOIS ASSIMILES",
+        "compte_to_be_used": "['485', '488', '31', '32', '33', '34', '35', '36', '37', '38']['498', '39'][][][]",
+        "compte_to_be_used_off": [
+          "32",
+          "33",
+          "35",
+          "34",
+          "36",
+          "31",
+          "498",
+          "488",
+          "38",
+          "37",
+          "485",
+          "39"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "BH",
+        "libelle": "Fournisseurs avances versées",
+        "compte_to_be_used": "['409']['490'][][][]",
+        "compte_to_be_used_off": [
+          "409",
+          "490"
+        ],
+        "brut_solde_n": 8800000,
+        "amor_solde_n": 0,
+        "net_solde_n": 8800000,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "BI",
+        "libelle": "Clients",
+        "compte_to_be_used": "['41']['491']['419'][]['419']",
+        "compte_to_be_used_off": [
+          "419",
+          "41",
+          "491"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "BJ",
+        "libelle": "Autres  créances",
+        "compte_to_be_used": "['185', '42', '43', '44', '45', '46', '47']['492', '493', '494', '495', '496', '497']['478'][]['478']",
+        "compte_to_be_used_off": [
+          "492",
+          "497",
+          "43",
+          "42",
+          "45",
+          "44",
+          "46",
+          "47",
+          "494",
+          "496",
+          "478",
+          "493",
+          "495",
+          "185"
+        ],
+        "brut_solde_n": -71156302,
+        "amor_solde_n": 0,
+        "net_solde_n": -71156302,
+        "net_solde_n1": -42685950
+      },
+      {
+        "ref": "BK",
+        "libelle": "TOTAL ACTIF CIRCULANT",
+        "compte_to_be_used": "['409', '41', '185', '42', '43', '44', '45', '46', '47']['490', '491', '492', '493', '494', '495', '496', '497']['419', '478'][]['419', '478']",
+        "compte_to_be_used_off": [
+          "47",
+          "491",
+          "45",
+          "41",
+          "46",
+          "496",
+          "478",
+          "495",
+          "492",
+          "497",
+          "419",
+          "44",
+          "42",
+          "185",
+          "409",
+          "43",
+          "494",
+          "490",
+          "493"
+        ],
+        "brut_solde_n": -62356302,
+        "amor_solde_n": 0,
+        "net_solde_n": -62356302,
+        "net_solde_n1": -42685950
+      },
+      {
+        "ref": "BQ",
+        "libelle": "Titres de placement",
+        "compte_to_be_used": "['50']['590'][][][]",
+        "compte_to_be_used_off": [
+          "590",
+          "50"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "BR",
+        "libelle": "Valeurs à encaisser",
+        "compte_to_be_used": "['51']['591'][][][]",
+        "compte_to_be_used_off": [
+          "51",
+          "591"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "BS",
+        "libelle": "Banques, chèques postaux, caisse et assimilés",
+        "compte_to_be_used": "['52', '53', '54', '55', '57', '581', '582']['592', '593', '594'][][][]",
+        "compte_to_be_used_off": [
+          "54",
+          "582",
+          "52",
+          "55",
+          "593",
+          "581",
+          "592",
+          "594",
+          "53",
+          "57"
+        ],
+        "brut_solde_n": 35243907,
+        "amor_solde_n": 0,
+        "net_solde_n": 35243907,
+        "net_solde_n1": 36073635
+      },
+      {
+        "ref": "BT",
+        "libelle": "TOTAL TRESORERIE-ACTIF",
+        "compte_to_be_used": "['50', '51', '52', '53', '54', '55', '57', '581', '582']['590', '591', '592', '593', '594'][][][]",
+        "compte_to_be_used_off": [
+          "54",
+          "582",
+          "52",
+          "55",
+          "591",
+          "593",
+          "581",
+          "592",
+          "590",
+          "50",
+          "594",
+          "53",
+          "57",
+          "51"
+        ],
+        "brut_solde_n": 35243907,
+        "amor_solde_n": 0,
+        "net_solde_n": 35243907,
+        "net_solde_n1": 36073635
+      },
+      {
+        "ref": "BU",
+        "libelle": "Ecart de conversion-Actif",
+        "compte_to_be_used": "['478']['0'][][][]",
+        "compte_to_be_used_off": [
+          "478",
+          "0"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "BZ",
+        "libelle": "TOTAL GENERAL",
+        "compte_to_be_used": "['211', '2181', '2191', '212', '213', '214', '2193', '215', '216', '217', '218', '2198', '22', '231', '232', '233', '237', '2391', '234', '235', '238', '2392', '2393', '24', '245', '2495', '251', '252', '26', '27', '485', '488', '31', '32', '33', '34', '35', '36', '37', '38', '409', '41', '185', '42', '43', '44', '45', '46', '47', '50', '51', '52', '53', '54', '55', '57', '581', '582', '478']['2811', '2818', '2911', '2918', '2919', '2812', '2813', '2814', '2912', '2913', '2914', '2815', '2816', '2915', '2916', '2817', '2818', '2917', '2918', '282', '292', '2831', '2832', '2833', '2837', '2931', '2932', '2937', '2939', '2834', '2835', '2838', '2934', '2935', '2938', '2938', '284', '294', '2949', '2845', '2945', '2951', '2952', '296', '297', '498', '39', '490', '491', '492', '493', '494', '495', '496', '497', '590', '591', '592', '593', '594']['2181', '245', '2495', '419', '478']['2845', '2945', '2949']['2181', '245', '2495', '2845', '2945', '2949', '419', '478']",
+        "compte_to_be_used_off": [
+          "2913",
+          "2845",
+          "54",
+          "2834",
+          "2952",
+          "485",
+          "292",
+          "52",
+          "297",
+          "2911",
+          "39",
+          "2837",
+          "419",
+          "217",
+          "38",
+          "2935",
+          "218",
+          "216",
+          "237",
+          "252",
+          "57",
+          "33",
+          "36",
+          "35",
+          "582",
+          "238",
+          "43",
+          "294",
+          "37",
+          "494",
+          "2812",
+          "2181",
+          "53",
+          "2934",
+          "234",
+          "593",
+          "2912",
+          "2915",
+          "233",
+          "2815",
+          "2391",
+          "296",
+          "45",
+          "2818",
+          "2914",
+          "46",
+          "496",
+          "2816",
+          "215",
+          "492",
+          "497",
+          "27",
+          "592",
+          "51",
+          "2392",
+          "2495",
+          "34",
+          "591",
+          "213",
+          "409",
+          "245",
+          "214",
+          "2811",
+          "2813",
+          "24",
+          "2198",
+          "47",
+          "22",
+          "581",
+          "2831",
+          "491",
+          "2919",
+          "212",
+          "590",
+          "251",
+          "478",
+          "495",
+          "32",
+          "44",
+          "42",
+          "2939",
+          "2949",
+          "26",
+          "284",
+          "2917",
+          "2945",
+          "490",
+          "2832",
+          "232",
+          "282",
+          "2833",
+          "2814",
+          "2817",
+          "2951",
+          "498",
+          "2191",
+          "235",
+          "2938",
+          "41",
+          "50",
+          "2838",
+          "2193",
+          "488",
+          "211",
+          "2932",
+          "2937",
+          "2835",
+          "2931",
+          "185",
+          "55",
+          "2918",
+          "31",
+          "594",
+          "2393",
+          "493",
+          "231",
+          "2916"
+        ],
+        "brut_solde_n": 56844931,
+        "amor_solde_n": -27906079,
+        "net_solde_n": 28938852,
+        "net_solde_n1": 37180778
+      }
+    ],
+    "passif": [
+      {
+        "ref": "CA",
+        "libelle": "Capital",
+        "compte_to_be_used": "['101', '102', '103', '104'][][][]",
+        "compte_to_be_used_off": [
+          "104",
+          "102",
+          "101",
+          "103"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -5000000,
+        "net_solde_n1": -5000000
+      },
+      {
+        "ref": "CB",
+        "libelle": "Apporteurs capital non appelé (-)",
+        "compte_to_be_used": "['109'][][][]",
+        "compte_to_be_used_off": [
+          "109"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "CD",
+        "libelle": "Primes liées au capital social",
+        "compte_to_be_used": "['105'][][][]",
+        "compte_to_be_used_off": [
+          "105"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "CE",
+        "libelle": "Ecarts de réévaluation",
+        "compte_to_be_used": "['106'][][][]",
+        "compte_to_be_used_off": [
+          "106"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "CF",
+        "libelle": "Réserves indisponibles",
+        "compte_to_be_used": "['111', '112', '113'][][][]",
+        "compte_to_be_used_off": [
+          "113",
+          "112",
+          "111"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "CG",
+        "libelle": "Réserves libres",
+        "compte_to_be_used": "['118'][][][]",
+        "compte_to_be_used_off": [
+          "118"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "CH",
+        "libelle": "Report à nouveau (+ ou -)",
+        "compte_to_be_used": "['121', '129'][][][]",
+        "compte_to_be_used_off": [
+          "121",
+          "129"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 8347464,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "CJ",
+        "libelle": "Résultat net de l'exercice (bénéfice + ou perte -)",
+        "compte_to_be_used": "['131', '139'][][][]",
+        "compte_to_be_used_off": [
+          "131",
+          "139"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "CL",
+        "libelle": "Subventions d'investissement",
+        "compte_to_be_used": "['14'][][][]",
+        "compte_to_be_used_off": [
+          "14"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "CM",
+        "libelle": "Provisions réglementées",
+        "compte_to_be_used": "['15'][][][]",
+        "compte_to_be_used_off": [
+          "15"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "CP",
+        "libelle": "TOTAL CAPITAUX PROPRES ET RESSOURCES ASSIMILEES",
+        "compte_to_be_used": "['101', '102', '103', '104', '109', '105', '106', '111', '112', '113', '118', '121', '129', '131', '139', '14', '15'][][][]",
+        "compte_to_be_used_off": [
+          "121",
+          "106",
+          "112",
+          "113",
+          "15",
+          "109",
+          "139",
+          "131",
+          "129",
+          "103",
+          "118",
+          "111",
+          "104",
+          "102",
+          "101",
+          "14",
+          "105"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 3347464,
+        "net_solde_n1": -5000000
+      },
+      {
+        "ref": "DA",
+        "libelle": "Emprunts et dettes financières diverses",
+        "compte_to_be_used": "['16', '181', '182', '183', '184'][][][]",
+        "compte_to_be_used_off": [
+          "16",
+          "183",
+          "182",
+          "184",
+          "181"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "DB",
+        "libelle": "Dettes de location-acquisition",
+        "compte_to_be_used": "['17'][][][]",
+        "compte_to_be_used_off": [
+          "17"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -12095989,
+        "net_solde_n1": -14816755
+      },
+      {
+        "ref": "DC",
+        "libelle": "Provisions pour risques et charges",
+        "compte_to_be_used": "['19'][][][]",
+        "compte_to_be_used_off": [
+          "19"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -3539021,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "DD",
+        "libelle": "TOTAL DETTES FINANCIERES ET RESSOURCES ASSIMILEES",
+        "compte_to_be_used": "['16', '181', '182', '183', '184', '17', '19'][][][]",
+        "compte_to_be_used_off": [
+          "16",
+          "17",
+          "183",
+          "182",
+          "19",
+          "184",
+          "181"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -15635010,
+        "net_solde_n1": -14816755
+      },
+      {
+        "ref": "DF",
+        "libelle": "TOTAL RESSOURCES STABLES",
+        "compte_to_be_used": "['101', '102', '103', '104', '109', '105', '106', '111', '112', '113', '118', '121', '129', '131', '139', '14', '15', '16', '181', '182', '183', '184', '17', '19'][][][]",
+        "compte_to_be_used_off": [
+          "106",
+          "183",
+          "113",
+          "181",
+          "118",
+          "111",
+          "121",
+          "112",
+          "15",
+          "104",
+          "17",
+          "103",
+          "109",
+          "101",
+          "105",
+          "16",
+          "19",
+          "182",
+          "139",
+          "184",
+          "131",
+          "102",
+          "129",
+          "14"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -12287546,
+        "net_solde_n1": -19816755
+      },
+      {
+        "ref": "DH",
+        "libelle": "Dettes circulantes HAO",
+        "compte_to_be_used": "['481', '482', '484', '4998'][][][]",
+        "compte_to_be_used_off": [
+          "484",
+          "482",
+          "4998",
+          "481"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "DI",
+        "libelle": "Clients, avances reçues",
+        "compte_to_be_used": "['419'][][][]",
+        "compte_to_be_used_off": [
+          "419"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "DJ",
+        "libelle": "Fournisseurs d'exploitation",
+        "compte_to_be_used": "['40'][][]['409']",
+        "compte_to_be_used_off": [
+          "409",
+          "40"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 15320050,
+        "net_solde_n1": -7299006
+      },
+      {
+        "ref": "DK",
+        "libelle": "Dettes fiscales et sociales",
+        "compte_to_be_used": "['42', '43', '44'][][][]",
+        "compte_to_be_used_off": [
+          "42",
+          "44",
+          "43"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -51074546,
+        "net_solde_n1": -22637782
+      },
+      {
+        "ref": "DM",
+        "libelle": "Autres dettes",
+        "compte_to_be_used": "['185', '45', '46', '47'][][]['479']",
+        "compte_to_be_used_off": [
+          "45",
+          "47",
+          "46",
+          "479",
+          "185"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -20081756,
+        "net_solde_n1": -20048168
+      },
+      {
+        "ref": "DN",
+        "libelle": "Provisions pour risques et charges à court terme",
+        "compte_to_be_used": "['499', '599'][][]['4998']",
+        "compte_to_be_used_off": [
+          "499",
+          "4998",
+          "599"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "DP",
+        "libelle": "TOTAL PASSIF CIRCULANT",
+        "compte_to_be_used": "['481', '482', '484', '4998', '419', '40', '42', '43', '44', '185', '45', '46', '47', '499', '599'][][]['409', '479']",
+        "compte_to_be_used_off": [
+          "499",
+          "419",
+          "409",
+          "482",
+          "599",
+          "43",
+          "484",
+          "42",
+          "44",
+          "45",
+          "40",
+          "46",
+          "47",
+          "479",
+          "185",
+          "4998",
+          "481"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -55836252,
+        "net_solde_n1": -49984956
+      },
+      {
+        "ref": "DQ",
+        "libelle": "Banques, crédits d'escompte",
+        "compte_to_be_used": "['564', '565'][][][]",
+        "compte_to_be_used_off": [
+          "565",
+          "564"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "DR",
+        "libelle": "Banques, établissements financiers et crédits de trésorerie",
+        "compte_to_be_used": "['52', '53', '561', '566'][][][]",
+        "compte_to_be_used_off": [
+          "53",
+          "52",
+          "561",
+          "566"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 34206274,
+        "net_solde_n1": 35527917
+      },
+      {
+        "ref": "DT",
+        "libelle": "TOTAL TRESORERIE-PASSIF",
+        "compte_to_be_used": "['564', '565', '52', '53', '561', '566'][][][]",
+        "compte_to_be_used_off": [
+          "566",
+          "52",
+          "561",
+          "565",
+          "564",
+          "53"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 34206274,
+        "net_solde_n1": 35527917
+      },
+      {
+        "ref": "DV",
+        "libelle": "Ecart de conversion-Passif",
+        "compte_to_be_used": "['479'][][][]",
+        "compte_to_be_used_off": [
+          "479"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "DZ",
+        "libelle": "TOTAL GENERAL",
+        "compte_to_be_used": "['101', '102', '103', '104', '109', '105', '106', '111', '112', '113', '118', '121', '129', '131', '139', '14', '15', '16', '181', '182', '183', '184', '17', '19', '481', '482', '484', '4998', '419', '40', '42', '43', '44', '185', '45', '46', '47', '499', '599', '564', '565', '52', '53', '561', '566', '479'][][]['409']",
+        "compte_to_be_used_off": [
+          "566",
+          "106",
+          "183",
+          "113",
+          "181",
+          "47",
+          "118",
+          "111",
+          "481",
+          "121",
+          "52",
+          "112",
+          "561",
+          "15",
+          "482",
+          "564",
+          "45",
+          "46",
+          "104",
+          "499",
+          "17",
+          "419",
+          "565",
+          "44",
+          "484",
+          "42",
+          "103",
+          "109",
+          "101",
+          "4998",
+          "105",
+          "185",
+          "16",
+          "19",
+          "182",
+          "53",
+          "409",
+          "139",
+          "184",
+          "43",
+          "599",
+          "131",
+          "40",
+          "479",
+          "102",
+          "129",
+          "14"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -33917524,
+        "net_solde_n1": -34273794
+      }
+    ],
+    "pnl": [
+      {
+        "ref": "TA",
+        "libelle": "Ventes de marchandises",
+        "compte_to_be_used": "['701'][][][]",
+        "compte_to_be_used_off": [
+          "701"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "RA",
+        "libelle": "Achats de marchandises",
+        "compte_to_be_used": "['601'][][][]",
+        "compte_to_be_used_off": [
+          "601"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 3398325,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "RB",
+        "libelle": "Variation de stocks de marchandises",
+        "compte_to_be_used": "['6031'][][][]",
+        "compte_to_be_used_off": [
+          "6031"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "XA",
+        "libelle": "MARGE COMMERCIALE (Somme TA à RB)",
+        "compte_to_be_used": "['701', '601', '6031'][][][]",
+        "compte_to_be_used_off": [
+          "701",
+          "601",
+          "6031"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 3398325,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "TB",
+        "libelle": "Ventes de produits fabriqués",
+        "compte_to_be_used": "['702', '703', '704'][][][]",
+        "compte_to_be_used_off": [
+          "704",
+          "702",
+          "703"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "TC",
+        "libelle": "Travaux, services vendus",
+        "compte_to_be_used": "['705', '706'][][][]",
+        "compte_to_be_used_off": [
+          "706",
+          "705"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -475950722,
+        "net_solde_n1": -231634527
+      },
+      {
+        "ref": "TD",
+        "libelle": "Produits accessoires",
+        "compte_to_be_used": "['707'][][][]",
+        "compte_to_be_used_off": [
+          "707"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "XB",
+        "libelle": "CHIFFRE D'AFFAIRES (A + B + C + D)",
+        "compte_to_be_used": "['701', '702', '703', '704', '705', '706', '707'][][][]",
+        "compte_to_be_used_off": [
+          "705",
+          "706",
+          "701",
+          "704",
+          "707",
+          "702",
+          "703"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -475950722,
+        "net_solde_n1": -231634527
+      },
+      {
+        "ref": "TE",
+        "libelle": "Production stockée (ou déstockage)",
+        "compte_to_be_used": "['73'][][][]",
+        "compte_to_be_used_off": [
+          "73"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "TF",
+        "libelle": "Production immobilisée",
+        "compte_to_be_used": "['72'][][][]",
+        "compte_to_be_used_off": [
+          "72"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "TG",
+        "libelle": "Subventions d'exploitation",
+        "compte_to_be_used": "['71'][][][]",
+        "compte_to_be_used_off": [
+          "71"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "TH",
+        "libelle": "Autres produits",
+        "compte_to_be_used": "['75'][][][]",
+        "compte_to_be_used_off": [
+          "75"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -610040,
+        "net_solde_n1": -6376
+      },
+      {
+        "ref": "TI",
+        "libelle": "Transferts de charges d'exploitation",
+        "compte_to_be_used": "['781'][][][]",
+        "compte_to_be_used_off": [
+          "781"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "RC",
+        "libelle": "Achats de matières premières et fournitures liées",
+        "compte_to_be_used": "['602'][][][]",
+        "compte_to_be_used_off": [
+          "602"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "RD",
+        "libelle": "Variation de stocks de matières premières et fournitures liées",
+        "compte_to_be_used": "['6032'][][][]",
+        "compte_to_be_used_off": [
+          "6032"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "RE",
+        "libelle": "Autres achats",
+        "compte_to_be_used": "['604', '605', '608'][][][]",
+        "compte_to_be_used_off": [
+          "604",
+          "608",
+          "605"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 14470522,
+        "net_solde_n1": 6995761
+      },
+      {
+        "ref": "RF",
+        "libelle": "Variation de stocks d'autres approvisionnements",
+        "compte_to_be_used": "['6033'][][][]",
+        "compte_to_be_used_off": [
+          "6033"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "RG",
+        "libelle": "Transports",
+        "compte_to_be_used": "['61'][][][]",
+        "compte_to_be_used_off": [
+          "61"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 7390913,
+        "net_solde_n1": 1373973
+      },
+      {
+        "ref": "RH",
+        "libelle": "Services extérieurs",
+        "compte_to_be_used": "['62', '63'][][][]",
+        "compte_to_be_used_off": [
+          "62",
+          "63"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 116113581,
+        "net_solde_n1": 82656413
+      },
+      {
+        "ref": "RI",
+        "libelle": "Impôts et taxes",
+        "compte_to_be_used": "['64'][][][]",
+        "compte_to_be_used_off": [
+          "64"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 21018039,
+        "net_solde_n1": 10221896
+      },
+      {
+        "ref": "RJ",
+        "libelle": "Autres charges",
+        "compte_to_be_used": "['65'][][][]",
+        "compte_to_be_used_off": [
+          "65"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 1182069,
+        "net_solde_n1": 39952
+      },
+      {
+        "ref": "XC",
+        "libelle": "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)",
+        "compte_to_be_used": "['701', '702', '703', '704', '705', '706', '707', '601', '6031', '73', '72', '71', '75', '781', '602', '6032', '604', '605', '608', '6033', '61', '62', '63', '64', '65'][][][]",
+        "compte_to_be_used_off": [
+          "706",
+          "701",
+          "71",
+          "605",
+          "65",
+          "63",
+          "781",
+          "601",
+          "703",
+          "75",
+          "608",
+          "6032",
+          "6031",
+          "73",
+          "604",
+          "62",
+          "602",
+          "705",
+          "64",
+          "61",
+          "704",
+          "707",
+          "6033",
+          "702",
+          "72"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -312987313,
+        "net_solde_n1": -130352908
+      },
+      {
+        "ref": "RK",
+        "libelle": "Charges de personnel",
+        "compte_to_be_used": "['66'][][][]",
+        "compte_to_be_used_off": [
+          "66"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 300493195,
+        "net_solde_n1": 129371645
+      },
+      {
+        "ref": "XD",
+        "libelle": "EXCEDENT BRUT D'EXPLOITATION (XC+RK)",
+        "compte_to_be_used": "['701', '702', '703', '704', '705', '706', '707', '601', '6031', '73', '72', '71', '75', '781', '602', '6032', '604', '605', '608', '6033', '61', '62', '63', '64', '65', '66'][][][]",
+        "compte_to_be_used_off": [
+          "706",
+          "701",
+          "71",
+          "605",
+          "65",
+          "63",
+          "781",
+          "601",
+          "703",
+          "75",
+          "608",
+          "6032",
+          "6031",
+          "66",
+          "73",
+          "604",
+          "62",
+          "602",
+          "705",
+          "64",
+          "61",
+          "704",
+          "707",
+          "6033",
+          "702",
+          "72"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -12494118,
+        "net_solde_n1": -981263
+      },
+      {
+        "ref": "TJ",
+        "libelle": "Reprises d'amortissements, provisions et dépréciations",
+        "compte_to_be_used": "['791', '798', '799'][][][]",
+        "compte_to_be_used_off": [
+          "791",
+          "798",
+          "799"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "RL",
+        "libelle": "Dotations aux amortissements, aux provisions et dépréciations",
+        "compte_to_be_used": "['681', '691'][][][]",
+        "compte_to_be_used_off": [
+          "681",
+          "691"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 16102550,
+        "net_solde_n1": 4243374
+      },
+      {
+        "ref": "XE",
+        "libelle": "RESULTAT D'EXPLOITATION (XD+TJ+ RL)",
+        "compte_to_be_used": "['701', '702', '703', '704', '705', '706', '707', '601', '6031', '73', '72', '71', '75', '781', '602', '6032', '604', '605', '608', '6033', '61', '62', '63', '64', '65', '66', '791', '798', '799', '681', '691'][][][]",
+        "compte_to_be_used_off": [
+          "706",
+          "798",
+          "701",
+          "791",
+          "681",
+          "71",
+          "605",
+          "65",
+          "63",
+          "781",
+          "601",
+          "703",
+          "691",
+          "75",
+          "608",
+          "6032",
+          "6031",
+          "799",
+          "66",
+          "73",
+          "604",
+          "62",
+          "602",
+          "705",
+          "64",
+          "61",
+          "704",
+          "707",
+          "6033",
+          "702",
+          "72"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 3608432,
+        "net_solde_n1": 3262111
+      },
+      {
+        "ref": "TK",
+        "libelle": "Revenus financiers et assimilés",
+        "compte_to_be_used": "['77'][][][]",
+        "compte_to_be_used_off": [
+          "77"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "TL",
+        "libelle": "Reprises de provisions et dépréciations financières",
+        "compte_to_be_used": "['797'][][][]",
+        "compte_to_be_used_off": [
+          "797"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "TM",
+        "libelle": "Transferts de charges financières",
+        "compte_to_be_used": "['787'][][][]",
+        "compte_to_be_used_off": [
+          "787"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "RM",
+        "libelle": "Frais financiers et charges assimilées",
+        "compte_to_be_used": "['67'][][][]",
+        "compte_to_be_used_off": [
+          "67"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 1031103,
+        "net_solde_n1": 264749
+      },
+      {
+        "ref": "RN",
+        "libelle": "Dotations aux provisions et aux dépréciations financières",
+        "compte_to_be_used": "['697'][][][]",
+        "compte_to_be_used_off": [
+          "697"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "XF",
+        "libelle": "RESULTAT FINANCIER (somme TK à RN)",
+        "compte_to_be_used": "['77', '797', '787', '67', '697'][][][]",
+        "compte_to_be_used_off": [
+          "797",
+          "77",
+          "697",
+          "787",
+          "67"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 1031103,
+        "net_solde_n1": 264749
+      },
+      {
+        "ref": "XG",
+        "libelle": "RESULTAT DES ACTIVITES ORDINAIRES (XE+XF)",
+        "compte_to_be_used": "['701', '702', '703', '704', '705', '706', '707', '601', '6031', '73', '72', '71', '75', '781', '602', '6032', '604', '605', '608', '6033', '61', '62', '63', '64', '65', '66', '791', '798', '799', '681', '691', '77', '797', '787', '67', '697'][][][]",
+        "compte_to_be_used_off": [
+          "797",
+          "706",
+          "798",
+          "701",
+          "791",
+          "681",
+          "71",
+          "605",
+          "65",
+          "63",
+          "77",
+          "781",
+          "601",
+          "703",
+          "691",
+          "67",
+          "75",
+          "608",
+          "6032",
+          "6031",
+          "799",
+          "66",
+          "73",
+          "787",
+          "697",
+          "604",
+          "62",
+          "602",
+          "705",
+          "64",
+          "61",
+          "704",
+          "707",
+          "6033",
+          "702",
+          "72"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 4639535,
+        "net_solde_n1": 3526860
+      },
+      {
+        "ref": "TN",
+        "libelle": "Produits des cessions d'immobilisations",
+        "compte_to_be_used": "['82'][][][]",
+        "compte_to_be_used_off": [
+          "82"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": -3000100
+      },
+      {
+        "ref": "TO",
+        "libelle": "Autres Produits HAO",
+        "compte_to_be_used": "['84', '86', '88'][][][]",
+        "compte_to_be_used_off": [
+          "84",
+          "86",
+          "88"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -2283160,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "RO",
+        "libelle": "Valeurs comptables des cessions d'immobilisations",
+        "compte_to_be_used": "['81'][][][]",
+        "compte_to_be_used_off": [
+          "81"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 8324438
+      },
+      {
+        "ref": "RP",
+        "libelle": "Autres Charges HAO",
+        "compte_to_be_used": "['83', '85'][][][]",
+        "compte_to_be_used_off": [
+          "83",
+          "85"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "XH",
+        "libelle": "RESULTAT HORS ACTIVITES ORDINAIRES (somme TN à RP)",
+        "compte_to_be_used": "['82', '84', '86', '88', '81', '83', '85'][][][]",
+        "compte_to_be_used_off": [
+          "86",
+          "85",
+          "83",
+          "84",
+          "82",
+          "81",
+          "88"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": -2283160,
+        "net_solde_n1": 5324338
+      },
+      {
+        "ref": "RQ",
+        "libelle": "Participation des travailleurs",
+        "compte_to_be_used": "['87'][][][]",
+        "compte_to_be_used_off": [
+          "87"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "RS",
+        "libelle": "Impôts sur le résultat",
+        "compte_to_be_used": "['89'][][][]",
+        "compte_to_be_used_off": [
+          "89"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 0,
+        "net_solde_n1": 0
+      },
+      {
+        "ref": "XI",
+        "libelle": "RESULTAT NET (XG+XH+RQ+RS)",
+        "compte_to_be_used": "['701', '702', '703', '704', '705', '706', '707', '601', '6031', '73', '72', '71', '75', '781', '602', '6032', '604', '605', '608', '6033', '61', '62', '63', '64', '65', '66', '791', '798', '799', '681', '691', '77', '797', '787', '67', '697', '82', '84', '86', '88', '81', '83', '85', '87', '89'][][][]",
+        "compte_to_be_used_off": [
+          "797",
+          "87",
+          "86",
+          "706",
+          "798",
+          "701",
+          "791",
+          "681",
+          "81",
+          "71",
+          "605",
+          "65",
+          "63",
+          "77",
+          "781",
+          "601",
+          "703",
+          "82",
+          "691",
+          "67",
+          "75",
+          "88",
+          "608",
+          "6032",
+          "6031",
+          "799",
+          "66",
+          "73",
+          "787",
+          "697",
+          "89",
+          "604",
+          "62",
+          "84",
+          "602",
+          "705",
+          "64",
+          "85",
+          "61",
+          "704",
+          "707",
+          "6033",
+          "702",
+          "83",
+          "72"
+        ],
+        "brut_solde_n": 0,
+        "amor_solde_n": 0,
+        "net_solde_n": 2356375,
+        "net_solde_n1": 8851198
+      }
+    ]
+  },
+  "materiality": [
+    {
+      "benchmark": "profit_before_tax",
+      "materiality": 141383,
+      "performance_materiality": 11311,
+      "trivial_misstatements": 7069,
+      "factor": "6",
+      "choice": true
+    }
+  ]
+}]

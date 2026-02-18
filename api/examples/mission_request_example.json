@@ -1,0 +1,74 @@
+{
+  "note": "⚠️ Cette API utilise multipart/form-data. Ce JSON montre la structure des données à envoyer.",
+  
+  "request_example": {
+    "url": "http://localhost:5000/api/v1/missions/",
+    "method": "POST",
+    "content_type": "multipart/form-data",
+    
+    "form_data_fields": {
+      "files[]": ["Balance_2024.xlsx", "Balance_2023.xlsx"],
+      "annee_auditee": "2024",
+      "id_client": "65a1b2c3d4e5f6789abcdef0",
+      "date_debut": "2024-01-01",
+      "date_fin": "2024-12-31"
+    },
+    
+    "description": "Exemple de données à envoyer pour créer une mission"
+  },
+  
+  "response_example_success": {
+    "success": true,
+    "message": "Mission créée avec succès",
+    "data": {
+      "_id": "65a1b2c3d4e5f6789abcdef1",
+      "mission": {
+        "id_client": "65a1b2c3d4e5f6789abcdef0",
+        "annee_auditee": "2024",
+        "date_debut": "2024-01-01",
+        "date_fin": "2024-12-31",
+        "balances": [
+          "65a1b2c3d4e5f6789abcdef2",
+          "65a1b2c3d4e5f6789abcdef3"
+        ],
+        "balance_variation": {
+          "comptes": []
+        },
+        "grouping": {
+          "groupes": []
+        },
+        "efi": {
+          "etats": []
+        },
+        "materiality": []
+      }
+    }
+  },
+  
+  "response_example_error_400": {
+    "success": false,
+    "error": "Au moins 2 fichiers de balance sont requis (N et N-1)"
+  },
+  
+  "response_example_error_validation": {
+    "success": false,
+    "error": "Erreurs de validation",
+    "errors": {
+      "date_debut": ["La date de début est requise"],
+      "annee_auditee": ["L'année auditée est requise"]
+    }
+  },
+  
+  "response_example_error_client_not_found": {
+    "success": false,
+    "error": "Client avec l'ID '65a1b2c3d4e5f6789abcdef0' introuvable"
+  }
+}
+
+
+
+
+
+
+
+

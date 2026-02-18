@@ -1,0 +1,13 @@
+[{
+  "_id": {
+    "$oid": "688216b76fcfc7ed5faf4d75"
+  },
+  "nom": "EAMAU",
+  "activite": "Peche",
+  "adresse": "Cocody",
+  "referentiel": "SYSCOHADA",
+  "forme_juridique": "SARL",
+  "capital": "1000000",
+  "siege_social": "Cocody Abatta",
+  "n_cc": "32456789761"
+}]

@@ -1,0 +1,12 @@
+{
+  "nom": "Entreprise ABC SARL",
+  "activite": "Conseil en audit et expertise comptable",
+  "referentiel": "syscohada",
+  "forme_juridique": "SARL",
+  "capital": 1000000.0,
+  "siege_social": "Abidjan, Cocody Angré 7ème Tranche",
+  "adresse": "123 Boulevard de la République, Cocody, Abidjan, Côte d'Ivoire",
+  "n_cc": "CC123456789"
+}
+
+
