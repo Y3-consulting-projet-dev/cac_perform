@@ -5,6 +5,7 @@ Gère la logique métier pour les opérations sur les missions
 
 from typing import Dict, Any, List, Optional
 from werkzeug.datastructures import FileStorage
+from marshmallow import ValidationError
 from src.utils.database import get_database
 from src.model import Mission
 from src.schemas.mission_schemas import validate_mission_data
@@ -13,15 +14,6 @@ from src.schemas.mission_schemas import validate_mission_data
 class MissionService:
     """Service pour les opérations sur les missions"""
     
-    @staticmethod
-    def _get_clients_collection(db):
-        try:
-            if "Client_db" in db.list_collection_names():
-                return db["Client_db"]
-        except Exception:
-            pass
-        return db["Client"]
-
     @staticmethod
     def create_mission(
         files: List[FileStorage],
@@ -187,13 +179,12 @@ class MissionService:
             from bson import ObjectId
             
             # Essayer d'abord avec l'ID tel quel (string)
-            clients_collection = MissionService._get_clients_collection(db)
-            client = clients_collection.find_one({"_id": validated_data["id_client"]})
+            client = db.Client.find_one({"_id": validated_data["id_client"]})
             
             # Si non trouvé, essayer avec ObjectId
             if not client:
                 try:
-                    client = clients_collection.find_one({"_id": ObjectId(validated_data["id_client"])})
+                    client = db.Client.find_one({"_id": ObjectId(validated_data["id_client"])})
                     if client:
                         validated_data["id_client"] = str(client["_id"])
                 except Exception as e:
@@ -201,7 +192,7 @@ class MissionService:
             
             if not client:
                 # Récupérer quelques clients pour aider l'utilisateur
-                sample_clients = list(clients_collection.find().limit(3))
+                sample_clients = list(db.Client.find().limit(3))
                 client_info = []
                 for c in sample_clients:
                     client_info.append({
@@ -244,6 +235,9 @@ class MissionService:
                 "data": donnees
             }
             
+        except ValidationError as e:
+            # Erreur métier/validation -> sera renvoyée en HTTP 400 par la ressource
+            raise ValueError(str(e))
         except ValueError as e:
             raise ValueError(str(e))
         except Exception as e:
@@ -372,11 +366,9 @@ class MissionService:
                 from bson import ObjectId
                 for cid in client_ids:
                     try:
-                        clients_collection = MissionService._get_clients_collection(db)
-                        client = clients_collection.find_one({"_id": ObjectId(cid)})
+                        client = db.Client.find_one({"_id": ObjectId(cid)})
                     except Exception:
-                        clients_collection = MissionService._get_clients_collection(db)
-                        client = clients_collection.find_one({"_id": cid})
+                        client = db.Client.find_one({"_id": cid})
                     if client:
                         clients[cid] = client.get("nom")
 

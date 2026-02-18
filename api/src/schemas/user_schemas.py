@@ -86,6 +86,17 @@ class UserRegistrationSchema(Schema):
         ]),
         error_messages={"required": "Le grade est requis."}
     )
+    departement = fields.String(
+        required=True,
+        validate=validate.OneOf([
+            "Audit", 
+            "Conseil", 
+            "Expertise Comptable", 
+            "Juridique", 
+            "Administration"
+        ]),
+        error_messages={"required": "Le département est requis."}
+    )
 
 class UserLoginSchema(Schema):
     """Schéma pour la connexion d'un utilisateur"""
@@ -126,6 +137,15 @@ class UserUpdateSchema(Schema):
             "Directeur"
         ])
     )
+    departement = fields.String(
+        validate=validate.OneOf([
+            "Audit", 
+            "Conseil", 
+            "Expertise Comptable", 
+            "Juridique", 
+            "Administration"
+        ])
+    )
     is_active = fields.Boolean()
 
 class UserResponseSchema(Schema):
@@ -139,6 +159,7 @@ class UserResponseSchema(Schema):
     email = fields.String()
     role = fields.String()
     grade = fields.String()
+    departement = fields.String()
     is_active = fields.Boolean()
     created_at = fields.Raw(dump_only=True)
     last_login = fields.Raw(dump_only=True, allow_none=True)
@@ -217,4 +238,12 @@ GRADES = [
     "Senior", 
     "Expert", 
     "Directeur"
+]
+
+DEPARTEMENTS = [
+    "Audit", 
+    "Conseil", 
+    "Expertise Comptable", 
+    "Juridique", 
+    "Administration"
 ]

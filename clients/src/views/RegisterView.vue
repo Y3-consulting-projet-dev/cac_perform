@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="w-screen min-h-screen bg-gradient-to-r from-blue-ycube to-green-ycube flex">
 
     <!-- COLONNE GAUCHE -->
@@ -48,35 +48,29 @@
         <!-- Mot de passe -->
         <div>
           <label class="uppercase font-semibold text-[#022a41]">Mot de passe</label>
-          <div class="relative">
-            <input v-model="form.password" :type="showPassword ? 'text' : 'password'" placeholder="........" class="p-3 w-full border-2 border-[#022a41] rounded-xl bg-transparent
-         text-[#022a41] focus:outline-none placeholder:font-bold placeholder:text-2xl pr-20" />
-            <button
-              type="button"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[#022a41] hover:opacity-80"
-              @click="showPassword = !showPassword"
-            >
-              <FontAwesomeIcon v-if="showPassword" :icon="['fas', 'eye-slash']" class="text-[#01986b]" />
-              <FontAwesomeIcon v-else :icon="['fas', 'eye']" class="text-[#01986b]" />
-            </button>
-          </div>
+          <input v-model="form.password" type="password" placeholder="........" class="p-3 w-full border-2 border-[#022a41] rounded-xl bg-transparent
+         text-[#022a41] focus:outline-none placeholder:font-bold placeholder:text-2xl" />
         </div>
 
         <!-- Confirmation -->
         <div>
           <label class="uppercase font-semibold text-[#022a41]">Confirmation</label>
-          <div class="relative">
-            <input v-model="confirmPassword" :type="showConfirmPassword ? 'text' : 'password'" placeholder="........" class="p-3 w-full border-2 border-[#022a41] rounded-xl bg-transparent
-         text-[#022a41] focus:outline-none placeholder:font-bold placeholder:text-2xl pr-20" />
-            <button
-              type="button"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[#022a41] hover:opacity-80"
-              @click="showConfirmPassword = !showConfirmPassword"
-            >
-              <FontAwesomeIcon v-if="showConfirmPassword" :icon="['fas', 'eye-slash']" class="text-[#01986b]" />
-              <FontAwesomeIcon v-else :icon="['fas', 'eye']" class="text-[#01986b]" />
-            </button>
-          </div>
+          <input v-model="confirmPassword" type="password" placeholder="........" class="p-3 w-full border-2 border-[#022a41] rounded-xl bg-transparent
+         text-[#022a41] focus:outline-none placeholder:font-bold placeholder:text-2xl" />
+        </div>
+
+        <!-- Département -->
+        <div>
+          <label class="uppercase font-semibold text-[#022a41]">Département</label>
+          <select v-model="form.departement" class="p-3 w-full border-2 border-[#022a41] rounded-xl bg-transparent
+         text-[#022a41] focus:outline-none">
+            <option disabled value="">Choisir</option>
+            <option>Audit</option>
+            <option>Conseil</option>
+            <option>Expertise Comptable</option>
+            <option>Juridique</option>
+            <option>Administration</option>
+          </select>
         </div>
 
         <!-- Rôle -->
@@ -94,7 +88,7 @@
         </div>
 
         <!-- Grade -->
-        <div >
+        <div class="md:col-span-2">
           <label class="uppercase font-semibold text-[#022a41]">Grade</label>
           <select v-model="form.grade" class="p-3 w-full border-2 border-[#022a41] rounded-xl bg-transparent
          text-[#022a41] focus:outline-none">
@@ -116,11 +110,9 @@
       <!-- BOUTON -->
       <button
         @click="register"
-        :disabled="isLoading"
-        class="mt-8 px-10 py-3 bg-green-ycube-2 rounded-full uppercase text-white font-bold hover:bg-green-ycube active:bg-green-ycube-2 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
+        class="mt-8 px-10 py-3 bg-green-ycube-2 rounded-full uppercase text-white font-bold hover:bg-green-ycube active:bg-green-ycube-2"
       >
-        <span v-if="isLoading" class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-        <span>{{ isLoading ? 'Création...' : 'Créer un compte' }}</span>
+        Créer un compte
       </button>
 
       <!-- Lien -->
@@ -147,61 +139,19 @@ const form = ref({
   password: '',
   firstname: '',
   lastname: '',
+  departement: '',
   role: '',
   grade: '',
 })
 
 const confirmPassword = ref('')
-const showPassword = ref(false)
-const showConfirmPassword = ref(false)
 const errorMessage = ref('')
-const isLoading = ref(false)
-
-function normalizeBackendMessage(message) {
-  if (!message) return ''
-  if (message.startsWith('Erreur de validation:')) {
-    return message.replace('Erreur de validation:', '').trim()
-  }
-  return message
-}
-
-function validatePasswordRules(password) {
-  if (password.length < 8) return 'Le mot de passe doit contenir au moins 8 caractÃ¨res.'
-  if (!/[A-Z]/.test(password)) return 'Le mot de passe doit contenir au moins une majuscule.'
-  if (!/[a-z]/.test(password)) return 'Le mot de passe doit contenir au moins une minuscule.'
-  if (!/\d/.test(password)) return 'Le mot de passe doit contenir au moins un chiffre.'
-  return ''
-}
 
 async function register() {
   errorMessage.value = ''
-  if (isLoading.value) return
 
-  const requiredFields = [
-    { key: 'firstname', label: 'Le prénom est requis.' },
-    { key: 'lastname', label: 'Le nom est requis.' },
-    { key: 'email', label: "L'email est requis." },
-    { key: 'password', label: 'Le mot de passe est requis.' },
-    { key: 'role', label: 'Le rôle est requis.' },
-    { key: 'grade', label: 'Le grade est requis.' },
-  ]
-
-  for (const field of requiredFields) {
-    if (!form.value[field.key]) {
-      errorMessage.value = field.label
-      return
-    }
-  }
-
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailPattern.test(form.value.email)) {
-    errorMessage.value = "Format d'email invalide."
-    return
-  }
-
-  const passwordRuleError = validatePasswordRules(form.value.password)
-  if (passwordRuleError) {
-    errorMessage.value = passwordRuleError
+  if (!Object.values(form.value).every(Boolean)) {
+    errorMessage.value = 'Veuillez remplir tous les champs'
     return
   }
 
@@ -211,15 +161,11 @@ async function register() {
   }
 
   try {
-    isLoading.value = true
     await registerApi(form.value)
     notyf.trigger('Compte créé avec succès', 'success')
     router.push('/connexion')
   } catch (e) {
-    const apiMessage = e?.response?.data?.message || e?.message
-    errorMessage.value = normalizeBackendMessage(apiMessage || 'Erreur lors de la création du compte')
-  } finally {
-    isLoading.value = false
+    errorMessage.value = 'Erreur lors de la création du compte'
   }
 }
 </script>

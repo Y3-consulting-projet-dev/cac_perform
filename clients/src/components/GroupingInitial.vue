@@ -21,7 +21,6 @@ const groupingInitialCols = computed(() => {
   const annee = parseInt(props.annee_auditee)
 
   return [
-    { label: 'REF', key: '', align: 'left' },
     { label: 'Intitulé', key: 'libelle', align: 'left' },
     {
       label: isNaN(annee) ? 'N' : annee,
