@@ -3901,6 +3901,9 @@ class Mission(Document):
                     return float(v)
                 except Exception:
                     return 0.0
+            
+            # Tolérance pour éviter les faux écarts dus aux arrondis Excel
+            EPSILON_ECART = 0.01
 
             def _get_opening_solde(row):
                 # Ouverture N: priorité au couple débit/crédit initial.
@@ -3959,28 +3962,29 @@ class Mission(Document):
                             print(f"  📋 Compte {num}: ouvN={ouvN}, clotN1={clotN1}, ecart={ecart} (ouvN - clotN1)")
                         
                         # Ajouter tous les comptes, pas seulement ceux avec des écarts
-                        ecart_normal_130 = (ecart != 0 and is_compte_130(num))
+                        has_ecart = abs(ecart) >= EPSILON_ECART
+                        ecart_normal_130 = (has_ecart and is_compte_130(num))
                         tous_comptes.append({
                             "numero_compte": num,
                             "libelle": ln.get("libelle", ""),
                             "ouverture_n": ouvN,
                             "cloture_n1": clotN1,
                             "ecart": ecart,
-                            "status": "ok_130" if ecart_normal_130 else ("ecart" if ecart != 0 else "ok"),
+                            "status": "ok_130" if ecart_normal_130 else ("ecart" if has_ecart else "ok"),
                             "message": (
                                 f"Écart normal sur le compte 130 : Ouverture N {ouvN} vs Clôture N-1 {clotN1}"
                                 if ecart_normal_130 else
-                                (f"Ouverture N {ouvN} ≠ Clôture N-1 {clotN1}" if ecart != 0 else f"Ouverture N {ouvN} = Clôture N-1 {clotN1}")
+                                (f"Ouverture N {ouvN} ≠ Clôture N-1 {clotN1}" if has_ecart else f"Ouverture N {ouvN} = Clôture N-1 {clotN1}")
                             ),
                             "justification": (
                                 f"Le compte 130 (résultat en instance d'affectation) peut varier entre la clôture N-1 ({clotN1}) et l'ouverture N ({ouvN}). Écart normal: {ecart}."
                                 if ecart_normal_130 else
-                                (f"Écart de {ecart} entre l'ouverture de l'exercice N ({ouvN}) et la clôture de l'exercice N-1 ({clotN1})." if ecart != 0 else "Aucun écart détecté.")
+                                (f"Écart de {ecart} entre l'ouverture de l'exercice N ({ouvN}) et la clôture de l'exercice N-1 ({clotN1})." if has_ecart else "Aucun écart détecté.")
                             ),
                             "conclusion_audit": (
                                 "Aucune anomalie détectée: variation normale du compte 130 liée à l'affectation du résultat."
                                 if ecart_normal_130 else
-                                ("Écart significatif détecté - Nécessite une justification et une documentation des causes de cette variation." if ecart != 0 else "Aucune anomalie détectée.")
+                                ("Écart significatif détecté - Nécessite une justification et une documentation des causes de cette variation." if has_ecart else "Aucune anomalie détectée.")
                             )
                         })
                         comptes_ajoutes += 1
@@ -4069,7 +4073,7 @@ class Mission(Document):
             tous_comptes.sort(key=lambda x: x["numero_compte"])
             
             # Compter les écarts
-            ecarts_count = len([c for c in tous_comptes if c["status"] in ["ecart", "nouveau", "supprime"]])
+            ecarts_count = len([c for c in tous_comptes if c["status"] in ["ecart", "ecart_partiel"]])
             
             print(f"📊 Résumé final: {len(tous_comptes)} comptes traités")
             print(f"   - Comptes OK: {len([c for c in tous_comptes if c['status'] == 'ok'])}")
@@ -4089,18 +4093,23 @@ class Mission(Document):
                     "comptes": []
                 }
             
+            comptes_ecarts = [
+                c for c in tous_comptes
+                if c.get("status") in ["ecart", "ecart_partiel"]
+            ]
+
             report = {
-                "ok": ecarts_count == 0, 
+                "ok": ecarts_count == 0,
                 "total_comptes": len(tous_comptes),
                 "ecarts_count": ecarts_count,
                 "periodes": {
                     "N": periode_N,
                     "N-1": periode_N1
                 },
-                "comptes": tous_comptes
+                "comptes": comptes_ecarts
             }
             
-            print(f"✅ Rapport généré: {len(tous_comptes)} comptes, {ecarts_count} écarts")
+            print(f"✅ Rapport généré: {len(comptes_ecarts)} écart(s) affiché(s) sur {len(tous_comptes)} compte(s) analysé(s)")
             print(f"📋 Clés du rapport: {list(report.keys())}")
             print(f"📋 Nombre de comptes dans le rapport: {len(report.get('comptes', []))}")
             
@@ -4402,7 +4411,7 @@ class Mission(Document):
                 comptes_ajustes.append(compte_ajuste)
             
             # Recalculer les statistiques
-            ecarts_count = len([c for c in comptes_ajustes if c["status"] in ["ecart", "nouveau", "supprime", "ecart_partiel"]])
+            ecarts_count = len([c for c in comptes_ajustes if c["status"] in ["ecart", "ecart_partiel"]])
             
             rapport_final = rapport_standard.copy()
             rapport_final.update({

@@ -65,7 +65,7 @@ def controle_intangibilite_route(id_mission):
     if isinstance(comptes, list):
         ecarts = [
             c for c in comptes
-            if c and c.get("status") in ("ecart", "nouveau", "supprime", "ecart_partiel")
+            if c and c.get("status") in ("ecart", "ecart_partiel")
         ]
         report["comptes"] = ecarts
         report["ecarts_only"] = True

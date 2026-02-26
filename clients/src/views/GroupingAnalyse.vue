@@ -66,7 +66,11 @@ const intangibiliteReport = ref(null);
 const intangibiliteEcarts = computed(() => {
   const comptes = intangibiliteReport.value?.comptes;
   if (!Array.isArray(comptes)) return [];
-  return comptes.filter((c) => c && ["ecart", "nouveau", "supprime", "ecart_partiel"].includes(c.status));
+  return comptes.filter((c) => {
+    if (!c) return false;
+    const status = String(c.status || "").toLowerCase();
+    return ["ecart", "ecart_partiel"].includes(status);
+  });
 });
 const classementBilanReport = ref(null);
 const etatsFinanciersReport = ref(null);
@@ -2866,7 +2870,7 @@ function formatAmount(value) {
 
             <!-- Afficher un message si le rapport existe mais n'a pas de comptes -->
             <div
-              v-if="intangibiliteReport && intangibiliteReport.comptes !== undefined && intangibiliteReport.comptes.length === 0"
+              v-if="intangibiliteReport && intangibiliteReport.comptes !== undefined && intangibiliteReport.comptes.length === 0 && (intangibiliteReport.total_comptes || 0) === 0"
               class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
               <div class="text-sm text-yellow-700 font-semibold mb-2">⚠️ Aucun compte trouvé</div>
               <div class="text-sm text-yellow-600">{{ intangibiliteReport.message || "Aucun compte n'a été trouvé dans les balances pour le contrôle d'intangibilité." }}</div>
