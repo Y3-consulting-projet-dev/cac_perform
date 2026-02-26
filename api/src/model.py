@@ -1219,145 +1219,466 @@ class Mission(Document):
     # ---------- Grouping ----------
     # ---------- Grouping ----------
     def create_grouping(self, balances_rapprochee, referentiel="syscohada"):
+        """
+        Regroupe les comptes de la balance selon le référentiel SYSCOHADA.
+        
+        Les règles de regroupement sont définies par des préfixes de comptes.
+        Pour les comptes présents à la fois à l'actif et au passif (ex: 42, 43, 44...),
+        le classement dépend du signe du solde (débiteur = actif, créditeur = passif).
+        
+        Chaque entrée du résultat représente un grand groupe avec :
+        - ref        : identifiant court du groupe
+        - libelle    : intitulé du groupe en majuscules
+        - section    : "actif", "passif" ou "pnl"
+        - solde_n    : total période N
+        - solde_n1   : total période N-1
+        - variation  : solde_n - solde_n1
+        - variation_percent
+        - comptes    : liste des comptes détaillés (numero_compte, libelle, solde_n, solde_n1, variation)
+        """
         if not isinstance(balances_rapprochee, list):
-            raise TypeError("balances_rapprochee doit ??tre une liste")
+            raise TypeError("balances_rapprochee doit être une liste")
 
-        print(f"?? Balances re?ues : {len(balances_rapprochee)} comptes")
+        print(f"📊 Balances reçues : {len(balances_rapprochee)} comptes")
 
-        # =============================
-        # 1?? Charger le r?f?rentiel (DB ou autre source)
-        # =============================
-        referentiel_groupes = self.get_referentiel_groupes(referentiel)
+        # =====================================================================
+        # DÉFINITION DES GROUPES SYSCOHADA
+        # Chaque groupe : (ref, libelle, section, règles)
+        # Une règle est un callable(numero, solde_n) -> bool
+        # L'ordre est important : on prend le PREMIER groupe qui correspond.
+        # =====================================================================
 
-        if not referentiel_groupes:
-            raise ValueError(f"Aucun r?f?rentiel trouv? pour '{referentiel}'")
+        def starts(numero, *prefixes):
+            """Vrai si numero commence par l'un des préfixes donnés."""
+            return any(numero.startswith(p) for p in prefixes)
 
-        # Nouveau format: dictionnaire avec grands_groupes / sous_groupes
-        if isinstance(referentiel_groupes, dict):
-            grands_groupes = referentiel_groupes.get("grands_groupes", [])
-            sous_groupes = referentiel_groupes.get("sous_groupes", [])
-        else:
-            # Fallback ancien format (liste plate)
-            grands_groupes = []
-            sous_groupes = referentiel_groupes
+        def is_debiteur(solde_n):
+            return (solde_n or 0) >= 0
 
-        print(f"?? R?f?rentiel '{referentiel}' charg? : {len(grands_groupes)} grands groupes, {len(sous_groupes)} sous-groupes")
+        def is_crediteur(solde_n):
+            return (solde_n or 0) < 0
 
-        # Index par pr?fixe pour les sous-groupes
-        groupes = {g["compte"]: {
-            **g,
-            "solde_n": 0,
-            "solde_n1": 0,
-            "variation": 0,
-            "variation_percent": 0,
-            "comptes": []
-        } for g in sous_groupes}
+        GROUPES_RULES = [
+            # ---- ACTIF ----
+            {
+                "libelle": "IMMOBILISATIONS INCORPORELLES",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "21", "281", "291"),
+            },
+            {
+                "libelle": "IMMOBILISATIONS CORPORELLES",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "22", "23", "24", "25", "282", "283", "284", "292", "293", "294", "295"),
+            },
+            {
+                "libelle": "IMMOBILISATIONS FINANCIÈRES",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "26", "27", "296", "297"),
+            },
+            {
+                "libelle": "STOCKS",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "31", "32", "33", "34", "35", "36", "37", "38", "39"),
+            },
+            {
+                "libelle": "FOURNISSEUR D'EXPLOITATION",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "409"),
+            },
+            {
+                "libelle": "CLIENTS",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "414", "415", "416", "417", "418"),
+            },
+            {
+                "libelle": "AUTRES CRÉANCES",
+                "section": "actif",
+                # 42, 43, 44, 185, 45, 46, 47 sauf 478 → débiteur
+                "match": lambda n, s: starts(n, "42", "43", "44", "45", "46", "47", "185") and not starts(n, "478") and is_debiteur(s),
+            },
+            {
+                "libelle": "ACTIF CIRCULANT HAO",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "485", "488", "498"),
+            },
+            {
+                "libelle": "TITRES DE PLACEMENT",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "50", "590"),
+            },
+            {
+                "libelle": "VALEUR À ENCAISSER",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "51", "591"),
+            },
+            {
+                "libelle": "BANQUES, CHÈQUES POSTAUX, CAISSES ET ASSIMILÉ",
+                "section": "actif",
+                # 52, 53, 54, 55, 57, 58 débiteurs
+                "match": lambda n, s: starts(n, "52", "53", "54", "55", "57", "58") and is_debiteur(s),
+            },
+            {
+                "libelle": "ÉCART DE CONVERSION ACTIF",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "478"),
+            },
 
-        # =============================
-        # 2?? Regrouper les comptes
-        # =============================
+            # ---- PASSIF ----
+            {
+                "libelle": "FOURNISSEURS D'EXPLOITATION",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "40") and not starts(n, "409") and is_crediteur(s),
+            },
+            {
+                "libelle": "DETTES FISCALES ET SOCIALES",
+                "section": "passif",
+                # 42, 43, 44 créditeurs
+                "match": lambda n, s: starts(n, "42", "43", "44") and is_crediteur(s),
+            },
+            {
+                "libelle": "AUTRES DETTES",
+                "section": "passif",
+                # 185, 45, 46, 47 sauf 479 créditeurs
+                "match": lambda n, s: starts(n, "185", "45", "46", "47") and not starts(n, "479") and is_crediteur(s),
+            },
+            {
+                "libelle": "PASSIF CIRCULANT HAO",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "481", "482", "484"),
+            },
+            {
+                "libelle": "DETTES CIRCULANT HAO",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "4998"),
+            },
+            {
+                "libelle": "PROVISIONS POUR RISQUES À COURT TERME",
+                "section": "passif",
+                # 499 sauf 4998, 599
+                "match": lambda n, s: starts(n, "499", "599") and not starts(n, "4998"),
+            },
+            {
+                "libelle": "BANQUES, CHÈQUES POSTAUX, CAISSES ET ASSIMILÉ",
+                "section": "passif",
+                # 52, 53, 54, 55, 566, 57, 58 créditeurs
+                "match": lambda n, s: starts(n, "52", "53", "54", "55", "566", "57", "58") and is_crediteur(s),
+            },
+            {
+                "libelle": "BANQUES, CRÉDIT D'ESCOMPTE ET DE TRÉSORERIE",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "564", "565"),
+            },
+            {
+                "libelle": "CLIENTS",
+                "section": "passif",
+                # 419 créditeur (avances reçues clients)
+                "match": lambda n, s: starts(n, "419") and is_crediteur(s),
+            },
+            {
+                "libelle": "ÉCART DE CONVERSION PASSIF",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "479"),
+            },
+            {
+                "libelle": "CAPITAUX PROPRES",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "10", "11", "12", "13"),
+            },
+            {
+                "libelle": "SUBVENTIONS",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "14"),
+            },
+            {
+                "libelle": "PROVISIONS RÉGLEMENTÉES",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "15"),
+            },
+            {
+                "libelle": "EMPRUNTS ET DETTES FINANCIÈRES DIVERSES",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "16", "18"),
+            },
+            {
+                "libelle": "DETTES DE LOCATIONS ACQUISITION",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "17"),
+            },
+            {
+                "libelle": "PROVISIONS FINANCIÈRES POUR RISQUES ET CHARGES",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "19"),
+            },
+
+            # ---- COMPTE DE RÉSULTAT ----
+            {
+                "libelle": "ACHAT DE MARCHANDISES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "601"),
+            },
+            {
+                "libelle": "ACHAT DE MATIÈRE PREMIÈRE ET FOURNITURES LIÉES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "602"),
+            },
+            {
+                "libelle": "VARIATION DE STOCKS DE MARCHANDISES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "6031"),
+            },
+            {
+                "libelle": "VARIATION DE STOCKS DE MATIÈRE PREMIÈRE ET FOURNITURES LIÉES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "6032"),
+            },
+            {
+                "libelle": "VARIATION DE STOCKS D'AUTRES APPROVISIONNEMENT",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "6033"),
+            },
+            {
+                "libelle": "ACHATS STOCKÉS DE MATIÈRES PREMIÈRE ET FOURNITURES CONSOMMABLES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "604"),
+            },
+            {
+                "libelle": "AUTRES ACHATS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "605"),
+            },
+            {
+                "libelle": "ACHATS D'EMBALLAGES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "608"),
+            },
+            {
+                "libelle": "TRANSPORTS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "61"),
+            },
+            {
+                "libelle": "SERVICES EXTÉRIEURS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "62", "63"),
+            },
+            {
+                "libelle": "IMPÔTS ET TAXES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "64"),
+            },
+            {
+                "libelle": "AUTRES CHARGES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "65"),
+            },
+            {
+                "libelle": "CHARGES DE PERSONNEL",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "66"),
+            },
+            {
+                "libelle": "FRAIS FINANCIERS ET CHARGES ASSIMILÉS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "67"),
+            },
+            {
+                "libelle": "DOTATIONS AUX AMORTISSEMENTS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "68"),
+            },
+            {
+                "libelle": "DOTATIONS AUX PROVISIONS ET AUX DÉPRÉCIATIONS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "69"),
+            },
+            {
+                "libelle": "VENTES DE MARCHANDISES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "701"),
+            },
+            {
+                "libelle": "VENTE DE PRODUITS FINIS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "702"),
+            },
+            {
+                "libelle": "VENTES DE PRODUITS INTERMÉDIAIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "703"),
+            },
+            {
+                "libelle": "VENTES DE PRODUITS RÉSIDUELS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "704"),
+            },
+            {
+                "libelle": "TRAVAUX FACTURÉS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "705"),
+            },
+            {
+                "libelle": "SERVICES VENDUS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "706"),
+            },
+            {
+                "libelle": "PRODUITS ACCESSOIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "707"),
+            },
+            {
+                "libelle": "SUBVENTIONS D'EXPLOITATION",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "71"),
+            },
+            {
+                "libelle": "PRODUCTION IMMOBILISÉE",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "72"),
+            },
+            {
+                "libelle": "VARIATIONS DES STOCKS DE BIENS ET DE SERVICES PRODUITS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "73"),
+            },
+            {
+                "libelle": "AUTRES PRODUITS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "75"),
+            },
+            {
+                "libelle": "REVENUS FINANCIERS ET PRODUITS ASSIMILÉS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "77"),
+            },
+            {
+                "libelle": "TRANSFERTS DE CHARGES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "78"),
+            },
+            {
+                "libelle": "REPRISES DE PROVISIONS, DE DÉPRÉCIATION ET AUTRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "79"),
+            },
+            {
+                "libelle": "VALEURS COMPTABLES DES CESSIONS D'IMMOBILISATIONS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "81"),
+            },
+            {
+                "libelle": "PRODUITS DES CESSIONS D'IMMOBILISATIONS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "82"),
+            },
+            {
+                "libelle": "CHARGES HORS ACTIVITÉS ORDINAIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "83"),
+            },
+            {
+                "libelle": "PRODUITS HORS ACTIVITÉS ORDINAIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "84"),
+            },
+            {
+                "libelle": "DOTATIONS HORS ACTIVITÉS ORDINAIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "85"),
+            },
+            {
+                "libelle": "REPRISES HORS ACTIVITÉS ORDINAIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "86"),
+            },
+            {
+                "libelle": "PARTICIPATION DES TRAVAILLEURS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "87"),
+            },
+            {
+                "libelle": "SUBVENTIONS D'ÉQUILIBRE",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "88"),
+            },
+            {
+                "libelle": "IMPÔTS SUR LE RÉSULTAT",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "89"),
+            },
+        ]
+
+        # =====================================================================
+        # Initialiser un dictionnaire de groupes vide
+        # =====================================================================
+        groupes_data = {}
+        for g in GROUPES_RULES:
+            key = g["libelle"] + "|" + g["section"]  # clé interne unique
+            groupes_data[key] = {
+                "libelle": g["libelle"],
+                "section": g["section"],
+                "solde_n": 0,
+                "solde_n1": 0,
+                "comptes": [],
+                "_match": g["match"],
+            }
+
+        # =====================================================================
+        # Classifier chaque compte dans son groupe
+        # =====================================================================
+        non_classes = []
         for item in balances_rapprochee:
             numero = str(item.get("numero_compte", "")).strip()
-            if len(numero) < 2:
-                continue
-
-            prefixe = numero[:2]
-            if not prefixe.isdigit():
-                continue
-
-            # Ignorer les comptes hors r?f?rentiel
-            if prefixe not in groupes:
+            if not numero or not numero[0].isdigit():
                 continue
 
             solde_n = item.get("solde_n", 0) or 0
             solde_n1 = item.get("solde_n1", 0) or 0
+            libelle = item.get("libelle", "")
 
-            target_group = groupes[prefixe]
+            for key, g in groupes_data.items():
+                try:
+                    if g["_match"](numero, solde_n):
+                        g["solde_n"] += solde_n
+                        g["solde_n1"] += solde_n1
+                        g["comptes"].append({
+                            "numero_compte": numero,
+                            "libelle": libelle,
+                            "solde_n": solde_n,
+                            "solde_n1": solde_n1,
+                            "variation": solde_n - solde_n1,
+                        })
+                        break
+                except Exception:
+                    continue
 
-            target_group["solde_n"] += solde_n
-            target_group["solde_n1"] += solde_n1
+        if non_classes:
+            print(f"⚠️  {len(non_classes)} compte(s) non classés : {non_classes[:20]}")
 
-            target_group["comptes"].append({
-                "numero_compte": numero,
-                "libelle": item.get("libelle", ""),
-                "solde_n": solde_n,
-                "solde_n1": solde_n1,
-                "variation": solde_n - solde_n1
-            })
-
-        # =============================
-        # 3?? Calculs finaux sur les sous-groupes
-        # =============================
-        def finalize_group(group):
-            group["variation"] = group["solde_n"] - group["solde_n1"]
-
-            if group["solde_n1"] == 0:
-                group["variation_percent"] = 0
-            else:
-                group["variation_percent"] = (
-                    group["variation"] / group["solde_n1"]
-                ) * 100
-
-            group["comptes"].sort(key=lambda x: x["numero_compte"])
-            group["comptes_detaille"] = group["comptes"]  # compat front
-            return group
-
-        for group in groupes.values():
-            finalize_group(group)
-
-        # =============================
-        # 4?? R?sultat final: grands groupes uniquement
-        # =============================
+        # =====================================================================
+        # Finaliser et construire le résultat
+        # =====================================================================
         result = []
-
-        # Index sous-groupes par libelle_groupe
-        sous_by_grand_label = {}
-        for g in sous_groupes:
-            label = g.get("libelle_groupe")
-            if not label:
-                continue
-            sous_by_grand_label.setdefault(label, []).append(g.get("compte"))
-
-        for grand in grands_groupes:
-            children = grand.get("children") or grand.get("comptes") or sous_by_grand_label.get(grand.get("libelle"), [])
-            child_groups = [groupes.get(c) for c in children if c in groupes]
-
-            # Skip empty grand groups
-            if not child_groups:
+        for g in groupes_data.values():
+            if not g["comptes"]:
                 continue
 
-            solde_n = sum(c["solde_n"] for c in child_groups)
-            solde_n1 = sum(c["solde_n1"] for c in child_groups)
-            variation = solde_n - solde_n1
-            variation_percent = (variation / solde_n1) * 100 if solde_n1 else 0
+            g["comptes"].sort(key=lambda x: x["numero_compte"])
 
-            # D?tails du grand groupe = sous-groupes (agr?g?s)
-            details = [
-                {
-                    "numero_compte": c["compte"],
-                    "libelle": c.get("libelle", ""),
-                    "solde_n": c["solde_n"],
-                    "solde_n1": c["solde_n1"],
-                    "variation": c["variation"]
-                }
-                for c in child_groups
-            ]
-            details.sort(key=lambda x: x.get("numero_compte") or "")
+            variation = g["solde_n"] - g["solde_n1"]
+            variation_percent = (variation / g["solde_n1"] * 100) if g["solde_n1"] else 0
 
-            grand_row = {
-                **grand,
-                "solde_n": solde_n,
-                "solde_n1": solde_n1,
+            result.append({
+                "libelle": g["libelle"],
+                "section": g["section"],
+                "solde_n": g["solde_n"],
+                "solde_n1": g["solde_n1"],
                 "variation": variation,
                 "variation_percent": variation_percent,
-                "comptes": details,
-                "comptes_detaille": details
-            }
+                "comptes": g["comptes"],
+            })
 
-            result.append(grand_row)
-
-        print(f"? Grouping g?n?r? : {len(result)} grands groupes")
-
+        print(f"✅ Grouping généré : {len(result)} groupes")
         return result
 
 
