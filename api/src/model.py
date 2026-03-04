@@ -2679,7 +2679,7 @@ class Mission(Document):
 
         Formules :
         ACTIF  :  AD=AE+AF+AG+AH  |  AI=AJ+AK+AL+AM+AN  |  AQ=AR+AS
-                    AZ=AD+AI+AP+AQ  |  BG=BH+BI+BJ  |  BK=BA+BB+BG
+                    AZ=AD+AI+AQ      |  BG=BH+BI+BJ  |  BK=BA+BB+BG
                     BT=BQ+BR+BS     |  BZ=AZ+BK+BT+BU
         PASSIF :  CP=CA+CB+CD+CE+CF+CG+CH+CJ+CL+CM
                     DD=DA+DB+DC     |  DF=CP+DD
@@ -2757,9 +2757,9 @@ class Mission(Document):
                 bg1 = g1("BH") + g1("BI") + g1("BJ")
                 _set(idx, "BG", bg, bg1)
 
-                # ("AZ", ["AD","AI","AP","AQ"])
-                az  = g("AD") + g("AI") + g("AP") + g("AQ")
-                az1 = g1("AD") + g1("AI") + g1("AP") + g1("AQ")
+                # ("AZ", ["AD","AI","AQ"])
+                az  = g("AD") + g("AI") + g("AQ")
+                az1 = g1("AD") + g1("AI") + g1("AQ")
                 _set(idx, "AZ", az, az1)
 
                 # ("BK", ["BA","BB","BG"])
@@ -5551,19 +5551,19 @@ class Mission(Document):
             analyse_quantitative = mission.get("analyse_quantitative", {})
             analyse_qualitative = mission.get("analyse_qualitative", {})
             
-            # Vérifier que les analyses sont disponibles
-            if not analyse_quantitative.get("analyse") or not analyse_qualitative.get("analyse"):
-                return {"ok": False, "message": "Analyses quantitative et qualitative requises. Veuillez d'abord exécuter les étapes 7 et 8.", "presentation": []}
+            # Les analyses quantitative/qualitative ne sont plus obligatoires
+            # La presentation peut se baser sur les flags du grouping.
+
             
             # Créer un index des analyses pour un accès rapide
             quant_index = {}
-            for item in analyse_quantitative["analyse"]:
-                quant_index[item["compte"]] = item
-            
+            if analyse_quantitative.get("analyse"):
+                for item in analyse_quantitative["analyse"]:
+                    quant_index[item["compte"]] = item
             qual_index = {}
-            for item in analyse_qualitative["analyse"]:
-                qual_index[item["compte"]] = item
-
+            if analyse_qualitative.get("analyse"):
+                for item in analyse_qualitative["analyse"]:
+                    qual_index[item["compte"]] = item
             # Préparer les données de présentation
             presentation_data = []
             for item in grouping:
@@ -5575,14 +5575,14 @@ class Mission(Document):
                 
                 # Récupérer les données quantitatives
                 quant_data = quant_index.get(compte, {})
-                is_quantitatively_significant = quant_data.get('is_significant', False)
+                is_quantitatively_significant = quant_data.get('is_significant', bool(item.get('materiality', False)))
                 materiality_threshold = quant_data.get('materiality_threshold', 0)
                 percentage_of_threshold = quant_data.get('percentage_of_threshold', 0)
                 
                 # Récupérer les données qualitatives
                 qual_data = qual_index.get(compte, {})
-                is_qualitatively_significant = qual_data.get('is_qualitatively_significant', False)
-                qualitative_score = qual_data.get('qualitative_score', 0)
+                is_qualitatively_significant = qual_data.get('is_qualitatively_significant', bool(item.get('significant', False)))
+                qualitative_score = qual_data.get('qualitative_score', 100 if is_qualitatively_significant else 0)
                 positive_responses = qual_data.get('positive_responses', 0)
                 
                 # Calculer le pourcentage de variation

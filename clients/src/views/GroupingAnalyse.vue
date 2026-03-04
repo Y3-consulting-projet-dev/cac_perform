@@ -3977,8 +3977,7 @@ function formatAmount(value) {
           </div>
 
           <div v-if="!presentationComptesSignificatifsReport && !loading" class="text-justifypy-8">
-            <div class="text-gray-600 mb-4">Aucune présentation disponible. Assurez-vous d'avoir effectué les analyses
-              quantitative et qualitative (étapes 7 et 8).</div>
+            <div class="text-gray-600 mb-4">Aucune presentation disponible. Veuillez executer les analyses prealables avant de generer la presentation.</div>
             <button @click="loadPresentationComptesSignificatifs"
               class="px-6 py-3 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-700 transition-colors"
               :disabled="loading">
