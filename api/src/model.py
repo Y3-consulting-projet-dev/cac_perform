@@ -1371,8 +1371,8 @@ class Mission(Document):
             {
                 "libelle": "CLIENTS AVANCES REÇUES",
                 "section": "passif",
-                # 419 créditeur (avances reçues clients)
-                "match": lambda n, s: starts(n, "419") and is_crediteur(s),
+                # 419 = avances reçues clients (passif), quel que soit le signe importé.
+                "match": lambda n, s: starts(n, "419"),
             },
             {
                 "libelle": "ÉCART DE CONVERSION PASSIF",
@@ -1705,15 +1705,21 @@ class Mission(Document):
     # ---------- Variation N vs N-1 ----------
     def rapprochement_des_balances(self, balance_n, balance_n1):
         variation_des_balances = []
+        idx_n = {str(item.get('numero_compte')): item for item in balance_n}
         idx_n1 = {str(item.get('numero_compte')): item for item in balance_n1}
 
-        for bal in balance_n:
-            numero = str(bal['numero_compte'])
+        # Inclure tous les comptes présents en N ou en N-1
+        # (évite de perdre des comptes comme 419 présents uniquement en N-1).
+        all_numeros = list(dict.fromkeys(list(idx_n.keys()) + list(idx_n1.keys())))
+
+        for numero in all_numeros:
+            item_n = idx_n.get(numero, {})
+            item_n1 = idx_n1.get(numero, {})
             ligne = {
                 'numero_compte': numero,
-                'libelle': bal['libelle'],
-                'solde_n': bal['solde_reel'],
-                'solde_n1': idx_n1.get(numero, {}).get('solde_reel', 0)
+                'libelle': item_n.get('libelle') or item_n1.get('libelle') or '',
+                'solde_n': item_n.get('solde_reel', 0) or 0,
+                'solde_n1': item_n1.get('solde_reel', 0) or 0
             }
             variation_des_balances.append(ligne)
 
@@ -2703,8 +2709,8 @@ class Mission(Document):
                 idx[ref]["net_solde_n"]  = val_n
                 idx[ref]["net_solde_n1"] = val_n1
 
-        def _sum(idx, refs, key="net_solde_n"):
-            return sum(_g(idx, r, key) for r in refs)
+        # def _sum(idx, refs, key="net_solde_n"):
+        #     return sum(_g(idx, r, key) for r in refs)
 
         for section in ("actif", "passif", "pnl"):
             rows = efi.get(section, [])
@@ -2737,8 +2743,8 @@ class Mission(Document):
                 _set(idx, "AD", ad, ad1)
 
                 # ("AI", ["AJ","AK","AL","AM","AN"])
-                ai  = g("AJ") + g("AK") + g("AL") + g("AM") + g("AN") - g("AP")
-                ai1 = g1("AJ") + g1("AK") + g1("AL") + g1("AM") + g1("AN") - g1("AP")
+                ai  = g("AJ") + g("AK") + g("AL") + g("AM") + g("AN")
+                ai1 = g1("AJ") + g1("AK") + g1("AL") + g1("AM") + g1("AN")
                 _set(idx, "AI", ai, ai1)
 
                 # ("AQ", ["AR","AS"])
@@ -2772,17 +2778,50 @@ class Mission(Document):
                 _set(idx, "BZ", bz, bz1)
 
             elif section == "passif":
-                for agg_ref, leaf_refs in [
-                    ("CP", ["CA","CB","CD","CE","CF","CG","CH","CJ","CL","CM"]),
-                    ("DD", ["DA","DB","DC"]),
-                    ("DF", ["CP","DD"]),
-                    ("DP", ["DH","DI","DJ","DK","DM","DN"]),
-                    ("DT", ["DQ","DR"]),
-                    ("DZ", ["DF","DP","DT","DV"]),
-                ]:
-                    _set(idx, agg_ref,
-                        _sum(idx, leaf_refs),
-                        _sum(idx, leaf_refs, K))
+                # for agg_ref, leaf_refs in [
+                #     ("CP", ["CA","CB","CD","CE","CF","CG","CH","CJ","CL","CM"]),
+                #     ("DD", ["DA","DB","DC"]),
+                #     ("DF", ["CP","DD"]),
+                #     ("DP", ["DH","DI","DJ","DK","DM","DN"]),
+                #     ("DT", ["DQ","DR"]),
+                #     ("DZ", ["DF","DP","DT","DV"]),
+                # ]:
+                #     _set(idx, agg_ref,
+                #         _sum(idx, leaf_refs),
+                #         _sum(idx, leaf_refs, K))
+
+                g  = lambda r:   _g(idx, r)
+                g1 = lambda r:   _g(idx, r, K)
+
+                # ("CP", ["CA","CB","CD","CE","CF","CG","CH","CJ","CL","CM"])
+                cp  = g("CA") + g("CB") + g("CD") + g("CE") + g("CF") + g("CG") + g("CH") + g("CJ") + g("CL") + g("CM")
+                cp1 = g1("CA") + g1("CB") + g1("CD") + g1("CE") + g1("CF") + g1("CG1") + g1("CH") + g1("CJ") + g1("CL") + g1("CM")
+                _set(idx, "CP", cp, cp1)
+
+                # ("DD", ["DA","DB","DC"])
+                dd  = g("DA") + g("DB") + g("DC")
+                dd1 = g1("DA") + g1("DB") + g1("DC")
+                _set(idx, "DD", dd, dd1)
+
+                # ("DF", ["CP","DD"])
+                df  = g("CP") + g("DD")
+                df1 = g1("CP") + g1("DD")
+                _set(idx, "DF", df, df1)
+
+                # ("DP", ["DH","DI","DJ","DK","DM","DN"])
+                dp  = g("DH") + g("DI") + g("BJ") + g("DK") + g("DM") + g("BN")
+                dp1 = g1("DH") + g1("DI") + g1("BJ") + g1("DK") + g1("DM") + g1("BN")
+                _set(idx, "DP", dp, dp1)
+
+                # ("DT", ["DQ","DR"])
+                dt  = g("DQ") + g("DR")
+                dt1 = g1("DQ") + g1("DR")
+                _set(idx, "DT", dt, dt1)
+
+                # ("DZ", ["DF","DP","DT","DV"])
+                dz  = g("DF") + g("DP") + g("DT") + g("DV")
+                dz1 = g1("DF") + g1("DP") + g1("DT") + g1("DV")
+                _set(idx, "DZ", dz, dz1)
 
             elif section == "pnl":
                 g  = lambda r:   _g(idx, r)
@@ -5907,9 +5946,52 @@ class Mission(Document):
 
         db = get_database()
         mission = db["Mission1"].find_one({"_id": ObjectId(id_mission)})
+        if not mission:
+            return 0, []
 
+        existing_grouping = mission.get('grouping', []) or []
+        balance_variation = mission.get('balance_variation', []) or []
+        referentiel = mission.get('referentiel', 'syscohada')
 
-        grouping = mission['grouping']
+        # Recalcule balance_variation depuis les 2 balances sources quand possible
+        # pour inclure aussi les comptes présents uniquement en N-1.
+        balances_ids = mission.get('balances', []) or []
+        if len(balances_ids) >= 2:
+            try:
+                balance_n_doc = db.Balance.find_one({"_id": ObjectId(balances_ids[0])}, {"balance": 1}) or {}
+                balance_n1_doc = db.Balance.find_one({"_id": ObjectId(balances_ids[1])}, {"balance": 1}) or {}
+                balance_n_data = balance_n_doc.get("balance", []) or []
+                balance_n1_data = balance_n1_doc.get("balance", []) or []
+                if balance_n_data or balance_n1_data:
+                    balance_variation = self.rapprochement_des_balances(balance_n_data, balance_n1_data)
+                    db.Mission1.update_one(
+                        {"_id": ObjectId(id_mission)},
+                        {"$set": {"balance_variation": balance_variation}}
+                    )
+            except Exception as e:
+                print(f"⚠️ make_final_sm: échec recalcul balance_variation: {e}")
+
+        # Régénérer le grouping depuis la balance variation pour refléter
+        # les dernières règles (ex: compte 419 au passif), puis conserver
+        # les champs d'analyse déjà calculés quand ils existent.
+        if isinstance(balance_variation, list) and balance_variation:
+            regenerated_grouping = self.create_grouping(balance_variation, referentiel)
+            old_idx = {
+                f"{item.get('libelle', '')}|{item.get('section', '')}": item
+                for item in existing_grouping
+            }
+            for item in regenerated_grouping:
+                old_item = old_idx.get(f"{item.get('libelle', '')}|{item.get('section', '')}")
+                if old_item:
+                    if 'materiality' in old_item:
+                        item['materiality'] = old_item.get('materiality')
+                    if 'significant' in old_item:
+                        item['significant'] = old_item.get('significant')
+                    if 'mat_sign' in old_item:
+                        item['mat_sign'] = old_item.get('mat_sign')
+            grouping = regenerated_grouping
+        else:
+            grouping = existing_grouping
 
 
 
@@ -6165,7 +6247,157 @@ class Mission(Document):
 
             datum[efi] = structure
 
+        # Recalcule des agrégats ACTIF selon les formules officielles
+        # pour éviter toute dérive liée à une configuration mapping.
+        actif_rows = datum.get('actif', [])
+        if actif_rows:
+            idx = {row.get('ref'): row for row in actif_rows if row.get('ref')}
 
+            def _g(ref, key):
+                row = idx.get(ref) or {}
+                value = row.get(key, 0)
+                return value if value is not None else 0
+
+            def _set(ref, n_val, n1_val):
+                if ref in idx:
+                    idx[ref]['net_solde_n'] = n_val
+                    idx[ref]['net_solde_n1'] = n1_val
+
+            ad_n = _g('AE', 'net_solde_n') + _g('AF', 'net_solde_n') + _g('AG', 'net_solde_n') + _g('AH', 'net_solde_n')
+            ad_n1 = _g('AE', 'net_solde_n1') + _g('AF', 'net_solde_n1') + _g('AG', 'net_solde_n1') + _g('AH', 'net_solde_n1')
+            _set('AD', ad_n, ad_n1)
+
+            ai_n = _g('AJ', 'net_solde_n') + _g('AK', 'net_solde_n') + _g('AL', 'net_solde_n') + _g('AM', 'net_solde_n') + _g('AN', 'net_solde_n')
+            ai_n1 = _g('AJ', 'net_solde_n1') + _g('AK', 'net_solde_n1') + _g('AL', 'net_solde_n1') + _g('AM', 'net_solde_n1') + _g('AN', 'net_solde_n1')
+            _set('AI', ai_n, ai_n1)
+
+            aq_n = _g('AR', 'net_solde_n') + _g('AS', 'net_solde_n')
+            aq_n1 = _g('AR', 'net_solde_n1') + _g('AS', 'net_solde_n1')
+            _set('AQ', aq_n, aq_n1)
+
+            bg_n = _g('BH', 'net_solde_n') + _g('BI', 'net_solde_n') + _g('BJ', 'net_solde_n')
+            bg_n1 = _g('BH', 'net_solde_n1') + _g('BI', 'net_solde_n1') + _g('BJ', 'net_solde_n1')
+            _set('BG', bg_n, bg_n1)
+
+            az_n = _g('AD', 'net_solde_n') + _g('AI', 'net_solde_n') + _g('AP', 'net_solde_n') + _g('AQ', 'net_solde_n')
+            az_n1 = _g('AD', 'net_solde_n1') + _g('AI', 'net_solde_n1') + _g('AP', 'net_solde_n1') + _g('AQ', 'net_solde_n1')
+            _set('AZ', az_n, az_n1)
+
+            bk_n = _g('BA', 'net_solde_n') + _g('BB', 'net_solde_n') + _g('BG', 'net_solde_n')
+            bk_n1 = _g('BA', 'net_solde_n1') + _g('BB', 'net_solde_n1') + _g('BG', 'net_solde_n1')
+            _set('BK', bk_n, bk_n1)
+
+            bt_n = _g('BQ', 'net_solde_n') + _g('BR', 'net_solde_n') + _g('BS', 'net_solde_n')
+            bt_n1 = _g('BQ', 'net_solde_n1') + _g('BR', 'net_solde_n1') + _g('BS', 'net_solde_n1')
+            _set('BT', bt_n, bt_n1)
+
+            bz_n = _g('AZ', 'net_solde_n') + _g('BK', 'net_solde_n') + _g('BT', 'net_solde_n') + _g('BU', 'net_solde_n')
+            bz_n1 = _g('AZ', 'net_solde_n1') + _g('BK', 'net_solde_n1') + _g('BT', 'net_solde_n1') + _g('BU', 'net_solde_n1')
+            _set('BZ', bz_n, bz_n1)
+
+        # Recalcule des agrégats PASSIF selon les formules officielles.
+        passif_rows = datum.get('passif', [])
+        if passif_rows:
+            idx = {row.get('ref'): row for row in passif_rows if row.get('ref')}
+
+            def _g(ref, key):
+                row = idx.get(ref) or {}
+                value = row.get(key, 0)
+                return value if value is not None else 0
+
+            def _set(ref, n_val, n1_val):
+                if ref in idx:
+                    idx[ref]['net_solde_n'] = n_val
+                    idx[ref]['net_solde_n1'] = n1_val
+
+            cp_n = _g('CA', 'net_solde_n') + _g('CB', 'net_solde_n') + _g('CD', 'net_solde_n') + _g('CE', 'net_solde_n') + _g('CF', 'net_solde_n') + _g('CG', 'net_solde_n') + _g('CH', 'net_solde_n') + _g('CJ', 'net_solde_n') + _g('CL', 'net_solde_n') + _g('CM', 'net_solde_n')
+            cp_n1 = _g('CA', 'net_solde_n1') + _g('CB', 'net_solde_n1') + _g('CD', 'net_solde_n1') + _g('CE', 'net_solde_n1') + _g('CF', 'net_solde_n1') + _g('CG', 'net_solde_n1') + _g('CH', 'net_solde_n1') + _g('CJ', 'net_solde_n1') + _g('CL', 'net_solde_n1') + _g('CM', 'net_solde_n1')
+            _set('CP', cp_n, cp_n1)
+
+            dd_n = _g('DA', 'net_solde_n') + _g('DB', 'net_solde_n') + _g('DC', 'net_solde_n')
+            dd_n1 = _g('DA', 'net_solde_n1') + _g('DB', 'net_solde_n1') + _g('DC', 'net_solde_n1')
+            _set('DD', dd_n, dd_n1)
+
+            df_n = _g('CP', 'net_solde_n') + _g('DD', 'net_solde_n')
+            df_n1 = _g('CP', 'net_solde_n1') + _g('DD', 'net_solde_n1')
+            _set('DF', df_n, df_n1)
+
+            dp_n = _g('DH', 'net_solde_n') + _g('DI', 'net_solde_n') + _g('DJ', 'net_solde_n') + _g('DK', 'net_solde_n') + _g('DM', 'net_solde_n') + _g('DN', 'net_solde_n')
+            dp_n1 = _g('DH', 'net_solde_n1') + _g('DI', 'net_solde_n1') + _g('DJ', 'net_solde_n1') + _g('DK', 'net_solde_n1') + _g('DM', 'net_solde_n1') + _g('DN', 'net_solde_n1')
+            _set('DP', dp_n, dp_n1)
+
+            dt_n = _g('DQ', 'net_solde_n') + _g('DR', 'net_solde_n')
+            dt_n1 = _g('DQ', 'net_solde_n1') + _g('DR', 'net_solde_n1')
+            _set('DT', dt_n, dt_n1)
+
+            dz_n = _g('DF', 'net_solde_n') + _g('DP', 'net_solde_n') + _g('DT', 'net_solde_n') + _g('DV', 'net_solde_n')
+            dz_n1 = _g('DF', 'net_solde_n1') + _g('DP', 'net_solde_n1') + _g('DT', 'net_solde_n1') + _g('DV', 'net_solde_n1')
+            _set('DZ', dz_n, dz_n1)
+
+        # Recalcule des agrégats PNL selon les formules officielles.
+        pnl_rows = datum.get('pnl', [])
+        if pnl_rows:
+            idx = {row.get('ref'): row for row in pnl_rows if row.get('ref')}
+
+            def _g(ref, key):
+                row = idx.get(ref) or {}
+                value = row.get(key, 0)
+                return value if value is not None else 0
+
+            def _set(ref, n_val, n1_val):
+                if ref in idx:
+                    idx[ref]['net_solde_n'] = n_val
+                    idx[ref]['net_solde_n1'] = n1_val
+
+            xa_n = -_g('TA', 'net_solde_n') - _g('RA', 'net_solde_n') + _g('RB', 'net_solde_n')
+            xa_n1 = -_g('TA', 'net_solde_n1') - _g('RA', 'net_solde_n1') + _g('RB', 'net_solde_n1')
+            _set('XA', xa_n, xa_n1)
+
+            xb_n = -_g('TA', 'net_solde_n') - _g('TB', 'net_solde_n') - _g('TC', 'net_solde_n') - _g('TD', 'net_solde_n')
+            xb_n1 = -_g('TA', 'net_solde_n1') - _g('TB', 'net_solde_n1') - _g('TC', 'net_solde_n1') - _g('TD', 'net_solde_n1')
+            _set('XB', xb_n, xb_n1)
+
+            xc_n = (
+                xb_n
+                - _g('RA', 'net_solde_n') + _g('RB', 'net_solde_n')
+                + _g('TE', 'net_solde_n') - _g('TF', 'net_solde_n') - _g('TG', 'net_solde_n') - _g('TH', 'net_solde_n') - _g('TI', 'net_solde_n')
+                - _g('RC', 'net_solde_n') + _g('RD', 'net_solde_n')
+                - _g('RE', 'net_solde_n') + _g('RF', 'net_solde_n')
+                - _g('RG', 'net_solde_n') - _g('RH', 'net_solde_n') - _g('RI', 'net_solde_n') - _g('RJ', 'net_solde_n')
+            )
+            xc_n1 = (
+                xb_n1
+                - _g('RA', 'net_solde_n1') + _g('RB', 'net_solde_n1')
+                + _g('TE', 'net_solde_n1') - _g('TF', 'net_solde_n1') - _g('TG', 'net_solde_n1') - _g('TH', 'net_solde_n1') - _g('TI', 'net_solde_n1')
+                - _g('RC', 'net_solde_n1') + _g('RD', 'net_solde_n1')
+                - _g('RE', 'net_solde_n1') + _g('RF', 'net_solde_n1')
+                - _g('RG', 'net_solde_n1') - _g('RH', 'net_solde_n1') - _g('RI', 'net_solde_n1') - _g('RJ', 'net_solde_n1')
+            )
+            _set('XC', xc_n, xc_n1)
+
+            xd_n = xc_n - _g('RK', 'net_solde_n')
+            xd_n1 = xc_n1 - _g('RK', 'net_solde_n1')
+            _set('XD', xd_n, xd_n1)
+
+            xe_n = xd_n - _g('TJ', 'net_solde_n') - _g('RL', 'net_solde_n')
+            xe_n1 = xd_n1 - _g('TJ', 'net_solde_n1') - _g('RL', 'net_solde_n1')
+            _set('XE', xe_n, xe_n1)
+
+            xf_n = -_g('TK', 'net_solde_n') - _g('TL', 'net_solde_n') - _g('TM', 'net_solde_n') - _g('RM', 'net_solde_n') - _g('RN', 'net_solde_n')
+            xf_n1 = -_g('TK', 'net_solde_n1') - _g('TL', 'net_solde_n1') - _g('TM', 'net_solde_n1') - _g('RM', 'net_solde_n1') - _g('RN', 'net_solde_n1')
+            _set('XF', xf_n, xf_n1)
+
+            xg_n = xe_n + xf_n
+            xg_n1 = xe_n1 + xf_n1
+            _set('XG', xg_n, xg_n1)
+
+            xh_n = -_g('TN', 'net_solde_n') - _g('TO', 'net_solde_n') - _g('RO', 'net_solde_n') - _g('RP', 'net_solde_n')
+            xh_n1 = -_g('TN', 'net_solde_n1') - _g('TO', 'net_solde_n1') - _g('RO', 'net_solde_n1') - _g('RP', 'net_solde_n1')
+            _set('XH', xh_n, xh_n1)
+
+            xi_n = xg_n + xh_n - _g('RQ', 'net_solde_n') - _g('RS', 'net_solde_n')
+            xi_n1 = xg_n1 + xh_n1 - _g('RQ', 'net_solde_n1') - _g('RS', 'net_solde_n1')
+            _set('XI', xi_n, xi_n1)
 
         return datum
 
