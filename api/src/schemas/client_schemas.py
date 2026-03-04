@@ -1,4 +1,4 @@
-﻿"""
+"""
 Schemas de validation pour les clients
 """
 

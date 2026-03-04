@@ -576,6 +576,46 @@ class Mission(Document):
                 raise Exception("Aucune feuille trouvée dans le fichier Excel")
 
             print(f"📊 Traitement de la feuille '{sheet_name}' avec {sheet.max_row} lignes et {sheet.max_column} colonnes")
+
+            def _parse_number(value):
+                """Conversion robuste des montants Excel (nombres ou textes formatés)."""
+                try:
+                    if value is None:
+                        return 0.0
+                    if isinstance(value, (int, float)):
+                        return float(value)
+
+                    s = str(value).strip()
+                    if not s:
+                        return 0.0
+                    s = s.replace('\u00a0', '').replace(' ', '')
+                    s = s.replace('–', '-').replace('—', '-')
+                    if s in ('-', '--'):
+                        return 0.0
+
+                    neg = False
+                    if s.startswith('(') and s.endswith(')'):
+                        neg = True
+                        s = s[1:-1]
+
+                    # Harmoniser séparateurs décimaux/milliers
+                    if ',' in s and '.' in s:
+                        if s.rfind(',') > s.rfind('.'):
+                            s = s.replace('.', '').replace(',', '.')
+                        else:
+                            s = s.replace(',', '')
+                    elif ',' in s:
+                        # Si une seule virgule et 1-2 décimales -> décimal, sinon millier
+                        parts = s.split(',')
+                        if len(parts) == 2 and len(parts[1]) <= 2:
+                            s = s.replace(',', '.')
+                        else:
+                            s = s.replace(',', '')
+
+                    val = float(s)
+                    return -val if neg else val
+                except Exception:
+                    return 0.0
             
             # Détection automatique du format et des colonnes
             print(f"🔍 Analyse du format de la feuille '{sheet_name}'...")
@@ -672,10 +712,10 @@ class Mission(Document):
                         ligne['libelle'] = str(row[1] or '').strip()
                         
                         # Format Sage: solde_n1, mouvement_debit, mouvement_credit, solde_n
-                        solde_n1 = float(row[2] or 0)
-                        mouvement_debit = float(row[3] or 0)
-                        mouvement_credit = float(row[4] or 0)
-                        solde_n = float(row[5] or 0)
+                        solde_n1 = _parse_number(row[2])
+                        mouvement_debit = _parse_number(row[3])
+                        mouvement_credit = _parse_number(row[4])
+                        solde_n = _parse_number(row[5])
                         
                         # Calculer les soldes d'ouverture et de clôture
                         ligne['debit_initial'] = max(0, solde_n1) if solde_n1 > 0 else 0
@@ -793,8 +833,8 @@ class Mission(Document):
                         ligne['libelle'] = row[1] or ''
                         
                         # Format balance : on vérifie d'abord si les mouvements sont dans le fichier
-                        ligne['debit_initial'] = float(row[2] or 0)
-                        ligne['credit_initial'] = float(row[3] or 0)
+                        ligne['debit_initial'] = _parse_number(row[2])
+                        ligne['credit_initial'] = _parse_number(row[3])
                         
                         # Vérifier si le fichier Excel contient les colonnes de mouvements
                         # Format 1 (avec mouvements) : debit_initial, credit_initial, debit_mvt, credit_mvt, debit_fin, credit_fin
@@ -802,21 +842,21 @@ class Mission(Document):
                         try:
                             # Essayer de lire les mouvements depuis le fichier (colonnes 4 et 5)
                             if len(row) > 5 and (row[4] is not None or row[5] is not None):
-                                ligne['debit_mvt'] = float(row[4] or 0)
-                                ligne['credit_mvt'] = float(row[5] or 0)
+                                ligne['debit_mvt'] = _parse_number(row[4])
+                                ligne['credit_mvt'] = _parse_number(row[5])
                                 # Utiliser l'ordre détecté pour les colonnes finales
                                 if colonnes_inversees_balance_simple and len(row) > 7:
-                                    ligne['credit_fin'] = float(row[6] or 0)
-                                    ligne['debit_fin'] = float(row[7] or 0)
+                                    ligne['credit_fin'] = _parse_number(row[6])
+                                    ligne['debit_fin'] = _parse_number(row[7])
                                 else:
-                                    ligne['debit_fin'] = float(row[6] or 0)
-                                    ligne['credit_fin'] = float(row[7] or 0)
+                                    ligne['debit_fin'] = _parse_number(row[6])
+                                    ligne['credit_fin'] = _parse_number(row[7])
                             else:
                                 # Format sans mouvements : utiliser solde_final = solde_initial + mouvements
                                 # Pour la vérification d'identité, on utilise l'équation : 
                                 # (debit_fin - credit_fin) = (debit_initial - credit_initial) + (debit_mvt - credit_mvt)
-                                ligne['debit_fin'] = float(row[4] or 0)
-                                ligne['credit_fin'] = float(row[5] or 0)
+                                ligne['debit_fin'] = _parse_number(row[4])
+                                ligne['credit_fin'] = _parse_number(row[5])
                                 
                                 # Calculer le solde initial et final
                                 solde_initial = ligne['debit_initial'] - ligne['credit_initial']
@@ -845,8 +885,8 @@ class Mission(Document):
                             # Si erreur, utiliser le format simple sans mouvements
                             ligne['debit_mvt'] = 0
                             ligne['credit_mvt'] = 0
-                            ligne['debit_fin'] = float(row[4] or 0)
-                            ligne['credit_fin'] = float(row[5] or 0)
+                            ligne['debit_fin'] = _parse_number(row[4])
+                            ligne['credit_fin'] = _parse_number(row[5])
                         
                         ligne['solde_reel'] = ligne['debit_fin'] - ligne['credit_fin']
                         ligne['solde'] = abs(ligne['solde_reel'])
@@ -967,20 +1007,20 @@ class Mission(Document):
                         ligne = {}
                         ligne['numero_compte'] = str(row[0])
                         ligne['libelle'] = row[1] or ''
-                        ligne['debit_initial'] = float(row[2] or 0)
-                        ligne['credit_initial'] = float(row[3] or 0)
-                        ligne['debit_mvt'] = float(row[4] or 0)
-                        ligne['credit_mvt'] = float(row[5] or 0)
+                        ligne['debit_initial'] = _parse_number(row[2])
+                        ligne['credit_initial'] = _parse_number(row[3])
+                        ligne['debit_mvt'] = _parse_number(row[4])
+                        ligne['credit_mvt'] = _parse_number(row[5])
                         
                         # Utiliser l'ordre détecté précédemment
                         if colonnes_inversees:
                             # Format avec "Solde crédit" (col 7) puis "Solde débit" (col 8)
-                            ligne['credit_fin'] = float(row[6] or 0)
-                            ligne['debit_fin'] = float(row[7] or 0)
+                            ligne['credit_fin'] = _parse_number(row[6])
+                            ligne['debit_fin'] = _parse_number(row[7])
                         else:
                             # Format standard avec "Débit fin" puis "Crédit fin"
-                            ligne['debit_fin'] = float(row[6] or 0)
-                            ligne['credit_fin'] = float(row[7] or 0)
+                            ligne['debit_fin'] = _parse_number(row[6])
+                            ligne['credit_fin'] = _parse_number(row[7])
                         
                         ligne['solde_reel'] = ligne['debit_fin'] - ligne['credit_fin']
                         ligne['solde'] = abs(ligne['solde_reel'])
@@ -1025,8 +1065,8 @@ class Mission(Document):
                     f"- Les numéros de compte ne sont pas vides et commencent par un chiffre\n"
                     f"- Les lignes vides ou sans numéro de compte sont ignorées"
                 )
-                print(f"❌ {error_msg}")
-                raise Exception(error_msg)
+                print(f"⚠️ {error_msg}")
+                pending_error_msg = error_msg
                     
         except Exception as e:
             print(f"Erreur lors du traitement du fichier Excel: {str(e)}")
@@ -1039,10 +1079,126 @@ class Mission(Document):
                 db = get_db()
             raise e
 
-        # Double vérification avant insertion
+        # Double v?rification avant insertion
+        if len(data) == 0:
+            # Fallback: parsing tr?s permissif sur toutes les feuilles
+            def _to_float(v):
+                try:
+                    return float(str(v).replace(' ', '').replace(' ', '').replace(',', '.'))
+                except Exception:
+                    return 0.0
+
+            def _looks_like_account(v):
+                if v is None:
+                    return False
+                s = str(v).strip()
+                if not s:
+                    return False
+                if 'compte' in s.lower():
+                    return False
+                return s.isdigit() and len(s) >= 2
+
+            def _flex_parse_sheet(ws):
+                rows = list(ws.iter_rows(values_only=True))
+                if not rows:
+                    return []
+                max_cols = max(len(r) for r in rows if r) if rows else 0
+                if max_cols == 0:
+                    return []
+
+                # detect account column (max numeric account-like values)
+                col_scores = []
+                for c in range(max_cols):
+                    score = 0
+                    for r in rows[:200]:
+                        if c < len(r) and _looks_like_account(r[c]):
+                            score += 1
+                    col_scores.append(score)
+                if not col_scores or max(col_scores) == 0:
+                    return []
+                acc_col = col_scores.index(max(col_scores))
+
+                # detect libelle column (stringy)
+                lib_scores = []
+                for c in range(max_cols):
+                    if c == acc_col:
+                        lib_scores.append(-1)
+                        continue
+                    score = 0
+                    for r in rows[:200]:
+                        if c < len(r) and isinstance(r[c], str) and r[c].strip():
+                            score += 1
+                    lib_scores.append(score)
+                lib_col = lib_scores.index(max(lib_scores)) if lib_scores and max(lib_scores) > 0 else None
+
+                # detect numeric columns
+                num_cols = []
+                for c in range(max_cols):
+                    score = 0
+                    for r in rows[:200]:
+                        if c < len(r) and isinstance(r[c], (int, float)):
+                            score += 1
+                        elif c < len(r) and isinstance(r[c], str):
+                            s = r[c].strip().replace(' ', '').replace(' ', '')
+                            if s.replace(',', '.').replace('-', '').isdigit():
+                                score += 1
+                    if score > 0:
+                        num_cols.append((c, score))
+                num_cols = [c for c, _ in sorted(num_cols, key=lambda x: x[0])]
+
+                debit_initial_col = credit_initial_col = debit_mvt_col = credit_mvt_col = None
+                debit_fin_col = credit_fin_col = None
+
+                if len(num_cols) >= 2:
+                    debit_fin_col, credit_fin_col = num_cols[-2], num_cols[-1]
+                if len(num_cols) >= 4:
+                    debit_initial_col, credit_initial_col = num_cols[0], num_cols[1]
+                if len(num_cols) >= 6:
+                    debit_mvt_col, credit_mvt_col = num_cols[2], num_cols[3]
+
+                out = []
+                for r in rows:
+                    if acc_col >= len(r):
+                        continue
+                    if not _looks_like_account(r[acc_col]):
+                        continue
+                    numero = str(r[acc_col]).strip()
+                    libelle = ''
+                    if lib_col is not None and lib_col < len(r) and r[lib_col] is not None:
+                        libelle = str(r[lib_col]).strip()
+
+                    ligne = {
+                        'numero_compte': numero,
+                        'libelle': libelle,
+                        'debit_initial': _to_float(r[debit_initial_col]) if debit_initial_col is not None and debit_initial_col < len(r) else 0.0,
+                        'credit_initial': _to_float(r[credit_initial_col]) if credit_initial_col is not None and credit_initial_col < len(r) else 0.0,
+                        'debit_mvt': _to_float(r[debit_mvt_col]) if debit_mvt_col is not None and debit_mvt_col < len(r) else 0.0,
+                        'credit_mvt': _to_float(r[credit_mvt_col]) if credit_mvt_col is not None and credit_mvt_col < len(r) else 0.0,
+                        'debit_fin': _to_float(r[debit_fin_col]) if debit_fin_col is not None and debit_fin_col < len(r) else 0.0,
+                        'credit_fin': _to_float(r[credit_fin_col]) if credit_fin_col is not None and credit_fin_col < len(r) else 0.0,
+                    }
+                    ligne['solde_reel'] = ligne['debit_fin'] - ligne['credit_fin']
+                    ligne['solde'] = abs(ligne['solde_reel'])
+                    ligne['sign_solde'] = "D" if ligne['debit_fin'] >= ligne['credit_fin'] else "C"
+                    out.append(ligne)
+                return out
+
+            best = []
+            best_name = None
+            for ws_name in workbook.sheetnames:
+                ws = workbook[ws_name]
+                cand = _flex_parse_sheet(ws)
+                if len(cand) > len(best):
+                    best = cand
+                    best_name = ws_name
+
+            if best:
+                print(f"? Fallback: {len(best)} lignes extraites depuis '{best_name}' (parsing permissif)")
+                data = best
+
         if len(data) == 0:
             filename = balance.filename if hasattr(balance, 'filename') else 'fichier inconnu'
-            raise Exception(f"Aucune donnée valide trouvée dans le fichier '{filename}'. Vérifiez le format du fichier Excel.")
+            raise Exception(pending_error_msg or f"Aucune donn?e valide trouv?e dans le fichier '{filename}'. V?rifiez le format du fichier Excel.")
 
         # S'assurer que db est défini avant d'utiliser
         try:
@@ -1060,35 +1216,426 @@ class Mission(Document):
         return inserted_id, data
 
     # ---------- Grouping ----------
+    # ---------- Grouping ----------
+    # ---------- Grouping ----------
     def create_grouping(self, balances_rapprochee, referentiel="syscohada"):
+        """
+        Regroupe les comptes de la balance selon le référentiel SYSCOHADA.
+        
+        Les règles de regroupement sont définies par des préfixes de comptes.
+        Pour les comptes présents à la fois à l'actif et au passif (ex: 42, 43, 44...),
+        le classement dépend du signe du solde (débiteur = actif, créditeur = passif).
+        
+        Chaque entrée du résultat représente un grand groupe avec :
+        - ref        : identifiant court du groupe
+        - libelle    : intitulé du groupe en majuscules
+        - section    : "actif", "passif" ou "pnl"
+        - solde_n    : total période N
+        - solde_n1   : total période N-1
+        - variation  : solde_n - solde_n1
+        - variation_percent
+        - comptes    : liste des comptes détaillés (numero_compte, libelle, solde_n, solde_n1, variation)
+        """
         if not isinstance(balances_rapprochee, list):
             raise TypeError("balances_rapprochee doit être une liste")
 
         print(f"📊 Balances reçues : {len(balances_rapprochee)} comptes")
 
-        # =============================
-        # 1️⃣ Charger le référentiel (DB ou autre source)
-        # =============================
-        referentiel_groupes = self.get_referentiel_groupes(referentiel)
+        # =====================================================================
+        # DÉFINITION DES GROUPES SYSCOHADA
+        # Chaque groupe : (ref, libelle, section, règles)
+        # Une règle est un callable(numero, solde_n) -> bool
+        # L'ordre est important : on prend le PREMIER groupe qui correspond.
+        # =====================================================================
 
-        if not referentiel_groupes:
-            raise ValueError(f"Aucun référentiel trouvé pour '{referentiel}'")
+        def starts(numero, *prefixes):
+            """Vrai si numero commence par l'un des préfixes donnés."""
+            return any(numero.startswith(p) for p in prefixes)
 
-        print(f"📘 Référentiel '{referentiel}' chargé : {len(referentiel_groupes)} groupes")
+        def is_debiteur(solde_n):
+            return (solde_n or 0) >= 0
 
-        # Index par préfixe
-        groupes = {g["compte"]: {
-            **g,
-            "solde_n": 0,
-            "solde_n1": 0,
-            "variation": 0,
-            "variation_percent": 0,
-            "comptes": []
-        } for g in referentiel_groupes}
+        def is_crediteur(solde_n):
+            return (solde_n or 0) < 0
 
-        # =============================
-        # 2️⃣ Regrouper les comptes
-        # =============================
+        GROUPES_RULES = [
+            # ---- ACTIF ----
+            {
+                "libelle": "IMMOBILISATIONS INCORPORELLES",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "21", "281", "291"),
+            },
+            {
+                "libelle": "IMMOBILISATIONS CORPORELLES",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "22", "23", "24", "25", "282", "283", "284", "292", "293", "294", "295"),
+            },
+            {
+                "libelle": "IMMOBILISATIONS FINANCIÈRES",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "26", "27", "296", "297"),
+            },
+            {
+                "libelle": "STOCKS",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "31", "32", "33", "34", "35", "36", "37", "38", "39"),
+            },
+            {
+                "libelle": "FOURNISSEUR AVANCES VERSEES",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "409"),
+            },
+            {
+                "libelle": "CLIENTS",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "41") and not starts(n, "419") and is_debiteur(s),
+            },
+            {
+                "libelle": "AUTRES CRÉANCES",
+                "section": "actif",
+                # 42, 43, 44, 185, 45, 46, 47 sauf 478 → débiteur
+                "match": lambda n, s: starts(n, "42", "43", "44", "45", "46", "47", "185") and not starts(n, "478") and is_debiteur(s),
+            },
+            {
+                "libelle": "ACTIF CIRCULANT HAO",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "485", "488", "498"),
+            },
+            {
+                "libelle": "TITRES DE PLACEMENT",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "50", "590"),
+            },
+            {
+                "libelle": "VALEUR À ENCAISSER",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "51", "591"),
+            },
+            {
+                "libelle": "BANQUES, CHÈQUES POSTAUX, CAISSES ET ASSIMILÉ",
+                "section": "actif",
+                # 52, 53, 54, 55, 57, 58 débiteurs
+                "match": lambda n, s: starts(n, "52", "53", "54", "55", "57", "58") and is_debiteur(s),
+            },
+            {
+                "libelle": "ÉCART DE CONVERSION ACTIF",
+                "section": "actif",
+                "match": lambda n, s: starts(n, "478"),
+            },
+
+            # ---- PASSIF ----
+            {
+                "libelle": "FOURNISSEURS D'EXPLOITATION",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "40") and not starts(n, "409") and is_crediteur(s),
+            },
+            {
+                "libelle": "DETTES FISCALES ET SOCIALES",
+                "section": "passif",
+                # 42, 43, 44 créditeurs
+                "match": lambda n, s: starts(n, "42", "43", "44") and is_crediteur(s),
+            },
+            {
+                "libelle": "AUTRES DETTES",
+                "section": "passif",
+                # 185, 45, 46, 47 sauf 479 créditeurs
+                "match": lambda n, s: starts(n, "185", "45", "46", "47") and not starts(n, "479") and is_crediteur(s),
+            },
+            {
+                "libelle": "PASSIF CIRCULANT HAO",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "481", "482", "484"),
+            },
+            {
+                "libelle": "DETTES CIRCULANT HAO",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "4998"),
+            },
+            {
+                "libelle": "PROVISIONS POUR RISQUES À COURT TERME",
+                "section": "passif",
+                # 499 sauf 4998, 599
+                "match": lambda n, s: starts(n, "499", "599") and not starts(n, "4998"),
+            },
+            {
+                "libelle": "BANQUES, CHÈQUES POSTAUX, CAISSES ET ASSIMILÉ",
+                "section": "passif",
+                # 52, 53, 54, 55, 566, 57, 58 créditeurs
+                "match": lambda n, s: starts(n, "52", "53", "54", "55", "566", "57", "58") and is_crediteur(s),
+            },
+            {
+                "libelle": "BANQUES, CRÉDIT D'ESCOMPTE ET DE TRÉSORERIE",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "564", "565"),
+            },
+            {
+                "libelle": "CLIENTS AVANCES REÇUES",
+                "section": "passif",
+                # 419 = avances reçues clients (passif), quel que soit le signe importé.
+                "match": lambda n, s: starts(n, "419"),
+            },
+            {
+                "libelle": "ÉCART DE CONVERSION PASSIF",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "479"),
+            },
+            {
+                "libelle": "CAPITAUX PROPRES",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "10", "11", "12", "13"),
+            },
+            {
+                "libelle": "SUBVENTIONS",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "14"),
+            },
+            {
+                "libelle": "PROVISIONS RÉGLEMENTÉES",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "15"),
+            },
+            {
+                "libelle": "EMPRUNTS ET DETTES FINANCIÈRES DIVERSES",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "16", "18"),
+            },
+            {
+                "libelle": "DETTES DE LOCATIONS ACQUISITION",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "17"),
+            },
+            {
+                "libelle": "PROVISIONS FINANCIÈRES POUR RISQUES ET CHARGES",
+                "section": "passif",
+                "match": lambda n, s: starts(n, "19"),
+            },
+
+            # ---- COMPTE DE RÉSULTAT ----
+            {
+                "libelle": "ACHAT DE MARCHANDISES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "601"),
+            },
+            {
+                "libelle": "ACHAT DE MATIÈRE PREMIÈRE ET FOURNITURES LIÉES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "602"),
+            },
+            {
+                "libelle": "VARIATION DE STOCKS DE MARCHANDISES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "6031"),
+            },
+            {
+                "libelle": "VARIATION DE STOCKS DE MATIÈRE PREMIÈRE ET FOURNITURES LIÉES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "6032"),
+            },
+            {
+                "libelle": "VARIATION DE STOCKS D'AUTRES APPROVISIONNEMENT",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "6033"),
+            },
+            {
+                "libelle": "ACHATS STOCKÉS DE MATIÈRES PREMIÈRE ET FOURNITURES CONSOMMABLES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "604"),
+            },
+            {
+                "libelle": "AUTRES ACHATS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "605"),
+            },
+            {
+                "libelle": "ACHATS D'EMBALLAGES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "608"),
+            },
+            {
+                "libelle": "TRANSPORTS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "61"),
+            },
+            {
+                "libelle": "SERVICES EXTÉRIEURS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "62", "63"),
+            },
+            {
+                "libelle": "IMPÔTS ET TAXES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "64"),
+            },
+            {
+                "libelle": "AUTRES CHARGES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "65"),
+            },
+            {
+                "libelle": "CHARGES DE PERSONNEL",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "66"),
+            },
+            {
+                "libelle": "FRAIS FINANCIERS ET CHARGES ASSIMILÉS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "67"),
+            },
+            {
+                "libelle": "DOTATIONS AUX AMORTISSEMENTS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "68"),
+            },
+            {
+                "libelle": "DOTATIONS AUX PROVISIONS ET AUX DÉPRÉCIATIONS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "69"),
+            },
+            {
+                "libelle": "VENTES DE MARCHANDISES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "701"),
+            },
+            {
+                "libelle": "VENTE DE PRODUITS FINIS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "702"),
+            },
+            {
+                "libelle": "VENTES DE PRODUITS INTERMÉDIAIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "703"),
+            },
+            {
+                "libelle": "VENTES DE PRODUITS RÉSIDUELS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "704"),
+            },
+            {
+                "libelle": "TRAVAUX FACTURÉS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "705"),
+            },
+            {
+                "libelle": "SERVICES VENDUS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "706"),
+            },
+            {
+                "libelle": "PRODUITS ACCESSOIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "707"),
+            },
+            {
+                "libelle": "SUBVENTIONS D'EXPLOITATION",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "71"),
+            },
+            {
+                "libelle": "PRODUCTION IMMOBILISÉE",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "72"),
+            },
+            {
+                "libelle": "VARIATIONS DES STOCKS DE BIENS ET DE SERVICES PRODUITS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "73"),
+            },
+            {
+                "libelle": "AUTRES PRODUITS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "75"),
+            },
+            {
+                "libelle": "REVENUS FINANCIERS ET PRODUITS ASSIMILÉS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "77"),
+            },
+            {
+                "libelle": "TRANSFERTS DE CHARGES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "78"),
+            },
+            {
+                "libelle": "REPRISES DE PROVISIONS, DE DÉPRÉCIATION ET AUTRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "79"),
+            },
+            {
+                "libelle": "VALEURS COMPTABLES DES CESSIONS D'IMMOBILISATIONS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "81"),
+            },
+            {
+                "libelle": "PRODUITS DES CESSIONS D'IMMOBILISATIONS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "82"),
+            },
+            {
+                "libelle": "CHARGES HORS ACTIVITÉS ORDINAIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "83"),
+            },
+            {
+                "libelle": "PRODUITS HORS ACTIVITÉS ORDINAIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "84"),
+            },
+            {
+                "libelle": "DOTATIONS HORS ACTIVITÉS ORDINAIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "85"),
+            },
+            {
+                "libelle": "REPRISES HORS ACTIVITÉS ORDINAIRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "86"),
+            },
+            {
+                "libelle": "PARTICIPATION DES TRAVAILLEURS",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "87"),
+            },
+            {
+                "libelle": "SUBVENTIONS D'ÉQUILIBRE",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "88"),
+            },
+            {
+                "libelle": "IMPÔTS SUR LE RÉSULTAT",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "89"),
+            },
+        ]
+
+        # =====================================================================
+        # Initialiser un dictionnaire de groupes vide
+        # =====================================================================
+        groupes_data = {}
+        for g in GROUPES_RULES:
+            key = g["libelle"] + "|" + g["section"]  # clé interne unique
+            groupes_data[key] = {
+                "libelle": g["libelle"],
+                "section": g["section"],
+                "solde_n": 0,
+                "solde_n1": 0,
+                "comptes": [],
+                "_match": g["match"],
+            }
+
+        # =====================================================================
+        # Classifier chaque compte dans son groupe
+        # =====================================================================
+        non_classes = []
+        # for item in balances_rapprochee:
+        #     numero = str(item.get("numero_compte", "")).strip()
+        #     if not numero or not numero[0].isdigit():
+        #         continue
+
+        #     solde_n = item.get("solde_n", 0) or 0
+        #     solde_n1 = item.get("solde_n1", 0) or 0
+        #     libelle = item.get("libelle", "")
+
         for item in balances_rapprochee:
             numero = str(item.get("numero_compte", "")).strip()
             if len(numero) < 2:
@@ -1098,72 +1645,81 @@ class Mission(Document):
             if not prefixe.isdigit():
                 continue
 
-            # 🔹 Groupe inexistant → création automatique
-            if prefixe not in groupes:
-                groupes[prefixe] = {
-                    "compte": prefixe,
-                    "nature": self.detect_nature(prefixe),
-                    "libelle": f"AUTRES - COMPTE {prefixe}",
-                    "solde_n": 0,
-                    "solde_n1": 0,
-                    "variation": 0,
-                    "variation_percent": 0,
-                    "comptes": []
-                }
-                print(f"➕ Groupe auto-créé : {prefixe}")
-
             solde_n = item.get("solde_n", 0) or 0
             solde_n1 = item.get("solde_n1", 0) or 0
+            libelle = item.get("libelle", "")
 
-            groupes[prefixe]["solde_n"] += solde_n
-            groupes[prefixe]["solde_n1"] += solde_n1
+            # ✅ CORRECTION BUG 419 : réaffectation des comptes 419 créditeurs
+            # 419 = avances reçues de clients → passif circulant (DI)
+            # Si solde créditeur (négatif en SYSCOHADA débiteur-normal), on le bascule
+            if numero.startswith("419") and solde_n < 0:
+                target_key = "DI_419"  # groupe spécial à créer, voir ci-dessous
+                # OU plus simple : l'affecter à un groupe dédié dans le référentiel
 
-            groupes[prefixe]["comptes"].append({
-                "numero_compte": numero,
-                "libelle": item.get("libelle", ""),
-                "solde_n": solde_n,
-                "solde_n1": solde_n1,
-                "variation": solde_n - solde_n1
+            for key, g in groupes_data.items():
+                try:
+                    if g["_match"](numero, solde_n):
+                        g["solde_n"] += solde_n
+                        g["solde_n1"] += solde_n1
+                        g["comptes"].append({
+                            "numero_compte": numero,
+                            "libelle": libelle,
+                            "solde_n": solde_n,
+                            "solde_n1": solde_n1,
+                            "variation": solde_n - solde_n1,
+                        })
+                        break
+                except Exception:
+                    continue
+
+        if non_classes:
+            print(f"⚠️  {len(non_classes)} compte(s) non classés : {non_classes[:20]}")
+
+        # =====================================================================
+        # Finaliser et construire le résultat
+        # =====================================================================
+        result = []
+        for g in groupes_data.values():
+            if not g["comptes"]:
+                continue
+
+            g["comptes"].sort(key=lambda x: x["numero_compte"])
+
+            variation = g["solde_n"] - g["solde_n1"]
+            variation_percent = (variation / g["solde_n1"] * 100) if g["solde_n1"] else 0
+
+            result.append({
+                "libelle": g["libelle"],
+                "section": g["section"],
+                "solde_n": g["solde_n"],
+                "solde_n1": g["solde_n1"],
+                "variation": variation,
+                "variation_percent": variation_percent,
+                "comptes": g["comptes"],
             })
 
-        # =============================
-        # 3️⃣ Calculs finaux
-        # =============================
-        for group in groupes.values():
-            group["variation"] = group["solde_n"] - group["solde_n1"]
-
-            if group["solde_n1"] == 0:
-                group["variation_percent"] = 0
-            else:
-                group["variation_percent"] = (
-                    group["variation"] / group["solde_n1"]
-                ) * 100
-
-            group["comptes"].sort(key=lambda x: x["numero_compte"])
-            group["comptes_detaille"] = group["comptes"]  # compat front
-
-        # =============================
-        # 4️⃣ Résultat final
-        # =============================
-        result = sorted(groupes.values(), key=lambda x: x["compte"])
-
         print(f"✅ Grouping généré : {len(result)} groupes")
-
         return result
 
 
     # ---------- Variation N vs N-1 ----------
     def rapprochement_des_balances(self, balance_n, balance_n1):
         variation_des_balances = []
+        idx_n = {str(item.get('numero_compte')): item for item in balance_n}
         idx_n1 = {str(item.get('numero_compte')): item for item in balance_n1}
 
-        for bal in balance_n:
-            numero = str(bal['numero_compte'])
+        # Inclure tous les comptes présents en N ou en N-1
+        # (évite de perdre des comptes comme 419 présents uniquement en N-1).
+        all_numeros = list(dict.fromkeys(list(idx_n.keys()) + list(idx_n1.keys())))
+
+        for numero in all_numeros:
+            item_n = idx_n.get(numero, {})
+            item_n1 = idx_n1.get(numero, {})
             ligne = {
                 'numero_compte': numero,
-                'libelle': bal['libelle'],
-                'solde_n': bal['solde_reel'],
-                'solde_n1': idx_n1.get(numero, {}).get('solde_reel', 0)
+                'libelle': item_n.get('libelle') or item_n1.get('libelle') or '',
+                'solde_n': item_n.get('solde_reel', 0) or 0,
+                'solde_n1': item_n1.get('solde_reel', 0) or 0
             }
             variation_des_balances.append(ligne)
 
@@ -1178,17 +1734,82 @@ class Mission(Document):
 
     # ---------- Benchmarks ----------
     def get_benchmarks(self, id_mission):
-        db = get_db()  # Obtenir la connexion à la base de données
+        db = get_db()  # Obtenir la connexion ? la base de donn?es
         try:
             mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
-            efi = mission['efi']
+            efi = mission.get('efi') or mission.get('etats_financiers_preliminaires', {}).get('efi') or {}
+
+            def _find_efi_value(section, keywords):
+                try:
+                    items = efi.get(section, [])
+                    for it in items:
+                        lib = str(it.get('libelle', '')).lower()
+                        if any(k in lib for k in keywords):
+                            return int(it.get('net_solde_n', 0) or 0)
+                except Exception:
+                    return None
+                return None
+
+            def _find_efi_value_by_ref(section, refs):
+                try:
+                    items = efi.get(section, [])
+                    refs_set = {str(r).strip().upper() for r in refs}
+                    for it in items:
+                        ref = str(it.get('ref', '')).strip().upper()
+                        if ref in refs_set:
+                            return int(it.get('net_solde_n', 0) or 0)
+                except Exception:
+                    return None
+                return None
 
             bench = {}
-            bench['total_assets'] = int(efi['actif'][-1]['net_solde_n'])
-            bench['profit_before_tax'] = int(efi['pnl'][33]['net_solde_n']) + int(efi['pnl'][38]['net_solde_n'])
-            bench['revenue'] = int(efi['pnl'][7]['net_solde_n'])
-            bench['ebitda'] = int(efi['pnl'][23]['net_solde_n'])
+            # Chaque benchmark est alimenté par une référence EFI dédiée (mapping_efi.json),
+            # avec fallback conservateur si la ref n'est pas trouvée.
+            total_assets = _find_efi_value_by_ref('actif', ['BZ'])
+            if total_assets is None:
+                try:
+                    total_assets = int(efi.get('actif', [])[-1].get('net_solde_n', 0) or 0)
+                except Exception:
+                    total_assets = 0
+            bench['total_assets'] = int(total_assets or 0)
+
+            revenue = _find_efi_value_by_ref('pnl', ['XB'])
+            if revenue is None:
+                try:
+                    revenue = int(efi.get('pnl', [])[7].get('net_solde_n', 0) or 0)
+                except Exception:
+                    revenue = 0
+            bench['revenue'] = int(revenue or 0)
+
+            ebitda = _find_efi_value_by_ref('pnl', ['XD'])
+            if ebitda is None:
+                ebitda = _find_efi_value('pnl', ['excedent brut d\'exploitation', 'ebe', 'ebitda'])
+            bench['ebitda'] = int(ebitda or 0)
+
+            net_result = _find_efi_value_by_ref('pnl', ['XI'])
+            taxes_result = _find_efi_value_by_ref('pnl', ['RS'])
+            if net_result is not None and taxes_result is not None:
+                profit_before_tax = int(net_result) - int(taxes_result)
+            else:
+                try:
+                    profit_before_tax = int(efi.get('pnl', [])[33].get('net_solde_n', 0) or 0) + int(efi.get('pnl', [])[38].get('net_solde_n', 0) or 0)
+                except Exception:
+                    profit_before_tax = 0
+            bench['profit_before_tax'] = int(profit_before_tax or 0)
+
             bench['expenses'] = self.total_charges(id_mission)
+
+            total_equity = _find_efi_value_by_ref('passif', ['CP'])
+            if total_equity is None:
+                total_equity = _find_efi_value('passif', ['capitaux propres', 'equity', 'net assets'])
+            bench['total_equity_net_assets'] = int(total_equity or 0)
+
+            # Proxy "cash flows from operations" basé sur le résultat d'exploitation (ref XE),
+            # distinct de l'EBITDA/EBE (ref XD).
+            cfo_value = _find_efi_value_by_ref('pnl', ['XE'])
+            if cfo_value is None:
+                cfo_value = _find_efi_value('pnl', ['cash flow', 'flux de tresorerie', 'flux de trésorerie'])
+            bench['cash_flows_from_operations'] = int(cfo_value or 0)
             return bench
         except Exception as e:
             print(f"An error there: {str(e)}")
@@ -1203,11 +1824,50 @@ class Mission(Document):
         if not verify:
             return 0
 
+        # Validation des facteurs par benchmark (ex: 5-10% => exclut 1-4)
+        factor_ranges = {
+            "ebitda": (3, 5),
+            "expenses": (3, 5),
+            "profit_before_tax": (5, 10),
+            "revenue": (0.8, 2),
+            "total_assets": (1, 2),
+            "total_equity_net_assets": (1.0, 3.0),
+            "cash_flows_from_operations": (3.0, 5.0)
+        }
+        try:
+            benchmark = materialities.get("benchmark")
+            factor_raw = materialities.get("factor")
+            if benchmark in factor_ranges and factor_raw is not None:
+                factor = float(factor_raw)
+                min_f, max_f = factor_ranges[benchmark]
+                if factor < min_f or factor > max_f:
+                    print(f"WARNING: Facteur {factor}% hors plage [{min_f}, {max_f}] pour {benchmark}")
+                    return 0
+        except Exception:
+            pass
+
         # Vérifier si le benchmark existe déjà
         existing_materiality = verify.get('materiality', [])
         benchmark_exists = any(item.get('benchmark') == materialities['benchmark'] for item in existing_materiality)
-        
-        # Forcer des valeurs toujours positives pour les seuils (règle métier)
+
+        # Assurer un champ commentaire (optionnel)
+        if 'commentaire' not in materialities:
+            materialities['commentaire'] = ""
+
+        # Calcul de la performance materiality selon le niveau de risque (si fourni)
+        try:
+            risk_level = (materialities.get('risk_level') or '').lower().strip()
+            mat_val = float(materialities.get('materiality', 0) or 0)
+            if risk_level in ('?lev?', 'eleve'):
+                materialities['performance_materiality'] = mat_val * 0.6
+            elif risk_level in ('mod?r?', 'modere'):
+                materialities['performance_materiality'] = mat_val * 0.7
+            elif risk_level == 'faible':
+                materialities['performance_materiality'] = mat_val * 0.8
+        except Exception:
+            pass
+
+        # Forcer des valeurs toujours positives pour les seuils (r?gle m?tier)
         try:
             materialities['materiality'] = abs(int(materialities.get('materiality', 0) or 0))
             materialities['performance_materiality'] = abs(int(materialities.get('performance_materiality', 0) or 0))
@@ -1216,16 +1876,17 @@ class Mission(Document):
             pass
 
         if benchmark_exists:
-            # Mettre à jour le benchmark existant
+            # Mettre ? jour le benchmark existant
             update = db.Mission1.update_one(
                 {"_id": ObjectId(id_mission), "materiality.benchmark": materialities['benchmark']},
                 {"$set": {"materiality.$": materialities}}
             )
-            return update.modified_count
+            # Consid?rer comme succ?s m?me si aucune modification effective
+            return 1 if update.matched_count > 0 else 0
         else:
             # Ajouter un nouveau benchmark
             update = db.Mission1.update_one(query, {"$push": {"materiality": materialities}})
-            return update.modified_count
+            return 1 if update.matched_count > 0 else 0
 
     def validate_materiality(self, id_mission, benchmark):
         db = get_db()  # Obtenir la connexion à la base de données
@@ -1580,78 +2241,645 @@ class Mission(Document):
 
     # ---------- Production COMMENTAIRE ----------
     def prod_efi(self, balance_n, balance_n1, balance_variation):
-        mapping_path = os.path.join(os.path.dirname(__file__), "..", "mapping_efi.json")
-        with open(mapping_path, 'r', encoding='utf-8') as file:
-            result = json.load(file)
-        mapping = result['structure']
+        """
+        Produit les états financiers préliminaires (EFI) SYSCOHADA en se basant
+        sur des règles de préfixes de comptes codées en dur.
+        Plus aucune dépendance au fichier mapping_efi.json.
 
-        # nettoyer les champs *_cpt en listes
-        for mapp in mapping:
-            mapp['brut_cpt'] = mapp['brut_cpt'].split(',') if mapp.get('brut_cpt') is not None else mapp.get('brut_cpt')
-            mapp['amor_cpt'] = mapp['amor_cpt'].split(',') if mapp.get('amor_cpt') is not None else mapp.get('amor_cpt')
-            mapp['net_cpt'] = mapp['net_cpt'].split(',') if mapp.get('net_cpt') is not None else mapp.get('net_cpt')
-            mapp['brut_except_cpt'] = mapp['brut_except_cpt'].split(',') if mapp.get('brut_except_cpt') is not None else mapp.get('brut_except_cpt', [])
-            mapp['amor_except_cpt'] = mapp['amor_except_cpt'].split(',') if mapp.get('amor_except_cpt') is not None else mapp.get('amor_except_cpt', [])
-            mapp['net_except_cpt'] = mapp['net_except_cpt'].split(',') if mapp.get('net_except_cpt') is not None else mapp.get('net_except_cpt', [])
+        Structure de chaque ligne retournée :
+        ref, libelle, note, brut_solde_n, amor_solde_n, net_solde_n, net_solde_n1,
+        compte_to_be_used, compte_to_be_used_off
 
-        datum = {}
-        list_efi = ['actif', 'passif', 'pnl']
-        for efi in list_efi:
-            structure = []
-            select_mapping = (elt for elt in mapping if elt['nature'] == efi)
-            for data in select_mapping:
-                row = {}
-                if data.get('brut_cpt') and data.get('amor_cpt'):
-                    # N
-                    brut_solde_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data['brut_cpt']))
-                    amor_solde_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data['amor_cpt']))
+        Les lignes agrégées (AD, AI, AZ…) sont calculées en fin de méthode par
+        compute_etats_financiers().
+        """
 
-                    brut_except_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('brut_except_cpt', [])))
-                    amor_except_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('amor_except_cpt', [])))
+        # ------------------------------------------------------------------
+        # CATALOGUE DES LIGNES SYSCOHADA
+        # Chaque entrée : (ref, libelle, nature, note, brut_cpts, amor_cpts,
+        #                  net_cpts, brut_except, amor_except, net_except)
+        # • brut + amor  →  net = brut + amor   (amortissements sont négatifs)
+        # • net seul     →  net = somme des comptes net_cpts
+        # • except_cpts  →  comptes exclus du calcul principal puis ré-inclus
+        #                    séparément (voir logique de prod_efi originale)
+        # ------------------------------------------------------------------
+        EFI_CATALOGUE = [
+            # ── ACTIF ──────────────────────────────────────────────────────
+            # Immobilisations incorporelles (lignes feuilles)
+            ("AE", "Frais de développement et de prospection",               "actif", None,
+            ["211","2181","2191"], ["2811","2818","2911","2918","2919"],      [], ["2181"], [],  ["2181"]),
+            ("AF", "Brevets, licences, logiciels et droits similaires",       "actif", None,
+            ["212","213","214","2193"], ["2812","2813","2814","2912","2913","2914","2919"], [], [], [], []),
+            ("AG", "Fonds commercial et droit au bail",                       "actif", None,
+            ["215","216"], ["2815","2816","2915","2916"],                     [], [], [], []),
+            ("AH", "Autres immobilisations incorporelles",                    "actif", None,
+            ["217","218","2198"], ["2817","2818","2917","2918","2919"],       [], ["2181"], [], ["2181"]),
+            # Ligne agrégée AD calculée par compute_etats_financiers
+            ("AD", "IMMOBILISATIONS INCORPORELLES",                           "actif", 3,
+            ["211","2191","212","213","214","2193","215","216","217","218","2198"],
+            ["2811","2818","2911","2918","2919","2812","2813","2814","2912","2913","2914",
+            "2815","2816","2915","2916","2817","2818","2917","2918"],
+            [], [], [], []),
 
-                    data['brut_solde_n'] = brut_solde_n + brut_except_n
-                    data['amor_solde_n'] = amor_solde_n + amor_except_n
-                    data['net_solde_n'] = data['brut_solde_n'] + data['amor_solde_n']
+            # Immobilisations corporelles (lignes feuilles)
+            ("AJ", "Terrains (1) dont Placement Net :",                       "actif", None,
+            ["22"], ["282","292"],                                            [], [], [], []),
+            ("AK", "Bâtiments(1)dont Placement Net :",                        "actif", None,
+            ["231","232","233","237","2391"],
+            ["2831","2832","2833","2837","2931","2932","2933","2937","2939"],
+            [], [], [], []),
+            ("AL", "Aménagements, agencements et installations",              "actif", None,
+            ["234","235","238","2392","2393"],
+            ["2834","2835","2838","2934","2935","2938","2939"],               [], [], [], []),
+            ("AM", "Matériel, mobilier et actifs biologiques",                "actif", None,
+            ["241", "242", "243", "244", "246", "247", "248"],
+            ["2841", "2842", "2843", "2844", "2846", "2847", "2848",
+            "2941", "2942", "2943", "2944", "2946", "2947", "2948"],
+            [], [], [], []),
+            ("AN", "Matériel de transport",                                   "actif", None,
+            ["245","2495"], ["2845","2945","2949"],                           [], [], [], []),
+            # Ligne agrégée AI
+            ("AI", "IMMOBILISATIONS CORPORELLES",                             "actif", 3,
+            ["22", "231", "232", "233", "237", "2391",
+            "234", "235", "238", "2392", "2393",
+            "241", "242", "243", "244", "246", "247", "248",
+            "245", "2495"],
+            ["282", "292",
+            "2831", "2832", "2833", "2837", "2931", "2932", "2933", "2937", "2939",
+            "2834", "2835", "2838", "2934", "2935", "2938",
+            "2841", "2842", "2843", "2844", "2846", "2847", "2848",
+            "2941", "2942", "2943", "2944", "2946", "2947", "2948",
+            "2845", "2945", "2949"],
+            [], [], [], []),
 
-                    # N-1
-                    brut_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data['brut_cpt']))
-                    amor_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data['amor_cpt']))
-                    net_except_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('net_except_cpt', [])))
-                    data['net_solde_n1'] = brut_n1 + amor_n1 + net_except_n1
-                else:
-                    net_solde_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data['net_cpt']))
-                    net_solde_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data['net_cpt']))
+            # Avances sur immobilisations
+            ("AP", "AVANCES ET ACOMPTES VERSES SUR IMMOBILISATIONS",          "actif", None,
+            ["251","252"], ["2951","2952"],                                   [], [], [], []),
 
-                    net_except_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('net_except_cpt', [])))
-                    net_except_n1_bis = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('net_except_cpt', [])))
+            # Immobilisations financières (lignes feuilles)
+            ("AR", "Titres de participation",                                 "actif", None,
+            ["26"], ["296"],                                                  [], [], [], []),
+            ("AS", "Autres immobilisations financières",                      "actif", None,
+            ["27"], ["297"],                                                  [], [], [], []),
+            # Ligne agrégée AQ
+            ("AQ", "IMMOBILISATIONS FINANCIERES",                             "actif", None,
+            ["26","27"], ["296","297"],                                       [], [], [], []),
 
-                    data['net_solde_n'] = net_solde_n + net_except_n
-                    data['net_solde_n1'] = net_solde_n1 + net_except_n1_bis
+            # Total actif immobilisé (agrégé)
+            ("AZ", "TOTAL ACTIF IMMOBILISE",                                  "actif", None,
+            ["211","2181","2191","212","213","214","2193","215","216","217","218","2198",
+            "22","231","232","233","237","2391","234","235","238","2392","2393","24",
+            "245","2495","251","252","26","27"],
+            ["2811","2818","2911","2918","2919","2812","2813","2814","2912","2913","2914",
+            "2815","2816","2915","2916","2817","2817","2917","2918","282","292",
+            "2831","2832","2833","2837","2931","2932","2933","2937","2939",
+            "2834","2835","2838","2934","2935","2938","284","2845","2945","2949",
+            "2951","2952","296","297"],
+            [], [], [], []),
 
-                row['ref'] = data['ref']
-                row['libelle'] = data['libelle']
-                row['compte_to_be_used'] = str(data.get('brut_cpt')) + str(data.get('amor_cpt')) + str(data.get('net_cpt')) + str(data.get('brut_except_cpt')) + str(data.get('amor_except_cpt')) + str(data.get('net_except_cpt'))
-                row['compte_to_be_used'] = row['compte_to_be_used'].replace('None', '')
+            # Actif circulant HAO
+            ("BA", "ACTIF CIRCULANT HAO",                                     "actif", None,
+            ["485","488"], ["498"],                                           [], [], [], []),
 
-                one = data.get('brut_cpt', []) or []
-                two = data.get('amor_cpt', []) or []
-                three = data.get('net_cpt', []) or []
-                four = data.get('brut_except_cpt', []) or []
-                five = data.get('amor_except_cpt', []) or []
-                six = data.get('net_except_cpt', []) or []
+            # Stocks
+            ("BB", "STOCKS ET ENCOURS",                                       "actif", 4,
+            ["31","32","33","34","35","36","37","38"], ["39"],                [], [], [], []),
 
-                row['compte_to_be_used_off'] = list(set(one + two + three + four + five + six))
+            # Créances (lignes feuilles)
+            ("BH", "Fournisseurs avances versées",                            "actif", None,
+            ["409"], ["490"],                                                 [], [], [], []),
+            ("BI", "Clients",                                                  "actif", 5,
+            ["41"], ["491"],                                                  [], ["419"], [], ["419"]),
+            ("BJ", "Autres créances",                                         "actif", 6,
+            ["185","42","43","44","45","46","47"],
+            ["492","493","494","495","496","497"],                            [], ["478"], [], ["478"]),
+            # Ligne agrégée BG
+            ("BG", "CREANCES ET EMPLOIS ASSIMILES",                           "actif", None,
+            ["485","488","31","32","33","34","35","36","37","38",
+            "409","41","185","42","43","44","45","46","47"],
+            ["498","39","490","491","492","493","494","495","496","497"],
+            [], ["419","478"], [], ["419","478"]),
 
-                row['brut_solde_n'] = data.get('brut_solde_n')
-                row['amor_solde_n'] = data.get('amor_solde_n')
-                row['net_solde_n'] = data.get('net_solde_n')
-                row['net_solde_n1'] = data.get('net_solde_n1')
+            # Total actif circulant (agrégé)
+            ("BK", "TOTAL ACTIF CIRCULANT",                                   "actif", None,
+            ["409","41","185","42","43","44","45","46","47"],
+            ["490","491","492","493","494","495","496","497"],
+            [], ["419","478"], [], ["419","478"]),
 
-                structure.append(row)
+            # Trésorerie actif (lignes feuilles)
+            ("BQ", "Titres de placement",                                     "actif", None,
+            ["50"], ["590"],                                                  [], [], [], []),
+            ("BR", "Valeurs à encaisser",                                     "actif", None,
+            ["51"], ["591"],                                                  [], [], [], []),
+            ("BS", "Banques, chèques postaux, caisse et assimilés",           "actif", None,
+            ["52","53","54","55","57","581","582"], ["592","593","594"],       [], [], [], []),
+            # Ligne agrégée BT
+            ("BT", "TOTAL TRESORERIE-ACTIF",                                  "actif", None,
+            ["50","51","52","53","54","55","57","581","582"],
+            ["590","591","592","593","594"],                                  [], [], [], []),
 
-            datum[efi] = structure
+            # Écart de conversion actif
+            ("BU", "Ecart de conversion-Actif",                               "actif", None,
+            ["478"], ["0"],                                                   [], [], [], []),
+
+            # Total général actif
+            ("BZ", "TOTAL GENERAL",                                           "actif", None,
+            ["211","2181","2191","212","213","214","2193","215","216","217","218","2198",
+            "22","231","232","233","237","2391","234","235","238","2392","2393","24",
+            "245","2495","251","252","26","27","485","488","31","32","33","34","35","36",
+            "37","38","409","41","185","42","43","44","45","46","47","50","51","52","53",
+            "54","55","57","581","582","478"],
+            ["2811","2818","2911","2918","2919","2812","2813","2814","2912","2913","2914",
+            "2815","2816","2915","2916","2817","2917","2918","282","292",
+            "2831","2832","2833","2837","2931","2932","2933","2937","2939",
+            "2834","2835","2838","2934","2935","2938","284","2845","2945","2949",
+            "2951","2952","296","297","498","39","490","491","492","493","494","495",
+            "496","497","590","591","592","593","594"],
+            [], ["2181","245","2495","419","478"], ["2845","2945","2949"],
+            ["2181","245","2495","2845","2945","2949","419","478"]),
+
+            # ── PASSIF ─────────────────────────────────────────────────────
+            # Capitaux propres (lignes feuilles)
+            ("CA", "Capital",                                                 "passif", None,
+            [], [], ["101","102","103","104"],                                [], [], []),
+            ("CB", "Apporteurs capital non appelé (-)",                       "passif", None,
+            [], [], ["109"],                                                  [], [], []),
+            ("CD", "Primes liées au capital social",                          "passif", None,
+            [], [], ["105"],                                                  [], [], []),
+            ("CE", "Ecarts de réévaluation",                                  "passif", None,
+            [], [], ["106"],                                                  [], [], []),
+            ("CF", "Réserves indisponibles",                                  "passif", None,
+            [], [], ["111","112","113"],                                      [], [], []),
+            ("CG", "Réserves libres",                                         "passif", None,
+            [], [], ["118"],                                                  [], [], []),
+            ("CH", "Report à nouveau (+ ou -)",                               "passif", None,
+            [], [], ["121","129"],                                            [], [], []),
+            ("CJ", "Résultat net de l'exercice (bénéfice + ou perte -)",      "passif", None,
+            [], [], ["131","139"],                                            [], [], []),
+            ("CL", "Subventions d'investissement",                            "passif", None,
+            [], [], ["14"],                                                   [], [], []),
+            ("CM", "Provisions réglementées",                                 "passif", None,
+            [], [], ["15"],                                                   [], [], []),
+            # Ligne agrégée CP
+            ("CP", "TOTAL CAPITAUX PROPRES ET RESSOURCES ASSIMILEES",         "passif", None,
+            [], [],
+            ["101","102","103","104","109","105","106","111","112","113","118",
+            "121","129","131","139","14","15"],
+            [], [], []),
+
+            # Dettes financières (lignes feuilles)
+            ("DA", "Emprunts et dettes financières diverses",                 "passif", None,
+            [], [], ["16","181","182","183","184"],                           [], [], []),
+            ("DB", "Dettes de location-acquisition",                         "passif", None,
+            [], [], ["17"],                                                   [], [], []),
+            ("DC", "Provisions pour risques et charges",                      "passif", None,
+            [], [], ["19"],                                                   [], [], []),
+            # Ligne agrégée DD
+            ("DD", "TOTAL DETTES FINANCIERES ET RESSOURCES ASSIMILEES",       "passif", None,
+            [], [], ["16","181","182","183","184","17","19"],                 [], [], []),
+            # Ligne agrégée DF
+            ("DF", "TOTAL RESSOURCES STABLES",                                "passif", None,
+            [], [],
+            ["101","102","103","104","109","105","106","111","112","113","118",
+            "121","129","131","139","14","15","16","181","182","183","184","17","19"],
+            [], [], []),
+
+            # Passif circulant (lignes feuilles)
+            ("DH", "Dettes circulantes HAO",                                  "passif", None,
+            [], [], ["481","482","484","4998"],                               [], [], []),
+            ("DI", "Clients, avances reçues",                                 "passif", None,
+            [], [], ["419"],                                                  [], [], []),
+            ("DJ", "Fournisseurs d'exploitation",                             "passif", None,
+            [], [], ["40"],                                                   [], [], ["409"]),
+            ("DK", "Dettes fiscales et sociales",                             "passif", None,
+            [], [], ["42","43","44"],                                         [], [], []),
+            ("DM", "Autres dettes",                                           "passif", None,
+            [], [], ["185","45","46","47"],                                   [], [], ["479"]),
+            ("DN", "Provisions pour risques et charges à court terme",        "passif", None,
+            [], [], ["499","599"],                                            [], [], ["4998"]),
+            # Ligne agrégée DP
+            ("DP", "TOTAL PASSIF CIRCULANT",                                  "passif", None,
+            [], [],
+            ["481","482","484","4998","419","40","42","43","44","185","45","46","47","499","599"],
+            [], [], ["409","479"]),
+
+            # Trésorerie passif (lignes feuilles)
+            ("DQ", "Banques, crédits d'escompte",                             "passif", None,
+            [], [], ["564","565"],                                            [], [], []),
+            ("DR", "Banques, établissements financiers et crédits de trésorerie", "passif", None,
+            [], [], ["52","53","561","566"],                                  [], [], []),
+            # Ligne agrégée DT
+            ("DT", "TOTAL TRESORERIE-PASSIF",                                 "passif", None,
+            [], [], ["564","565","52","53","561","566"],                      [], [], []),
+
+            # Écart de conversion passif
+            ("DV", "Ecart de conversion-Passif",                              "passif", None,
+            [], [], ["479"],                                                  [], [], []),
+
+            # Total général passif
+            ("DZ", "TOTAL GENERAL",                                           "passif", None,
+            [], [],
+            ["101","102","103","104","109","105","106","111","112","113","118",
+            "121","129","131","139","14","15","16","181","182","183","184","17","19",
+            "481","482","484","4998","419","40","42","43","44","185","45","46","47",
+            "499","599","564","565","52","53","561","566","479"],
+            [], [], ["409"]),
+
+            # ── COMPTE DE RÉSULTAT ─────────────────────────────────────────
+            ("TA", "Ventes de marchandises",                                   "pnl", None,
+            [], [], ["701"],                                                  [], [], []),
+            ("RA", "Achats de marchandises",                                   "pnl", None,
+            [], [], ["601"],                                                  [], [], []),
+            ("RB", "Variation de stocks de marchandises",                      "pnl", None,
+            [], [], ["6031"],                                                 [], [], []),
+            ("XA", "MARGE COMMERCIALE (Somme TA à RB)",                        "pnl", None,
+            [], [], ["701","601","6031"],                                     [], [], []),
+            ("TB", "Ventes de produits fabriqués",                             "pnl", None,
+            [], [], ["702","703","704"],                                      [], [], []),
+            ("TC", "Travaux, services vendus",                                 "pnl", None,
+            [], [], ["705","706"],                                            [], [], []),
+            ("TD", "Produits accessoires",                                     "pnl", None,
+            [], [], ["707"],                                                  [], [], []),
+            ("XB", "CHIFFRE D'AFFAIRES (A + B + C + D)",                       "pnl", None,
+            [], [], ["701","702","703","704","705","706","707"],              [], [], []),
+            ("TE", "Production stockée (ou déstockage)",                       "pnl", None,
+            [], [], ["73"],                                                   [], [], []),
+            ("TF", "Production immobilisée",                                   "pnl", None,
+            [], [], ["72"],                                                   [], [], []),
+            ("TG", "Subventions d'exploitation",                               "pnl", None,
+            [], [], ["71"],                                                   [], [], []),
+            ("TH", "Autres produits",                                          "pnl", None,
+            [], [], ["75"],                                                   [], [], []),
+            ("TI", "Transferts de charges d'exploitation",                     "pnl", None,
+            [], [], ["781"],                                                  [], [], []),
+            ("RC", "Achats de matières premières et fournitures liées",        "pnl", None,
+            [], [], ["602"],                                                  [], [], []),
+            ("RD", "Variation de stocks de matières premières et fournitures liées", "pnl", None,
+            [], [], ["6032"],                                                 [], [], []),
+            ("RE", "Autres achats",                                            "pnl", None,
+            [], [], ["604","605","608"],                                      [], [], []),
+            ("RF", "Variation de stocks d'autres approvisionnements",          "pnl", None,
+            [], [], ["6033"],                                                 [], [], []),
+            ("RG", "Transports",                                               "pnl", None,
+            [], [], ["61"],                                                   [], [], []),
+            ("RH", "Services extérieurs",                                      "pnl", None,
+            [], [], ["62","63"],                                              [], [], []),
+            ("RI", "Impôts et taxes",                                          "pnl", None,
+            [], [], ["64"],                                                   [], [], []),
+            ("RJ", "Autres charges",                                           "pnl", None,
+            [], [], ["65"],                                                   [], [], []),
+            ("XC", "VALEUR AJOUTEE (XB +RA+RB) + (somme TE à RJ)",            "pnl", None,
+            [], [], ["701","702","703","704","705","706","707","601","6031",
+                    "602","6032","604","605","608","6033","61","62","63","64","65","73","72","71","75","781"],
+            [], [], []),
+            ("RK", "Charges de personnel",                                     "pnl", None,
+            [], [], ["66"],                                                   [], [], []),
+            ("XD", "EXCEDENT BRUT D'EXPLOITATION (XC+RK)",                     "pnl", None,
+            [], [], ["701","702","703","704","705","706","707","601","6031",
+                    "602","6032","604","605","608","6033","61","62","63","64","65","73","72","71","75","781","66"],
+            [], [], []),
+            ("TJ", "Reprises d'amortissements, provisions et dépréciations",   "pnl", None,
+            [], [], ["791","798","799"],                                      [], [], []),
+            ("RL", "Dotations aux amortissements, aux provisions et dépréciations", "pnl", None,
+            [], [], ["681","691"],                                            [], [], []),
+            ("XE", "RESULTAT D'EXPLOITATION (XD+TJ+ RL)",                      "pnl", None,
+            [], [], ["701","702","703","704","705","706","707","601","6031",
+                    "602","6032","604","605","608","6033","61","62","63","64","65","73","72","71","75","781",
+                    "66","791","798","799","681","691"],
+            [], [], []),
+            ("TK", "Revenus financiers et assimilés",                          "pnl", None,
+            [], [], ["77"],                                                   [], [], []),
+            ("TL", "Reprises de provisions et dépréciations financières",      "pnl", None,
+            [], [], ["797"],                                                  [], [], []),
+            ("TM", "Transferts de charges financières",                        "pnl", None,
+            [], [], ["787"],                                                  [], [], []),
+            ("RM", "Frais financiers et charges assimilées",                   "pnl", None,
+            [], [], ["67"],                                                   [], [], []),
+            ("RN", "Dotations aux provisions et aux dépréciations financières","pnl", None,
+            [], [], ["697"],                                                  [], [], []),
+            ("XF", "RESULTAT FINANCIER (somme TK à RN)",                       "pnl", None,
+            [], [], ["77","797","787","67","697"],                            [], [], []),
+            ("XG", "RESULTAT DES ACTIVITES ORDINAIRES (XE+XF)",                "pnl", None,
+            [], [], ["701","702","703","704","705","706","707","601","6031",
+                    "602","6032","604","605","608","6033","61","62","63","64","65","73","72","71","75","781",
+                    "66","791","798","799","681","691","77","797","787","67","697"],
+            [], [], []),
+            ("TN", "Produits des cessions d'immobilisations",                  "pnl", None,
+            [], [], ["82"],                                                   [], [], []),
+            ("TO", "Autres Produits HAO",                                      "pnl", None,
+            [], [], ["84","86","88"],                                         [], [], []),
+            ("RO", "Valeurs comptables des cessions d'immobilisations",        "pnl", None,
+            [], [], ["81"],                                                   [], [], []),
+            ("RP", "Autres Charges HAO",                                       "pnl", None,
+            [], [], ["83","85"],                                              [], [], []),
+            ("XH", "RESULTAT HORS ACTIVITES ORDINAIRES (somme TN à RP)",       "pnl", None,
+            [], [], ["82","84","86","88","81","83","85"],                     [], [], []),
+            ("RQ", "Participation des travailleurs",                           "pnl", None,
+            [], [], ["87"],                                                   [], [], []),
+            ("RS", "Impôts sur le résultat",                                   "pnl", None,
+            [], [], ["89"],                                                   [], [], []),
+            ("XI", "RESULTAT NET (XG+XH+RQ+RS)",                               "pnl", None,
+            [], [], ["701","702","703","704","705","706","707","601","6031",
+                    "602","6032","604","605","608","6033","61","62","63","64","65","73","72","71","75","781",
+                    "66","791","798","799","681","691","77","797","787","67","697",
+                    "82","84","86","88","81","83","85","87","89"],
+            [], [], []),
+        ]
+
+        # ------------------------------------------------------------------
+        # Helpers
+        # ------------------------------------------------------------------
+        def _sum_prefixes(balance, prefixes):
+            if not prefixes:
+                return 0
+            return sum(
+                item["solde_reel"]
+                for item in balance
+                if any(str(item["numero_compte"]).startswith(p) for p in prefixes)
+            )
+
+        def _collect_prefixes(*lists):
+            """Retourne la liste dédupliquée de tous les préfixes utilisés."""
+            seen = set()
+            out = []
+            for lst in lists:
+                for p in lst:
+                    if p and p not in seen:
+                        seen.add(p)
+                        out.append(p)
+            return out
+
+        # ------------------------------------------------------------------
+        # Calcul
+        # ------------------------------------------------------------------
+        datum = {"actif": [], "passif": [], "pnl": []}
+
+        for (ref, libelle, nature, note,
+            brut_cpts, amor_cpts, net_cpts,
+            brut_except, amor_except, net_except) in EFI_CATALOGUE:
+
+            row = {
+                "ref":            ref,
+                "libelle":        libelle,
+                "note":           note,
+                "brut_solde_n":   None,
+                "amor_solde_n":   None,
+                "net_solde_n":    0,
+                "net_solde_n1":   0,
+                "compte_to_be_used":     "",
+                "compte_to_be_used_off": _collect_prefixes(brut_cpts, amor_cpts, net_cpts, brut_except, amor_except, net_except),
+            }
+
+            if brut_cpts or amor_cpts:
+                # Cas avec brut + amortissements
+                brut_n   = _sum_prefixes(balance_n,  brut_cpts)
+                amor_n   = _sum_prefixes(balance_n,  amor_cpts)
+                bex_n    = _sum_prefixes(balance_n,  brut_except)
+                aex_n    = _sum_prefixes(balance_n,  amor_except)
+
+                brut_n1  = _sum_prefixes(balance_n1, brut_cpts)
+                amor_n1  = _sum_prefixes(balance_n1, amor_cpts)
+                nex_n1   = _sum_prefixes(balance_n1, net_except)
+
+                row["brut_solde_n"] = brut_n  + bex_n
+                row["amor_solde_n"] = amor_n  + aex_n
+                row["net_solde_n"]  = row["brut_solde_n"] + row["amor_solde_n"]
+                row["net_solde_n1"] = brut_n1 + amor_n1 + nex_n1
+
+            else:
+                # Cas net seul
+                net_n    = _sum_prefixes(balance_n,  net_cpts)
+                nex_n    = _sum_prefixes(balance_n,  net_except)
+                net_n1   = _sum_prefixes(balance_n1, net_cpts)
+                nex_n1   = _sum_prefixes(balance_n1, net_except)
+
+                row["net_solde_n"]  = net_n  + nex_n
+                row["net_solde_n1"] = net_n1 + nex_n1
+
+            # Champ legacy (chaîne lisible des préfixes)
+            all_cpts = _collect_prefixes(brut_cpts, amor_cpts, net_cpts,
+                                        brut_except, amor_except, net_except)
+            row["compte_to_be_used"] = ",".join(all_cpts)
+
+            datum[nature].append(row)
+
+        # ------------------------------------------------------------------
+        # Recalcul des lignes agrégées (XA, XB…, CP, DD…, AD, AI…)
+        # ------------------------------------------------------------------
+        datum = self.compute_etats_financiers(datum)
 
         return datum
+
+
+    # ──────────────────────────────────────────────────────────────────────
+    def compute_etats_financiers(self, efi):
+        """
+        Recalcule les lignes agrégées SYSCOHADA en appliquant les formules
+        officielles sur les valeurs déjà calculées par prod_efi().
+
+        Formules :
+        ACTIF  :  AD=AE+AF+AG+AH  |  AI=AJ+AK+AL+AM+AN  |  AQ=AR+AS
+                    AZ=AD+AI+AP+AQ  |  BG=BH+BI+BJ  |  BK=BA+BB+BG
+                    BT=BQ+BR+BS     |  BZ=AZ+BK+BT+BU
+        PASSIF :  CP=CA+CB+CD+CE+CF+CG+CH+CJ+CL+CM
+                    DD=DA+DB+DC     |  DF=CP+DD
+                    DP=DH+DI+DJ+DK+DM+DN  |  DT=DQ+DR
+                    DZ=DF+DP+DT+DV
+        PNL    :  XA = -TA - RA +/- RB
+                    XB = -TA - TB - TC - TD
+                    XC = (XB - RA +/- RB) + (+/- TE - TF - TG - TH - TI - RC +/- RD - RE +/- RF - RG - RH - RI - RJ)
+                    XD = XC - RK
+                    XE = XD - TJ - RL
+                    XF = -TK - TL - TM - RM - RN
+                    XG = XE + XF
+                    XH = -TN - TO - RO - RP
+                    XI = XG + XH - RQ - RS
+
+        """
+
+        def _g(idx, ref, key="net_solde_n"):
+            row = idx.get(ref)
+            if not row:
+                return 0
+            v = row.get(key, 0)
+            return v if v is not None else 0
+
+        def _set(idx, ref, val_n, val_n1):
+            if ref in idx:
+                idx[ref]["net_solde_n"]  = val_n
+                idx[ref]["net_solde_n1"] = val_n1
+
+        # def _sum(idx, refs, key="net_solde_n"):
+        #     return sum(_g(idx, r, key) for r in refs)
+
+        for section in ("actif", "passif", "pnl"):
+            rows = efi.get(section, [])
+            idx  = {r["ref"]: r for r in rows if r.get("ref")}
+            K    = "net_solde_n1"  # alias court
+
+            if section == "actif":
+                # Ligne feuilles déjà calculées par prod_efi → on recalcule
+                # uniquement les agrégats pour qu'ils soient cohérents.
+                # for agg_ref, leaf_refs in [
+                #     ("AD", ["AE","AF","AG","AH"]),
+                #     ("AI", ["AJ","AK","AL","AM","AN"]),
+                #     ("AQ", ["AR","AS"]),
+                #     ("BG", ["BH","BI","BJ"]),
+                #     ("AZ", ["AD","AI","AP","AQ"]),
+                #     ("BK", ["BA","BB","BG"]),
+                #     ("BT", ["BQ","BR","BS"]),
+                #     ("BZ", ["AZ","BK","BT","BU"]),
+                # ]:
+                #     _set(idx, agg_ref,
+                #         _sum(idx, leaf_refs),
+                #         _sum(idx, leaf_refs, K))
+
+                g  = lambda r:   _g(idx, r)
+                g1 = lambda r:   _g(idx, r, K)
+
+                # ("AD", ["AE","AF","AG","AH"])
+                ad  = g("AE") + g("AF") + g("AG") + g("AH")
+                ad1 = g1("AE") + g1("AF") + g1("AG") + g1("AH")
+                _set(idx, "AD", ad, ad1)
+
+                # ("AI", ["AJ","AK","AL","AM","AN"])
+                ai  = g("AJ") + g("AK") + g("AL") + g("AM") + g("AN")
+                ai1 = g1("AJ") + g1("AK") + g1("AL") + g1("AM") + g1("AN")
+                _set(idx, "AI", ai, ai1)
+
+                # ("AQ", ["AR","AS"])
+                aq  = g("AR") + g("AS")
+                aq1 = g1("AR") + g1("AS")
+                _set(idx, "AQ", aq, aq1)
+
+                # ("BG", ["BH","BI","BJ"])
+                bg  = g("BH") + g("BI") + g("BJ")
+                bg1 = g1("BH") + g1("BI") + g1("BJ")
+                _set(idx, "BG", bg, bg1)
+
+                # ("AZ", ["AD","AI","AP","AQ"])
+                az  = g("AD") + g("AI") + g("AP") + g("AQ")
+                az1 = g1("AD") + g1("AI") + g1("AP") + g1("AQ")
+                _set(idx, "AZ", az, az1)
+
+                # ("BK", ["BA","BB","BG"])
+                bk  = g("BA") + g("BB") + g("BG")
+                bk1 = g1("BA") + g1("BB") + g1("BG")
+                _set(idx, "BK", bk, bk1)
+
+                # ("BT", ["BQ","BR","BS"])
+                bt  = g("BQ") + g("BR") + g("BS")
+                bt1 = g1("BQ") + g1("BR") + g1("BS")
+                _set(idx, "BT", bt, bt1)
+
+                # ("BZ", ["AZ","BK","BT","BU"])
+                bz  = g("AZ") + g("BK") + g("BT") + g("BU")
+                bz1 = g1("AZ") + g1("BK") + g1("BT") + g1("BU")
+                _set(idx, "BZ", bz, bz1)
+
+            elif section == "passif":
+                # for agg_ref, leaf_refs in [
+                #     ("CP", ["CA","CB","CD","CE","CF","CG","CH","CJ","CL","CM"]),
+                #     ("DD", ["DA","DB","DC"]),
+                #     ("DF", ["CP","DD"]),
+                #     ("DP", ["DH","DI","DJ","DK","DM","DN"]),
+                #     ("DT", ["DQ","DR"]),
+                #     ("DZ", ["DF","DP","DT","DV"]),
+                # ]:
+                #     _set(idx, agg_ref,
+                #         _sum(idx, leaf_refs),
+                #         _sum(idx, leaf_refs, K))
+
+                g  = lambda r:   _g(idx, r)
+                g1 = lambda r:   _g(idx, r, K)
+
+                # ("CP", ["CA","CB","CD","CE","CF","CG","CH","CJ","CL","CM"])
+                cp  = g("CA") + g("CB") + g("CD") + g("CE") + g("CF") + g("CG") + g("CH") + g("CJ") + g("CL") + g("CM")
+                cp1 = g1("CA") + g1("CB") + g1("CD") + g1("CE") + g1("CF") + g1("CG1") + g1("CH") + g1("CJ") + g1("CL") + g1("CM")
+                _set(idx, "CP", cp, cp1)
+
+                # ("DD", ["DA","DB","DC"])
+                dd  = g("DA") + g("DB") + g("DC")
+                dd1 = g1("DA") + g1("DB") + g1("DC")
+                _set(idx, "DD", dd, dd1)
+
+                # ("DF", ["CP","DD"])
+                df  = g("CP") + g("DD")
+                df1 = g1("CP") + g1("DD")
+                _set(idx, "DF", df, df1)
+
+                # ("DP", ["DH","DI","DJ","DK","DM","DN"])
+                dp  = g("DH") + g("DI") + g("BJ") + g("DK") + g("DM") + g("BN")
+                dp1 = g1("DH") + g1("DI") + g1("BJ") + g1("DK") + g1("DM") + g1("BN")
+                _set(idx, "DP", dp, dp1)
+
+                # ("DT", ["DQ","DR"])
+                dt  = g("DQ") + g("DR")
+                dt1 = g1("DQ") + g1("DR")
+                _set(idx, "DT", dt, dt1)
+
+                # ("DZ", ["DF","DP","DT","DV"])
+                dz  = g("DF") + g("DP") + g("DT") + g("DV")
+                dz1 = g1("DF") + g1("DP") + g1("DT") + g1("DV")
+                _set(idx, "DZ", dz, dz1)
+
+            elif section == "pnl":
+                g  = lambda r:   _g(idx, r)
+                g1 = lambda r:   _g(idx, r, K)
+
+                # XA = TA - RA + RB
+                xa  = - g("TA") - g("RA") + g("RB")
+                xa1 = - g1("TA") - g1("RA") + g1("RB")
+                _set(idx, "XA", xa, xa1)
+
+                # XB = TA + TB + TC + TD
+                xb  = - g("TA") - g("TB") - g("TC") - g("TD")
+                xb1 = - g1("TA") - g1("TB") - g1("TC") - g1("TD")
+                _set(idx, "XB", xb, xb1)
+
+                # XC
+                xc = (xb
+                    - g("RA") + g("RB")
+                    + g("TE") - g("TF") - g("TG") - g("TH") - g("TI")
+                    - g("RC") + g("RD")
+                    - g("RE") + g("RF")
+                    - g("RG") - g("RH") - g("RI") - g("RJ"))
+                xc1 = (xb1
+                    - g1("RA") + g1("RB")
+                    + g1("TE") - g1("TF") - g1("TG") - g1("TH") - g1("TI")
+                    - g1("RC") + g1("RD")
+                    - g1("RE") + g1("RF")
+                    - g1("RG") - g1("RH") - g1("RI") - g1("RJ"))
+                _set(idx, "XC", xc, xc1)
+
+                # XD = XC - RK
+                xd  = xc  - g("RK");   xd1 = xc1 - g1("RK")
+                _set(idx, "XD", xd, xd1)
+
+                # XE = XD + TJ - RL
+                xe  = xd  - g("TJ")  - g("RL");   xe1 = xd1 - g1("TJ") - g1("RL")
+                _set(idx, "XE", xe, xe1)
+
+                # XF = TK + TL + TM - RM - RN
+                xf  = - g("TK")  - g("TL")  - g("TM")  - g("RM")  - g("RN")
+                xf1 = - g1("TK") - g1("TL") - g1("TM") - g1("RM") - g1("RN")
+                _set(idx, "XF", xf, xf1)
+
+                # XG = XE + XF
+                xg  = xe  + xf;   xg1 = xe1 + xf1
+                _set(idx, "XG", xg, xg1)
+
+                # XH = TN + TO - RO - RP
+                xh  = - g("TN")  - g("TO")  - g("RO")  - g("RP")
+                xh1 = - g1("TN") - g1("TO") - g1("RO") - g1("RP")
+                _set(idx, "XH", xh, xh1)
+
+                # XI = XG + XH - RQ - RS
+                xi  = xg  + xh  - g("RQ")  - g("RS")
+                xi1 = xg1 + xh1 - g1("RQ") - g1("RS")
+                _set(idx, "XI", xi, xi1)
+
+        return efi
 
     # ---------- Piste d'audit ----------
     def audit_trail(self, id_mission):
@@ -1781,7 +3009,8 @@ class Mission(Document):
             # - 12 (Report à nouveau) : peut être débiteur ou créditeur selon le résultat
             # - 109 (Associés non appelé) : peut être débiteur
             # - 129 (Report à nouveau débiteur) : peut être débiteur
-            if numero_compte.startswith('105') or numero_compte.startswith('12') or numero_compte.startswith('109') or numero_compte.startswith('129'):
+            # - 1309 (Primes de remboursement des obligations) : peut être débiteur
+            if numero_compte.startswith('105') or numero_compte.startswith('12') or numero_compte.startswith('109') or numero_compte.startswith('129') or numero_compte.startswith('1309'):
                 return 'BOTH'  # Peut être débiteur ou créditeur selon le cas
             return 'C'  # Créditeur normal pour la classe 1
         
@@ -2967,6 +4196,27 @@ class Mission(Document):
         lignes_ignorees = 0
         lignes_ignorees_none = 0
         lignes_ignorees_vide = 0
+
+        def _normalize_compte_key(raw_value):
+            if raw_value is None:
+                return None
+            s = str(raw_value).strip()
+            if not s or s == "None" or s.lower() == "nan":
+                return None
+            # Normaliser les formats fréquents d'import Excel: "401.0" -> "401"
+            if s.endswith(".0"):
+                s = s[:-2]
+            # Supprimer les espaces internes accidentels
+            s = s.replace(" ", "")
+            return s or None
+
+        def _to_float(value):
+            try:
+                if value is None or value == "":
+                    return 0.0
+                return float(value)
+            except Exception:
+                return 0.0
         
         if not lines:
             print("[INDEX_BY_COMPTE] liste de lignes vide")
@@ -2990,15 +4240,30 @@ class Mission(Document):
                 lignes_ignorees_none += 1
                 continue
             
-            # Convertir en string et nettoyer (inclure "0" comme numéro valide)
-            num_str = str(num_compte).strip()
-            
-            if not num_str or num_str == "None" or num_str.lower() == "nan":
+            num_str = _normalize_compte_key(num_compte)
+            if not num_str:
                 lignes_ignorees_vide += 1
                 continue
-                
-            # Ajouter au index
-            index[num_str] = x
+
+            # Agréger les doublons du même compte au lieu d'écraser la ligne précédente.
+            # Cela évite de "perdre" des comptes lorsque la balance contient plusieurs lignes par numéro.
+            if num_str not in index:
+                row = dict(x)
+                row["numero_compte"] = num_str
+                index[num_str] = row
+            else:
+                row = index[num_str]
+                for fld in (
+                    "debit_initial",
+                    "credit_initial",
+                    "debit_mouvement",
+                    "credit_mouvement",
+                    "debit_fin",
+                    "credit_fin",
+                ):
+                    row[fld] = _to_float(row.get(fld, 0)) + _to_float(x.get(fld, 0))
+                if not row.get("libelle") and x.get("libelle"):
+                    row["libelle"] = x.get("libelle")
         
         print(f"[INDEX_BY_COMPTE] {len(index)} comptes indexes")
         if lignes_ignorees > 0:
@@ -3095,7 +4360,15 @@ class Mission(Document):
                     bd["annee"] = annee_auditee - idx
             
             # Trier les balances par année (du plus ancien au plus récent)
-            balance_docs.sort(key=lambda x: x.get("annee", 0))
+            # en gérant les années stockées en string ou formats mixtes.
+            def _year_sort_key(v):
+                y = v.get("annee", 0)
+                try:
+                    return int(str(y).strip())
+                except Exception:
+                    return -10**9
+
+            balance_docs.sort(key=_year_sort_key)
             
             # Identifier N et N-1
             if len(balance_docs) < 2:
@@ -3206,6 +4479,49 @@ class Mission(Document):
 
             # Créer une liste de tous les comptes (sans filtrage sur les classes)
             tous_comptes = []
+
+            def is_compte_130(numero_compte):
+                # Autoriser uniquement le compte 130 (résultat en instance d'affectation),
+                # pas les sous-comptes type 1309.
+                digits = ''.join(ch for ch in str(numero_compte or "") if ch.isdigit())
+                normalized = digits.lstrip('0') or '0'
+                return normalized == "130"
+
+            def _to_float(v):
+                try:
+                    if v is None or v == "":
+                        return 0.0
+                    return float(v)
+                except Exception:
+                    return 0.0
+
+            def _get_opening_solde(row):
+                # Ouverture N: priorité au couple débit/crédit initial.
+                di = _to_float(row.get("debit_initial", 0))
+                ci = _to_float(row.get("credit_initial", 0))
+                if di != 0 or ci != 0:
+                    return di - ci
+
+                # Fallbacks selon formats de balance importés.
+                if "solde_n1" in row and row.get("solde_n1") not in (None, ""):
+                    return _to_float(row.get("solde_n1", 0))
+                if "solde_reel" in row and row.get("solde_reel") not in (None, ""):
+                    return _to_float(row.get("solde_reel", 0))
+                return 0.0
+
+            def _get_closing_solde(row):
+                # Clôture N-1: priorité au couple débit/crédit fin.
+                df = _to_float(row.get("debit_fin", 0))
+                cf = _to_float(row.get("credit_fin", 0))
+                if df != 0 or cf != 0:
+                    return df - cf
+
+                # Fallbacks selon formats de balance importés.
+                if "solde_n" in row and row.get("solde_n") not in (None, ""):
+                    return _to_float(row.get("solde_n", 0))
+                if "solde_reel" in row and row.get("solde_reel") not in (None, ""):
+                    return _to_float(row.get("solde_reel", 0))
+                return 0.0
             
             print(f"🔍 Début du traitement: {len(idxN)} comptes en N, {len(idxN1)} comptes en N-1")
             
@@ -3221,51 +4537,73 @@ class Mission(Document):
             # 1. Traiter tous les comptes présents en N
             for num, ln in idxN.items():
                 try:
-                    # Pour l'ouverture N, utiliser debit_initial et credit_initial de N
-                    di = float(ln.get("debit_initial", 0) or 0)
-                    ci = float(ln.get("credit_initial", 0) or 0)
-                    ouvN = di - ci
+                    # Pour l'ouverture N, utiliser les colonnes d'ouverture avec fallback robuste
+                    ouvN = _get_opening_solde(ln)
 
                     prev = idxN1.get(num)
                     if prev:
-                        # Pour la clôture N-1, utiliser debit_fin et credit_fin de N-1
-                        df = float(prev.get("debit_fin", 0) or 0)
-                        cf = float(prev.get("credit_fin", 0) or 0)
-                        clotN1 = df - cf
-                        # Nouvelle convention: Écart = Ouverture N - Clôture N-1
+                        # Pour N-1, utiliser le solde de clôture avec fallback robuste
+                        clotN1 = _get_closing_solde(prev)
+                        # Convention métier: Écart = Ouverture N - Clôture N-1
                         ecart = ouvN - clotN1
                         
                         # Afficher les 5 premiers comptes pour debug
                         if len(tous_comptes) < 5:
-                            print(f"  📋 Compte {num}: ouvN={ouvN} (di={di}-ci={ci}), clotN1={clotN1} (df={df}-cf={cf}), ecart={ecart} (ouvN - clotN1)")
+                            print(f"  📋 Compte {num}: ouvN={ouvN}, clotN1={clotN1}, ecart={ecart} (ouvN - clotN1)")
                         
                         # Ajouter tous les comptes, pas seulement ceux avec des écarts
+                        ecart_normal_130 = (ecart != 0 and is_compte_130(num))
                         tous_comptes.append({
                             "numero_compte": num,
                             "libelle": ln.get("libelle", ""),
                             "ouverture_n": ouvN,
                             "cloture_n1": clotN1,
                             "ecart": ecart,
-                            "status": "ecart" if ecart != 0 else "ok",
-                            "message": f"Ouverture N {ouvN} ≠ Clôture N-1 {clotN1}" if ecart != 0 else f"Ouverture N {ouvN} = Clôture N-1 {clotN1}",
-                            "justification": f"Écart de {ecart} entre l'ouverture de l'exercice N ({ouvN}) et la clôture de l'exercice N-1 ({clotN1})." if ecart != 0 else "Aucun écart détecté.",
-                            "conclusion_audit": "Écart significatif détecté - Nécessite une justification et une documentation des causes de cette variation." if ecart != 0 else "Aucune anomalie détectée."
+                            "status": "ok_130" if ecart_normal_130 else ("ecart" if ecart != 0 else "ok"),
+                            "message": (
+                                f"Écart normal sur le compte 130 : Ouverture N {ouvN} vs Clôture N-1 {clotN1}"
+                                if ecart_normal_130 else
+                                (f"Ouverture N {ouvN} ≠ Clôture N-1 {clotN1}" if ecart != 0 else f"Ouverture N {ouvN} = Clôture N-1 {clotN1}")
+                            ),
+                            "justification": (
+                                f"Le compte 130 (résultat en instance d'affectation) peut varier entre la clôture N-1 ({clotN1}) et l'ouverture N ({ouvN}). Écart normal: {ecart}."
+                                if ecart_normal_130 else
+                                (f"Écart de {ecart} entre l'ouverture de l'exercice N ({ouvN}) et la clôture de l'exercice N-1 ({clotN1})." if ecart != 0 else "Aucun écart détecté.")
+                            ),
+                            "conclusion_audit": (
+                                "Aucune anomalie détectée: variation normale du compte 130 liée à l'affectation du résultat."
+                                if ecart_normal_130 else
+                                ("Écart significatif détecté - Nécessite une justification et une documentation des causes de cette variation." if ecart != 0 else "Aucune anomalie détectée.")
+                            )
                         })
                         comptes_ajoutes += 1
                     else:
                         # Compte nouveau (présent en N, absent en N-1)
                         # Nouvelle convention: Écart = Ouverture N - 0
                         ecart = ouvN
+                        nouveau_normal_130 = is_compte_130(num)
                         tous_comptes.append({
                             "numero_compte": num,
                             "libelle": ln.get("libelle", ""),
                             "ouverture_n": ouvN,
                             "cloture_n1": None,
                             "ecart": ecart,
-                            "status": "nouveau",
-                            "message": "Compte présent en N mais absent en N-1",
-                            "justification": f"Le compte {num} est présent dans l'exercice N avec un solde d'ouverture de {ouvN}, mais n'existait pas dans l'exercice N-1. Cela peut indiquer une création de compte, un reclassement ou une erreur de saisie.",
-                            "conclusion_audit": "Compte nouvellement créé ou reclassé - Vérifier la légitimité de cette création et documenter les raisons."
+                            "status": "ok_130" if nouveau_normal_130 else "nouveau",
+                            "message": (
+                                "Variation normale du compte 130 (présent en N, absent en N-1)"
+                                if nouveau_normal_130 else
+                                "Compte présent en N mais absent en N-1"
+                            ),
+                            "justification": (
+                                f"Le compte 130 (résultat en instance d'affectation) peut légitimement varier entre N-1 et N. Solde d'ouverture N: {ouvN}."
+                                if nouveau_normal_130 else
+                                f"Le compte {num} est présent dans l'exercice N avec un solde d'ouverture de {ouvN}, mais n'existait pas dans l'exercice N-1. Cela peut indiquer une création de compte, un reclassement ou une erreur de saisie."
+                            ),
+                            "conclusion_audit": (
+                                "Aucune anomalie détectée: variation normale du compte 130."
+                                if nouveau_normal_130 else
+                                "Compte nouvellement créé ou reclassé - Vérifier la légitimité de cette création et documenter les raisons."
+                            )
                         })
                         comptes_ajoutes += 1
                 except Exception as e:
@@ -3283,23 +4621,34 @@ class Mission(Document):
                 try:
                     # Si le compte n'existe pas en N, c'est un écart
                     if num not in idxN:
-                        df = float(ln.get("debit_fin", 0) or 0)
-                        cf = float(ln.get("credit_fin", 0) or 0)
-                        clotN1 = df - cf
+                        clotN1 = _get_closing_solde(ln)
                         
-                        # Nouvelle convention: Écart = Ouverture N (0) - Clôture N-1
+                        # Convention métier: Écart = Ouverture N (0) - Clôture N-1
                         ecart_suppr = -clotN1
 
+                        supprime_normal_130 = is_compte_130(num)
                         tous_comptes.append({
                             "numero_compte": num,
                             "libelle": ln.get("libelle", ""),
                             "ouverture_n": None,
                             "cloture_n1": clotN1,
                             "ecart": ecart_suppr,  # Écart = 0 - Clôture N-1 (absent en N)
-                            "status": "supprime",
-                            "message": "Compte présent en N-1 mais absent en N",
-                            "justification": f"Le compte {num} était présent dans l'exercice N-1 avec un solde de clôture de {clotN1}, mais n'existe plus dans l'exercice N. Cela peut indiquer une suppression de compte, un reclassement ou une erreur de saisie.",
-                            "conclusion_audit": "Compte supprimé ou reclassé - Vérifier la légitimité de cette suppression et documenter les raisons."
+                            "status": "ok_130" if supprime_normal_130 else "supprime",
+                            "message": (
+                                "Variation normale du compte 130 (présent en N-1, absent en N)"
+                                if supprime_normal_130 else
+                                "Compte présent en N-1 mais absent en N"
+                            ),
+                            "justification": (
+                                f"Le compte 130 (résultat en instance d'affectation) peut légitimement varier entre N-1 et N. Solde de clôture N-1: {clotN1}."
+                                if supprime_normal_130 else
+                                f"Le compte {num} était présent dans l'exercice N-1 avec un solde de clôture de {clotN1}, mais n'existe plus dans l'exercice N. Cela peut indiquer une suppression de compte, un reclassement ou une erreur de saisie."
+                            ),
+                            "conclusion_audit": (
+                                "Aucune anomalie détectée: variation normale du compte 130."
+                                if supprime_normal_130 else
+                                "Compte supprimé ou reclassé - Vérifier la légitimité de cette suppression et documenter les raisons."
+                            )
                         })
                         comptes_ajoutes += 1
                 except Exception as e:
@@ -3585,6 +4934,9 @@ class Mission(Document):
             for compte in rapport_standard.get("comptes", []):
                 compte_ajuste = compte.copy()
                 numero_compte = compte["numero_compte"]
+                digits = ''.join(ch for ch in str(numero_compte or "") if ch.isdigit())
+                normalized = digits.lstrip('0') or '0'
+                is_compte_130 = normalized == "130"
                 
                 # Chercher les reclassements qui affectent ce compte
                 for reclassement in reclassements:
@@ -3609,10 +4961,16 @@ class Mission(Document):
                         # Recalculer l'écart
                         if (compte_ajuste["ouverture_n"] is not None and 
                             compte_ajuste["cloture_n1"] is not None):
-                            compte_ajuste["ecart"] = compte_ajuste["cloture_n1"] - compte_ajuste["ouverture_n"]
+                            # Conserver la même convention que le contrôle standard:
+                            # écart = ouverture N - clôture N-1
+                            compte_ajuste["ecart"] = compte_ajuste["ouverture_n"] - compte_ajuste["cloture_n1"]
                         
                         # Mettre à jour le statut
-                        if abs(compte_ajuste["ecart"]) < 0.01:  # Tolérance pour les erreurs d'arrondi
+                        if is_compte_130 and abs(compte_ajuste["ecart"]) >= 0.01:
+                            compte_ajuste["status"] = "ok_130"
+                            compte_ajuste["message"] = "Écart normal maintenu sur le compte 130"
+                            compte_ajuste["conclusion_audit"] = "Aucune anomalie détectée: variation normale du compte 130."
+                        elif abs(compte_ajuste["ecart"]) < 0.01:  # Tolérance pour les erreurs d'arrondi
                             compte_ajuste["status"] = "ok_reclasse"
                             compte_ajuste["message"] = f"Écart résolu par reclassement"
                             compte_ajuste["conclusion_audit"] = "Écart justifié par reclassement documenté."
@@ -4588,9 +5946,52 @@ class Mission(Document):
 
         db = get_database()
         mission = db["Mission1"].find_one({"_id": ObjectId(id_mission)})
+        if not mission:
+            return 0, []
 
+        existing_grouping = mission.get('grouping', []) or []
+        balance_variation = mission.get('balance_variation', []) or []
+        referentiel = mission.get('referentiel', 'syscohada')
 
-        grouping = mission['grouping']
+        # Recalcule balance_variation depuis les 2 balances sources quand possible
+        # pour inclure aussi les comptes présents uniquement en N-1.
+        balances_ids = mission.get('balances', []) or []
+        if len(balances_ids) >= 2:
+            try:
+                balance_n_doc = db.Balance.find_one({"_id": ObjectId(balances_ids[0])}, {"balance": 1}) or {}
+                balance_n1_doc = db.Balance.find_one({"_id": ObjectId(balances_ids[1])}, {"balance": 1}) or {}
+                balance_n_data = balance_n_doc.get("balance", []) or []
+                balance_n1_data = balance_n1_doc.get("balance", []) or []
+                if balance_n_data or balance_n1_data:
+                    balance_variation = self.rapprochement_des_balances(balance_n_data, balance_n1_data)
+                    db.Mission1.update_one(
+                        {"_id": ObjectId(id_mission)},
+                        {"$set": {"balance_variation": balance_variation}}
+                    )
+            except Exception as e:
+                print(f"⚠️ make_final_sm: échec recalcul balance_variation: {e}")
+
+        # Régénérer le grouping depuis la balance variation pour refléter
+        # les dernières règles (ex: compte 419 au passif), puis conserver
+        # les champs d'analyse déjà calculés quand ils existent.
+        if isinstance(balance_variation, list) and balance_variation:
+            regenerated_grouping = self.create_grouping(balance_variation, referentiel)
+            old_idx = {
+                f"{item.get('libelle', '')}|{item.get('section', '')}": item
+                for item in existing_grouping
+            }
+            for item in regenerated_grouping:
+                old_item = old_idx.get(f"{item.get('libelle', '')}|{item.get('section', '')}")
+                if old_item:
+                    if 'materiality' in old_item:
+                        item['materiality'] = old_item.get('materiality')
+                    if 'significant' in old_item:
+                        item['significant'] = old_item.get('significant')
+                    if 'mat_sign' in old_item:
+                        item['mat_sign'] = old_item.get('mat_sign')
+            grouping = regenerated_grouping
+        else:
+            grouping = existing_grouping
 
 
 
@@ -4846,7 +6247,157 @@ class Mission(Document):
 
             datum[efi] = structure
 
+        # Recalcule des agrégats ACTIF selon les formules officielles
+        # pour éviter toute dérive liée à une configuration mapping.
+        actif_rows = datum.get('actif', [])
+        if actif_rows:
+            idx = {row.get('ref'): row for row in actif_rows if row.get('ref')}
 
+            def _g(ref, key):
+                row = idx.get(ref) or {}
+                value = row.get(key, 0)
+                return value if value is not None else 0
+
+            def _set(ref, n_val, n1_val):
+                if ref in idx:
+                    idx[ref]['net_solde_n'] = n_val
+                    idx[ref]['net_solde_n1'] = n1_val
+
+            ad_n = _g('AE', 'net_solde_n') + _g('AF', 'net_solde_n') + _g('AG', 'net_solde_n') + _g('AH', 'net_solde_n')
+            ad_n1 = _g('AE', 'net_solde_n1') + _g('AF', 'net_solde_n1') + _g('AG', 'net_solde_n1') + _g('AH', 'net_solde_n1')
+            _set('AD', ad_n, ad_n1)
+
+            ai_n = _g('AJ', 'net_solde_n') + _g('AK', 'net_solde_n') + _g('AL', 'net_solde_n') + _g('AM', 'net_solde_n') + _g('AN', 'net_solde_n')
+            ai_n1 = _g('AJ', 'net_solde_n1') + _g('AK', 'net_solde_n1') + _g('AL', 'net_solde_n1') + _g('AM', 'net_solde_n1') + _g('AN', 'net_solde_n1')
+            _set('AI', ai_n, ai_n1)
+
+            aq_n = _g('AR', 'net_solde_n') + _g('AS', 'net_solde_n')
+            aq_n1 = _g('AR', 'net_solde_n1') + _g('AS', 'net_solde_n1')
+            _set('AQ', aq_n, aq_n1)
+
+            bg_n = _g('BH', 'net_solde_n') + _g('BI', 'net_solde_n') + _g('BJ', 'net_solde_n')
+            bg_n1 = _g('BH', 'net_solde_n1') + _g('BI', 'net_solde_n1') + _g('BJ', 'net_solde_n1')
+            _set('BG', bg_n, bg_n1)
+
+            az_n = _g('AD', 'net_solde_n') + _g('AI', 'net_solde_n') + _g('AP', 'net_solde_n') + _g('AQ', 'net_solde_n')
+            az_n1 = _g('AD', 'net_solde_n1') + _g('AI', 'net_solde_n1') + _g('AP', 'net_solde_n1') + _g('AQ', 'net_solde_n1')
+            _set('AZ', az_n, az_n1)
+
+            bk_n = _g('BA', 'net_solde_n') + _g('BB', 'net_solde_n') + _g('BG', 'net_solde_n')
+            bk_n1 = _g('BA', 'net_solde_n1') + _g('BB', 'net_solde_n1') + _g('BG', 'net_solde_n1')
+            _set('BK', bk_n, bk_n1)
+
+            bt_n = _g('BQ', 'net_solde_n') + _g('BR', 'net_solde_n') + _g('BS', 'net_solde_n')
+            bt_n1 = _g('BQ', 'net_solde_n1') + _g('BR', 'net_solde_n1') + _g('BS', 'net_solde_n1')
+            _set('BT', bt_n, bt_n1)
+
+            bz_n = _g('AZ', 'net_solde_n') + _g('BK', 'net_solde_n') + _g('BT', 'net_solde_n') + _g('BU', 'net_solde_n')
+            bz_n1 = _g('AZ', 'net_solde_n1') + _g('BK', 'net_solde_n1') + _g('BT', 'net_solde_n1') + _g('BU', 'net_solde_n1')
+            _set('BZ', bz_n, bz_n1)
+
+        # Recalcule des agrégats PASSIF selon les formules officielles.
+        passif_rows = datum.get('passif', [])
+        if passif_rows:
+            idx = {row.get('ref'): row for row in passif_rows if row.get('ref')}
+
+            def _g(ref, key):
+                row = idx.get(ref) or {}
+                value = row.get(key, 0)
+                return value if value is not None else 0
+
+            def _set(ref, n_val, n1_val):
+                if ref in idx:
+                    idx[ref]['net_solde_n'] = n_val
+                    idx[ref]['net_solde_n1'] = n1_val
+
+            cp_n = _g('CA', 'net_solde_n') + _g('CB', 'net_solde_n') + _g('CD', 'net_solde_n') + _g('CE', 'net_solde_n') + _g('CF', 'net_solde_n') + _g('CG', 'net_solde_n') + _g('CH', 'net_solde_n') + _g('CJ', 'net_solde_n') + _g('CL', 'net_solde_n') + _g('CM', 'net_solde_n')
+            cp_n1 = _g('CA', 'net_solde_n1') + _g('CB', 'net_solde_n1') + _g('CD', 'net_solde_n1') + _g('CE', 'net_solde_n1') + _g('CF', 'net_solde_n1') + _g('CG', 'net_solde_n1') + _g('CH', 'net_solde_n1') + _g('CJ', 'net_solde_n1') + _g('CL', 'net_solde_n1') + _g('CM', 'net_solde_n1')
+            _set('CP', cp_n, cp_n1)
+
+            dd_n = _g('DA', 'net_solde_n') + _g('DB', 'net_solde_n') + _g('DC', 'net_solde_n')
+            dd_n1 = _g('DA', 'net_solde_n1') + _g('DB', 'net_solde_n1') + _g('DC', 'net_solde_n1')
+            _set('DD', dd_n, dd_n1)
+
+            df_n = _g('CP', 'net_solde_n') + _g('DD', 'net_solde_n')
+            df_n1 = _g('CP', 'net_solde_n1') + _g('DD', 'net_solde_n1')
+            _set('DF', df_n, df_n1)
+
+            dp_n = _g('DH', 'net_solde_n') + _g('DI', 'net_solde_n') + _g('DJ', 'net_solde_n') + _g('DK', 'net_solde_n') + _g('DM', 'net_solde_n') + _g('DN', 'net_solde_n')
+            dp_n1 = _g('DH', 'net_solde_n1') + _g('DI', 'net_solde_n1') + _g('DJ', 'net_solde_n1') + _g('DK', 'net_solde_n1') + _g('DM', 'net_solde_n1') + _g('DN', 'net_solde_n1')
+            _set('DP', dp_n, dp_n1)
+
+            dt_n = _g('DQ', 'net_solde_n') + _g('DR', 'net_solde_n')
+            dt_n1 = _g('DQ', 'net_solde_n1') + _g('DR', 'net_solde_n1')
+            _set('DT', dt_n, dt_n1)
+
+            dz_n = _g('DF', 'net_solde_n') + _g('DP', 'net_solde_n') + _g('DT', 'net_solde_n') + _g('DV', 'net_solde_n')
+            dz_n1 = _g('DF', 'net_solde_n1') + _g('DP', 'net_solde_n1') + _g('DT', 'net_solde_n1') + _g('DV', 'net_solde_n1')
+            _set('DZ', dz_n, dz_n1)
+
+        # Recalcule des agrégats PNL selon les formules officielles.
+        pnl_rows = datum.get('pnl', [])
+        if pnl_rows:
+            idx = {row.get('ref'): row for row in pnl_rows if row.get('ref')}
+
+            def _g(ref, key):
+                row = idx.get(ref) or {}
+                value = row.get(key, 0)
+                return value if value is not None else 0
+
+            def _set(ref, n_val, n1_val):
+                if ref in idx:
+                    idx[ref]['net_solde_n'] = n_val
+                    idx[ref]['net_solde_n1'] = n1_val
+
+            xa_n = -_g('TA', 'net_solde_n') - _g('RA', 'net_solde_n') + _g('RB', 'net_solde_n')
+            xa_n1 = -_g('TA', 'net_solde_n1') - _g('RA', 'net_solde_n1') + _g('RB', 'net_solde_n1')
+            _set('XA', xa_n, xa_n1)
+
+            xb_n = -_g('TA', 'net_solde_n') - _g('TB', 'net_solde_n') - _g('TC', 'net_solde_n') - _g('TD', 'net_solde_n')
+            xb_n1 = -_g('TA', 'net_solde_n1') - _g('TB', 'net_solde_n1') - _g('TC', 'net_solde_n1') - _g('TD', 'net_solde_n1')
+            _set('XB', xb_n, xb_n1)
+
+            xc_n = (
+                xb_n
+                - _g('RA', 'net_solde_n') + _g('RB', 'net_solde_n')
+                + _g('TE', 'net_solde_n') - _g('TF', 'net_solde_n') - _g('TG', 'net_solde_n') - _g('TH', 'net_solde_n') - _g('TI', 'net_solde_n')
+                - _g('RC', 'net_solde_n') + _g('RD', 'net_solde_n')
+                - _g('RE', 'net_solde_n') + _g('RF', 'net_solde_n')
+                - _g('RG', 'net_solde_n') - _g('RH', 'net_solde_n') - _g('RI', 'net_solde_n') - _g('RJ', 'net_solde_n')
+            )
+            xc_n1 = (
+                xb_n1
+                - _g('RA', 'net_solde_n1') + _g('RB', 'net_solde_n1')
+                + _g('TE', 'net_solde_n1') - _g('TF', 'net_solde_n1') - _g('TG', 'net_solde_n1') - _g('TH', 'net_solde_n1') - _g('TI', 'net_solde_n1')
+                - _g('RC', 'net_solde_n1') + _g('RD', 'net_solde_n1')
+                - _g('RE', 'net_solde_n1') + _g('RF', 'net_solde_n1')
+                - _g('RG', 'net_solde_n1') - _g('RH', 'net_solde_n1') - _g('RI', 'net_solde_n1') - _g('RJ', 'net_solde_n1')
+            )
+            _set('XC', xc_n, xc_n1)
+
+            xd_n = xc_n - _g('RK', 'net_solde_n')
+            xd_n1 = xc_n1 - _g('RK', 'net_solde_n1')
+            _set('XD', xd_n, xd_n1)
+
+            xe_n = xd_n - _g('TJ', 'net_solde_n') - _g('RL', 'net_solde_n')
+            xe_n1 = xd_n1 - _g('TJ', 'net_solde_n1') - _g('RL', 'net_solde_n1')
+            _set('XE', xe_n, xe_n1)
+
+            xf_n = -_g('TK', 'net_solde_n') - _g('TL', 'net_solde_n') - _g('TM', 'net_solde_n') - _g('RM', 'net_solde_n') - _g('RN', 'net_solde_n')
+            xf_n1 = -_g('TK', 'net_solde_n1') - _g('TL', 'net_solde_n1') - _g('TM', 'net_solde_n1') - _g('RM', 'net_solde_n1') - _g('RN', 'net_solde_n1')
+            _set('XF', xf_n, xf_n1)
+
+            xg_n = xe_n + xf_n
+            xg_n1 = xe_n1 + xf_n1
+            _set('XG', xg_n, xg_n1)
+
+            xh_n = -_g('TN', 'net_solde_n') - _g('TO', 'net_solde_n') - _g('RO', 'net_solde_n') - _g('RP', 'net_solde_n')
+            xh_n1 = -_g('TN', 'net_solde_n1') - _g('TO', 'net_solde_n1') - _g('RO', 'net_solde_n1') - _g('RP', 'net_solde_n1')
+            _set('XH', xh_n, xh_n1)
+
+            xi_n = xg_n + xh_n - _g('RQ', 'net_solde_n') - _g('RS', 'net_solde_n')
+            xi_n1 = xg_n1 + xh_n1 - _g('RQ', 'net_solde_n1') - _g('RS', 'net_solde_n1')
+            _set('XI', xi_n, xi_n1)
 
         return datum
 

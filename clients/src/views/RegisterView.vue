@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="w-screen min-h-screen bg-gradient-to-r from-blue-ycube to-green-ycube flex">
 
     <!-- COLONNE GAUCHE -->

@@ -60,6 +60,15 @@ def controle_intangibilite_route(id_mission):
     cls = Mission()
     # Utiliser la version avec reclassements si disponibles
     report = cls.controle_intangibilite_avec_reclassements(id_mission)
+    # Ne retourner que les écarts
+    comptes = report.get("comptes")
+    if isinstance(comptes, list):
+        ecarts = [
+            c for c in comptes
+            if c and c.get("status") in ("ecart", "nouveau", "supprime", "ecart_partiel")
+        ]
+        report["comptes"] = ecarts
+        report["ecarts_only"] = True
     print(f"[ROUTE] Rapport retourne: total_comptes={report.get('total_comptes', 'N/A')}, comptes_length={len(report.get('comptes', []))}")
     return make_response(jsonify({"response": report}), 200)
 

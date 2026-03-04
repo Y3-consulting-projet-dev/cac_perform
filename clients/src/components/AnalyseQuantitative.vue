@@ -6,6 +6,15 @@ const axios = inject('axios')
 const notyf = useNotyf()
 const FACTOR_PERFORMANCE_MATERIALITY = 0.08
 const FACTOR_THRESHOLD = 0.05
+const FACTOR_RANGES = {
+    ebitda: { min: 3, max: 5 },
+    expenses: { min: 3, max: 5 },
+    profit_before_tax: { min: 5, max: 10 },
+    revenue: { min: 0.8, max: 2 },
+    total_assets: { min: 1, max: 2 },
+    total_equity_net_assets: { min: 1.0, max: 3.0 },
+    cash_flows_from_operations: { min: 3.0, max: 5.0 }
+}
 
 const listBenchmark = ref([
     {
@@ -16,7 +25,7 @@ const listBenchmark = ref([
         amount_based_on_factor: null,
         performance_materiality: null,
         thresold: null,
-        text: "Fourchette de facteur attendue : 3-5 % (peut aller jusqu'à 5 % compte tenu de la taille de l'entité). Consultez le guide de matérialité pour plus de détails.)"
+        text: "Fourchette de facteur attendue : 3-5 % (peut aller jusqu'a 5 % compte tenu de la taille de l'entite). Consultez le guide de materialite pour plus de details."
 
     },
     {
@@ -27,7 +36,7 @@ const listBenchmark = ref([
         amount_based_on_factor: null,
         performance_materiality: null,
         thresold: null,
-        text: "Fourchette de facteur attendue : 3-5 % (peut aller jusqu'à 5 % compte tenu de la taille de l'entité). Consultez le guide de matérialité pour plus de détails."
+        text: "Fourchette de facteur attendue : 3-5 % (peut aller jusqu'a 5 % compte tenu de la taille de l'entite). Consultez le guide de materialite pour plus de details."
 
     },
     {
@@ -38,7 +47,7 @@ const listBenchmark = ref([
         amount_based_on_factor: null,
         performance_materiality: null,
         thresold: null,
-        text: "Fourchette de facteur attendue : 5-10%. Voir le guide de matérialité pour plus de détails."
+        text: "Fourchette de facteur attendue : 5-10%. Voir le guide de materialite pour plus de details."
 
     },
     {
@@ -49,7 +58,7 @@ const listBenchmark = ref([
         amount_based_on_factor: null,
         performance_materiality: null,
         thresold: null,
-        text: "Fourchette de facteur attendue : 0,8-2 % (peut aller jusqu'à 5 % compte tenu de la taille de l'entité). Consultez le guide de matérialité pour plus de détails."
+        text: "Fourchette de facteur attendue : 0,8-2 % (peut aller jusqu'a 5 % compte tenu de la taille de l'entite). Consultez le guide de materialite pour plus de details."
 
     },
     {
@@ -60,10 +69,33 @@ const listBenchmark = ref([
         amount_based_on_factor: null,
         performance_materiality: null,
         thresold: null,
-        text: "Fourchette de facteur attendue : 1-2%. Consultez le guide de matérialité pour plus de détails."
+        text: "Fourchette de facteur attendue : 1-2%. Consultez le guide de materialite pour plus de details."
+
+    },
+    {
+        id: "total_equity_net_assets",
+        name: "Total equity / net assets",
+        balance_value: null,
+        factor: null,
+        amount_based_on_factor: null,
+        performance_materiality: null,
+        thresold: null,
+        text: "Fourchette de facteur attendue : 1,0-3,0%."
+
+    },
+    {
+        id: "cash_flows_from_operations",
+        name: "Cash flows from operations",
+        balance_value: null,
+        factor: null,
+        amount_based_on_factor: null,
+        performance_materiality: null,
+        thresold: null,
+        text: "Fourchette de facteur attendue : 3,0-5,0%."
 
     }
 ])
+
 const listMaterialities = ref([])
 
 // Une variable qui est utilisé pour maj la liste des seuils de signification quand on enregistre un nouveau
@@ -108,6 +140,15 @@ watch(selectedBench, (newValue)=>{
     })
 })
 
+watch(() => bench.value.factor, (newValue) => {
+    const factor = parseFloat(newValue)
+    const range = FACTOR_RANGES[bench.value.id]
+    if (!range || !factor) return
+    if (factor < range.min || factor > range.max) {
+        notyf.trigger(`Factor out of range for ${bench.value.id}: ${range.min}% to ${range.max}%`, "error")
+    }
+})
+
 watch(isValidate, async(newValue)=> {
     console.log(newValue)
     await getListMaterialities()
@@ -122,13 +163,30 @@ async function getListMaterialities() {
 // Calculer les valeurs dépendants du facteur saisi
 function updateSelectBenchmark() {
     const factor = parseFloat(bench.value.factor)
-    bench.value.amount_based_on_factor = Math.round((bench.value.balanceValue * factor) / 100)
+    const balance = Number(bench.value.balanceValue)
+    if (!Number.isFinite(factor) || !Number.isFinite(balance)) {
+        bench.value.amount_based_on_factor = null
+        bench.value.performance_materiality = null
+        bench.value.thresold = null
+        return
+    }
+    const range = FACTOR_RANGES[bench.value.id]
+    if (range && (factor < range.min || factor > range.max)) {
+        return
+    }
+    bench.value.amount_based_on_factor = Math.round((balance * factor) / 100)
     bench.value.performance_materiality = Math.round(bench.value.amount_based_on_factor * FACTOR_PERFORMANCE_MATERIALITY)
     bench.value.thresold = Math.round(bench.value.amount_based_on_factor * FACTOR_THRESHOLD)
 }
 
 // Calculer seuil de signification et enregistrer dans la BD
 async function validerSeuil() {
+    const factor = parseFloat(bench.value.factor)
+    const range = FACTOR_RANGES[bench.value.id]
+    if (range && factor && (factor < range.min || factor > range.max)) {
+        notyf.trigger(`Factor out of range for ${bench.value.id}: ${range.min}% to ${range.max}%`, "error")
+        return
+    }
     updateSelectBenchmark()
 
     const field = {
@@ -193,8 +251,8 @@ async function applySeuil(benchmark) {
                     </div>
 
                     <div class="w-[30%]">
-                        <label for="">Facteur</label>
-                        <input v-model="bench.factor" class="px-2 border-2 border-blue-ycube w-full h-8 placeholder:italic" type="text" placeholder="Saisir facteur...">
+                        <label for="">Factor (%)</label>
+                        <input v-model="bench.factor" class="px-2 border-2 border-blue-ycube w-full h-8 placeholder:italic" type="text" placeholder="Enter factor...">
                         <div v-if="bench.id" class="mt-2 text-xs italic"><i class="mdi mdi-information font-bold text-base"></i> {{ bench.text }}</div>
                         <!-- <button @click="console.log(selectedBench)">Test</button> -->
                     </div>
@@ -213,9 +271,9 @@ async function applySeuil(benchmark) {
                             <tr>
                                 <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">#</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Benchmark</th>
-                                <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Facteur</th>
-                                <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Seuil de matérialité</th>
-                                <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Performance de matérialité</th>
+                                <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Factor</th>
+                                <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Materiality Threshold</th>
+                                <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Materiality Performance</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Seuil inexactitudes</th>
                                 <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                             </tr>
@@ -260,3 +318,7 @@ async function applySeuil(benchmark) {
         </div>
     </div>
 </template>
+
+
+
+
