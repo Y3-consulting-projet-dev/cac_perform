@@ -840,54 +840,34 @@ class Mission(Document):
                         # Vérifier si le fichier Excel contient les colonnes de mouvements
                         # Format 1 (avec mouvements) : debit_initial, credit_initial, debit_mvt, credit_mvt, debit_fin, credit_fin
                         # Format 2 (sans mouvements) : debit_initial, credit_initial, debit_fin, credit_fin
-                        try:
-                            # Essayer de lire les mouvements depuis le fichier (colonnes 4 et 5)
-                            if len(row) > 5 and (row[4] is not None or row[5] is not None):
-                                ligne['debit_mvt'] = _parse_number(row[4])
-                                ligne['credit_mvt'] = _parse_number(row[5])
-                                # Utiliser l'ordre détecté pour les colonnes finales
-                                if colonnes_inversees_balance_simple and len(row) > 7:
-                                    ligne['credit_fin'] = _parse_number(row[6])
-                                    ligne['debit_fin'] = _parse_number(row[7])
-                                else:
-                                    ligne['debit_fin'] = _parse_number(row[6])
-                                    ligne['credit_fin'] = _parse_number(row[7])
+                        # ✅ CORRECT : vérifier que les mouvements ont des valeurs réellement non nulles
+                        debit_mvt_raw = row[4] if len(row) > 4 else None
+                        credit_mvt_raw = row[5] if len(row) > 5 else None
+                        debit_fin_raw = row[6] if len(row) > 6 else None
+                        credit_fin_raw = row[7] if len(row) > 7 else None
+
+                        # On considère qu'il y a des colonnes de mouvements seulement si :
+                        # - les colonnes 7 et 8 (soldes finaux) existent ET ont des valeurs
+                        has_columns_mouvements = (
+                            debit_fin_raw is not None or credit_fin_raw is not None
+                        )
+
+                        if has_columns_mouvements:
+                            # Format 8 colonnes : debit_init, credit_init, debit_mvt, credit_mvt, debit_fin, credit_fin
+                            ligne['debit_mvt'] = _parse_number(debit_mvt_raw)
+                            ligne['credit_mvt'] = _parse_number(credit_mvt_raw)
+                            if colonnes_inversees_balance_simple:
+                                ligne['credit_fin'] = _parse_number(debit_fin_raw)
+                                ligne['debit_fin'] = _parse_number(credit_fin_raw)
                             else:
-                                # Format sans mouvements : utiliser solde_final = solde_initial + mouvements
-                                # Pour la vérification d'identité, on utilise l'équation : 
-                                # (debit_fin - credit_fin) = (debit_initial - credit_initial) + (debit_mvt - credit_mvt)
-                                ligne['debit_fin'] = _parse_number(row[4])
-                                ligne['credit_fin'] = _parse_number(row[5])
-                                
-                                # Calculer le solde initial et final
-                                solde_initial = ligne['debit_initial'] - ligne['credit_initial']
-                                solde_final = ligne['debit_fin'] - ligne['credit_fin']
-                                mouvement_net = solde_final - solde_initial
-                                
-                                # Approximer les mouvements débit/crédit à partir du mouvement net
-                                # Note: Cette approximation n'est pas parfaite car on ne connaît pas
-                                # le détail des mouvements débit/crédit séparément
-                                if mouvement_net > 0:
-                                    # Le solde a augmenté, donc plus de débits que de crédits
-                                    ligne['debit_mvt'] = abs(mouvement_net)
-                                    ligne['credit_mvt'] = 0
-                                elif mouvement_net < 0:
-                                    # Le solde a diminué, donc plus de crédits que de débits
-                                    ligne['debit_mvt'] = 0
-                                    ligne['credit_mvt'] = abs(mouvement_net)
-                                else:
-                                    # Pas de changement, mouvements à zéro ou équilibrés
-                                    # Approximation : répartir selon la variation des totaux débit/crédit
-                                    debit_mvt_calc = max(0, ligne['debit_fin'] - ligne['debit_initial'])
-                                    credit_mvt_calc = max(0, ligne['credit_fin'] - ligne['credit_initial'])
-                                    ligne['debit_mvt'] = debit_mvt_calc
-                                    ligne['credit_mvt'] = credit_mvt_calc
-                        except (IndexError, ValueError, TypeError):
-                            # Si erreur, utiliser le format simple sans mouvements
-                            ligne['debit_mvt'] = 0
+                                ligne['debit_fin'] = _parse_number(debit_fin_raw)
+                                ligne['credit_fin'] = _parse_number(credit_fin_raw)
+                        else:
+                            # Format 6 colonnes : debit_init, credit_init, debit_fin, credit_fin
+                            ligne['debit_mvt']  = 0
                             ligne['credit_mvt'] = 0
-                            ligne['debit_fin'] = _parse_number(row[4])
-                            ligne['credit_fin'] = _parse_number(row[5])
+                            ligne['debit_fin']  = 0
+                            ligne['credit_fin'] = 0
                         
                         ligne['solde_reel'] = ligne['debit_fin'] - ligne['credit_fin']
                         ligne['solde'] = abs(ligne['solde_reel'])
@@ -2300,14 +2280,13 @@ class Mission(Document):
         #                  net_cpts, brut_except, amor_except, net_except)
         # brut + amor  net = brut + amor   (amortissements sont négatifs)
         # net seul     net = somme des comptes net_cpts
-        # except_cpts  comptes exclus du calcul principal puis ré-inclus
-        #                    séparément (voir logique de prod_efi originale)
+        # except_cpts  comptes à EXCLURE du calcul principal (règle "sauf")
         # ------------------------------------------------------------------
         EFI_CATALOGUE = [
             # ACTIF 
             # Immobilisations incorporelles (lignes feuilles)
             ("AE", "Frais de développement et de prospection",               "actif", None,
-            ["211","2181","2191"], ["2811","2818","2911","2918","2919"],      [], ["2181"], [],  ["2181"]),
+            ["211","2181","2191"], ["2811","2818","2911","2918","2919"],      [], [], [], []),
             ("AF", "Brevets, licences, logiciels et droits similaires",       "actif", None,
             ["212","213","214","2193"], ["2812","2813","2814","2912","2913","2914","2919"], [], [], [], []),
             ("AG", "Fonds commercial et droit au bail",                       "actif", None,
@@ -2332,10 +2311,7 @@ class Mission(Document):
             ["234","235","238","2392","2393"],
             ["2834","2835","2838","2934","2935","2938","2939"],               [], [], [], []),
             ("AM", "Matériel, mobilier et actifs biologiques",                "actif", None,
-            ["241", "242", "243", "244", "246", "247", "248"],
-            ["2841", "2842", "2843", "2844", "2846", "2847", "2848",
-            "2941", "2942", "2943", "2944", "2946", "2947", "2948"],
-            [], [], [], []),
+            ["24"], ["284","294","2949"],                                     [], ["245","2495"], ["2845","2945"], []),
             ("AN", "Matériel de transport",                                   "actif", None,
             ["245","2495"], ["2845","2945","2949"],                           [], [], [], []),
             # Ligne agrégée AI
@@ -2678,7 +2654,7 @@ class Mission(Document):
             }
 
             if brut_cpts or amor_cpts:
-                # Cas avec brut + amortissements
+                # Cas avec brut + amortissements (règle "sauf" => exclusions)
                 brut_n   = _sum_prefixes(balance_n,  brut_cpts)
                 amor_n   = _sum_prefixes(balance_n,  amor_cpts)
                 bex_n    = _sum_prefixes(balance_n,  brut_except)
@@ -2686,22 +2662,60 @@ class Mission(Document):
 
                 brut_n1  = _sum_prefixes(balance_n1, brut_cpts)
                 amor_n1  = _sum_prefixes(balance_n1, amor_cpts)
-                nex_n1   = _sum_prefixes(balance_n1, net_except)
+                bex_n1   = _sum_prefixes(balance_n1, brut_except)
+                aex_n1   = _sum_prefixes(balance_n1, amor_except)
 
-                row["brut_solde_n"] = brut_n  + bex_n
-                row["amor_solde_n"] = amor_n  + aex_n
+                row["brut_solde_n"] = brut_n  - bex_n
+                row["amor_solde_n"] = amor_n  - aex_n
                 row["net_solde_n"]  = row["brut_solde_n"] + row["amor_solde_n"]
-                row["net_solde_n1"] = brut_n1 + amor_n1 + nex_n1
+                row["net_solde_n1"] = (brut_n1 - bex_n1) + (amor_n1 - aex_n1)
+
+                if ref == "AM":
+                    # Log détaillé des comptes AM (brut/amor/exclusions) pour audit
+                    def _collect_matched(balance, prefixes):
+                        if not prefixes:
+                            return []
+                        return [
+                            item.get("numero_compte")
+                            for item in balance
+                            if any(str(item.get("numero_compte")).startswith(p) for p in prefixes)
+                        ]
+
+                    brut_matches = _collect_matched(balance_n, brut_cpts)
+                    amor_matches = _collect_matched(balance_n, amor_cpts)
+                    brut_excl    = _collect_matched(balance_n, brut_except)
+                    amor_excl    = _collect_matched(balance_n, amor_except)
+                    print("AM comptes brut:", sorted(set(map(str, brut_matches))))
+                    print("AM comptes brut exclus:", sorted(set(map(str, brut_excl))))
+                    print("AM comptes amort/depr:", sorted(set(map(str, amor_matches))))
+                    print("AM comptes amort/depr exclus:", sorted(set(map(str, amor_excl))))
 
             else:
                 # Cas net seul
-                net_n    = _sum_prefixes(balance_n,  net_cpts)
-                nex_n    = _sum_prefixes(balance_n,  net_except)
-                net_n1   = _sum_prefixes(balance_n1, net_cpts)
-                nex_n1   = _sum_prefixes(balance_n1, net_except)
+                if ref == "CH":
+                    # CH : 121 en positif, 129 en négatif
+                    def _sum_abs_prefix(balance, prefix):
+                        return sum(
+                            abs(item["solde_reel"])
+                            for item in balance
+                            if str(item["numero_compte"]).startswith(prefix)
+                        )
 
-                row["net_solde_n"]  = net_n  + nex_n
-                row["net_solde_n1"] = net_n1 + nex_n1
+                    net_121_n  = _sum_abs_prefix(balance_n,  "121")
+                    net_129_n  = _sum_abs_prefix(balance_n,  "129")
+                    net_121_n1 = _sum_abs_prefix(balance_n1, "121")
+                    net_129_n1 = _sum_abs_prefix(balance_n1, "129")
+
+                    row["net_solde_n"]  = net_121_n  - net_129_n
+                    row["net_solde_n1"] = net_121_n1 - net_129_n1
+                else:
+                    net_n    = _sum_prefixes(balance_n,  net_cpts)
+                    nex_n    = _sum_prefixes(balance_n,  net_except)
+                    net_n1   = _sum_prefixes(balance_n1, net_cpts)
+                    nex_n1   = _sum_prefixes(balance_n1, net_except)
+
+                    row["net_solde_n"]  = net_n  - nex_n
+                    row["net_solde_n1"] = net_n1 - nex_n1
 
             # Champ legacy (chaîne lisible des préfixes)
             all_cpts = _collect_prefixes(brut_cpts, amor_cpts, net_cpts,
@@ -5225,6 +5239,34 @@ class Mission(Document):
             # Log pour vérifier le nombre de lignes générées
             print(f"États financiers générés - Actif: {len(efi_organized.get('actif', []))} lignes, Passif: {len(efi_organized.get('passif', []))} lignes, PNL: {len(efi_organized.get('pnl', []))} lignes")
 
+            # Log détaillé AM (comptes réellement rencontrés dans la balance N)
+            def _match_accounts(balance, prefixes):
+                if not prefixes:
+                    return []
+                return sorted({
+                    str(item.get("numero_compte"))
+                    for item in balance
+                    if any(str(item.get("numero_compte")).startswith(p) for p in prefixes)
+                })
+
+            am_brut_prefixes = ["24"]
+            am_brut_excl = ["245", "2495"]
+            am_amor_prefixes = ["284", "294", "2949"]
+            am_amor_excl = ["2845", "2945"]
+
+            am_brut_all = _match_accounts(balance_n_data, am_brut_prefixes)
+            am_brut_ex = _match_accounts(balance_n_data, am_brut_excl)
+            am_brut_final = [c for c in am_brut_all if c not in set(am_brut_ex)]
+
+            am_amor_all = _match_accounts(balance_n_data, am_amor_prefixes)
+            am_amor_ex = _match_accounts(balance_n_data, am_amor_excl)
+            am_amor_final = [c for c in am_amor_all if c not in set(am_amor_ex)]
+
+            print("AM comptes brut (N) retenus:", am_brut_final)
+            print("AM comptes brut exclus (N):", am_brut_ex)
+            print("AM comptes amort/depr (N) retenus:", am_amor_final)
+            print("AM comptes amort/depr exclus (N):", am_amor_ex)
+
             # Sauvegarder les états financiers dans la mission
             report = {
                 "ok": True,
@@ -6213,11 +6255,11 @@ class Mission(Document):
 
 
 
-                    data['brut_solde_n'] = brut_solde_n + brut_except_n
+                    data['brut_solde_n'] = brut_solde_n - brut_except_n
 
-                    data['amor_solde_n'] = amor_solde_n + amor_except_n
+                    data['amor_solde_n'] = amor_solde_n - amor_except_n
 
-                    data['net_solde_n'] = data['brut_solde_n'] + data['amor_solde_n'] + net_except_n
+                    data['net_solde_n'] = data['brut_solde_n'] + data['amor_solde_n'] - net_except_n
 
 
 
@@ -6233,25 +6275,32 @@ class Mission(Document):
 
                     net_except_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('net_except_cpt', [])))
 
-                    data['net_solde_n1'] = (brut_n1 + brut_except_n1) + (amor_n1 + amor_except_n1) + net_except_n1
+                    data['net_solde_n1'] = (brut_n1 - brut_except_n1) + (amor_n1 - amor_except_n1) - net_except_n1
 
                 else:
 
-                    net_solde_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data['net_cpt']))
+                    if ref == "CH":
+                        # CH : 121 en positif, 129 en négatif
+                        def _sum_abs_prefix(balance, prefix):
+                            return sum(
+                                abs(item['solde_reel'])
+                                for item in balance
+                                if str(item['numero_compte']).startswith(prefix)
+                            )
 
-                    net_solde_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data['net_cpt']))
-
-
+                        net_solde_n = _sum_abs_prefix(balance_n, "121") - _sum_abs_prefix(balance_n, "129")
+                        net_solde_n1 = _sum_abs_prefix(balance_n1, "121") - _sum_abs_prefix(balance_n1, "129")
+                    else:
+                        net_solde_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data['net_cpt']))
+                        net_solde_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data['net_cpt']))
 
                     net_except_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('net_except_cpt', [])))
 
                     net_except_n1_bis = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('net_except_cpt', [])))
 
+                    data['net_solde_n'] = net_solde_n - net_except_n
 
-
-                    data['net_solde_n'] = net_solde_n + net_except_n
-
-                    data['net_solde_n1'] = net_solde_n1 + net_except_n1_bis
+                    data['net_solde_n1'] = net_solde_n1 - net_except_n1_bis
 
 
 
@@ -6409,17 +6458,8 @@ class Mission(Document):
                 dr_mix_n1 + dr_561_n1_d + dr_561_n1_c + dr_566_n1_d + dr_566_n1_c,
             )
 
-            # CH (Report à nouveau): si positif (ex: 129), afficher en négatif.
-            # Si déjà négatif (ex: 121), conserver tel quel.
+            # CH (Report à nouveau) est désormais calculé avec 121 positif / 129 négatif
             passif_rows = datum.get("passif", [])
-            ch_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "CH"), None)
-            if ch_row:
-                ch_n = ch_row.get("net_solde_n", 0) or 0
-                ch_n1 = ch_row.get("net_solde_n1", 0) or 0
-                ch_row["net_solde_n"] = -abs(ch_n)
-                ch_row["net_solde_n1"] = -abs(ch_n1)
-                ch_row["brut_solde_n"] = ch_row["net_solde_n"]
-                ch_row["amor_solde_n"] = 0
 
             # CA (Capital): toujours affiché en positif au passif.
             ca_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "CA"), None)
