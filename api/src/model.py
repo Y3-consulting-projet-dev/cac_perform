@@ -24,7 +24,15 @@ def get_db():
     Tente de reconnecter automatiquement si la connexion est perdue
     """
     try:
-        return get_database()
+        global db
+        db = get_database()
+        if db is None:
+            from src.utils.database import ensure_connection
+            ensure_connection()
+            db = get_database()
+        if db is None:
+            raise RuntimeError("Base de données non connectée (get_database a renvoyé None)")
+        return db
     except RuntimeError as e:
         # Si la connexion est perdue, essayer de reconnecter
         from config import db_manager
@@ -35,7 +43,10 @@ def get_db():
             try:
                 print("Connexion perdue, tentative de reconnexion automatique...")
                 db_manager.connect()
-                return db_manager.get_db()
+                db = db_manager.get_db()
+                if db is None:
+                    raise RuntimeError("Base de données non connectée (db_manager.get_db a renvoyé None)")
+                return db
             except Exception as reconnect_error:
                 print(f"Échec de la reconnexion: {reconnect_error}")
                 raise RuntimeError(f"Base de données non connectée: {e}") from reconnect_error
@@ -2962,11 +2973,27 @@ class Mission(Document):
         for i in range(len(columns)):
             sheet[columns[i] + '1'] = headers[i]
 
+        # Largeurs pour ?viter les ####### et format d'affichage lisible
+        sheet.column_dimensions['A'].width = 14
+        sheet.column_dimensions['B'].width = 16
+        sheet.column_dimensions['C'].width = 16
+        sheet.column_dimensions['D'].width = 10
+        sheet.column_dimensions['E'].width = 16
+        sheet.column_dimensions['F'].width = 12
+        sheet.column_dimensions['G'].width = 18
+        sheet.column_dimensions['H'].width = 18
+        sheet.column_dimensions['I'].width = 18
+
         for iteration, data in enumerate(balances):
             new_iteration = str(iteration + 2)
             sheet["A" + new_iteration] = data.get("numero_compte")
             sheet["B" + new_iteration] = data.get("solde_n")
             sheet["C" + new_iteration] = data.get("solde_n1")
+
+            # Formats: pas de notation scientifique + s?parateurs d'espaces
+            sheet["A" + new_iteration].number_format = "@"
+            sheet["B" + new_iteration].number_format = "# ##0"
+            sheet["C" + new_iteration].number_format = "# ##0"
             sheet["D" + new_iteration] = data.get("numero_compte")[0:2]
 
             list_code_efi = []
@@ -2983,6 +3010,12 @@ class Mission(Document):
     # ---------- Extract grouping Excel ----------
     def extract_grouping(self, id_mission):
         db = get_db()  # Obtenir la connexion à la base de données
+        if db is None:
+            from src.utils.database import ensure_connection
+            ensure_connection()
+            db = get_db()
+        if db is None:
+            raise RuntimeError("extract_grouping: base de données non connectée")
         # Créer un fichier Excel pour l'export du grouping
         wb = openpyxl.Workbook()
         sheet = wb.active
@@ -2991,18 +3024,40 @@ class Mission(Document):
         headers = ['Numéro compte', 'Solde n', 'Solde n-1', 'Grouping', 'Variation', 'Variation %', 'Compte qualitatif', 'Compte quantitatif', 'Compte significatif']
 
         mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
-        balances = mission['balance_variation']
-        grouping = mission['grouping']
-        materiality = next(item for item in mission['materiality'] if item['choice'] is True)
+        if not mission:
+            raise ValueError("Mission non trouvée")
+
+        balances = mission.get('balance_variation', []) or []
+        grouping = mission.get('grouping', []) or []
+        materiality_list = mission.get('materiality', []) or []
+        materiality = next((item for item in materiality_list if item.get('choice') is True), {})
+
+        grouping_map = {item.get('compte'): item for item in grouping if item.get('compte')}
 
         for i in range(len(columns)):
             sheet[columns[i] + '1'] = headers[i]
+
+        # Largeurs pour ?viter les ####### et format d'affichage lisible
+        sheet.column_dimensions['A'].width = 14
+        sheet.column_dimensions['B'].width = 16
+        sheet.column_dimensions['C'].width = 16
+        sheet.column_dimensions['D'].width = 10
+        sheet.column_dimensions['E'].width = 16
+        sheet.column_dimensions['F'].width = 12
+        sheet.column_dimensions['G'].width = 18
+        sheet.column_dimensions['H'].width = 18
+        sheet.column_dimensions['I'].width = 18
 
         for iteration, data in enumerate(balances):
             new_iteration = str(iteration + 2)
             sheet["A" + new_iteration] = data.get("numero_compte")
             sheet["B" + new_iteration] = data.get("solde_n")
             sheet["C" + new_iteration] = data.get("solde_n1")
+
+            # Formats: pas de notation scientifique + s?parateurs d'espaces
+            sheet["A" + new_iteration].number_format = "@"
+            sheet["B" + new_iteration].number_format = "# ##0"
+            sheet["C" + new_iteration].number_format = "# ##0"
 
             value_grouping = data.get("numero_compte")[0:2]
             variation = data.get("solde_n") - data.get("solde_n1")
@@ -3017,9 +3072,13 @@ class Mission(Document):
             sheet["D" + new_iteration] = value_grouping
             sheet["E" + new_iteration] = variation
             sheet["F" + new_iteration] = variation_percent
-            sheet["G" + new_iteration] = next(item['significant'] for item in grouping if item['compte'] == value_grouping)
-            sheet["H" + new_iteration] = next(item['materiality'] for item in grouping if item['compte'] == value_grouping)
-            sheet["I" + new_iteration] = next(item['mat_sign'] for item in grouping if item['compte'] == value_grouping)
+
+            sheet["E" + new_iteration].number_format = "# ##0"
+            sheet["F" + new_iteration].number_format = "0.00"
+            g_item = grouping_map.get(value_grouping, {})
+            sheet["G" + new_iteration] = g_item.get('significant')
+            sheet["H" + new_iteration] = g_item.get('materiality')
+            sheet["I" + new_iteration] = g_item.get('mat_sign')
 
         second_sheet = wb.create_sheet(title="Seuil de matérialité")
         second_headers = ['materiality', 'performance materiality', 'trivial misstatements']
@@ -3027,9 +3086,9 @@ class Mission(Document):
         second_sheet["B1"] = second_headers[1]
         second_sheet["C1"] = second_headers[2]
 
-        second_sheet["A2"] = materiality['materiality']
-        second_sheet["B2"] = materiality['performance_materiality']
-        second_sheet["C2"] = materiality['trivial_misstatements']
+        second_sheet["A2"] = materiality.get('materiality')
+        second_sheet["B2"] = materiality.get('performance_materiality')
+        second_sheet["C2"] = materiality.get('trivial_misstatements')
 
         excel_io = BytesIO()
         wb.save(excel_io)
@@ -7006,106 +7065,90 @@ class Mission(Document):
     # ---------- Extract grouping Excel ----------
 
     def extract_grouping(self, id_mission):
+        db = get_db()
+        if db is None:
+            from src.utils.database import ensure_connection
+            ensure_connection()
+            db = get_db()
+        if db is None:
+            raise RuntimeError("extract_grouping: base de donn?es non connect?e")
 
-        # Créer un fichier Excel pour l'export du grouping
+        # Cr?er un fichier Excel pour l'export du grouping
         wb = openpyxl.Workbook()
-
         sheet = wb.active
 
-
-
         columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
-
-        headers = ['Numéro compte', 'Solde n', 'Solde n-1', 'Grouping', 'Variation', 'Variation %', 'Compte qualitatif', 'Compte quantitatif', 'Compte significatif']
-
-
+        headers = ['Num?ro compte', 'Solde n', 'Solde n-1', 'Grouping', 'Variation', 'Variation %', 'Compte qualitatif', 'Compte quantitatif', 'Compte significatif']
 
         mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
+        if not mission:
+            raise ValueError("Mission non trouv?e")
 
-        balances = mission['balance_variation']
+        balances = mission.get('balance_variation', []) or []
+        grouping = mission.get('grouping', []) or []
+        materiality_list = mission.get('materiality', []) or []
+        materiality = next((item for item in materiality_list if item.get('choice') is True), {})
 
-        grouping = mission['grouping']
-
-        materiality = next(item for item in mission['materiality'] if item['choice'] is True)
-
-
+        grouping_map = {item.get('compte'): item for item in grouping if item.get('compte')}
 
         for i in range(len(columns)):
-
             sheet[columns[i] + '1'] = headers[i]
 
-
+        # Largeurs pour ?viter les ####### et format d'affichage lisible
+        sheet.column_dimensions['A'].width = 14
+        sheet.column_dimensions['B'].width = 16
+        sheet.column_dimensions['C'].width = 16
+        sheet.column_dimensions['D'].width = 10
+        sheet.column_dimensions['E'].width = 16
+        sheet.column_dimensions['F'].width = 12
+        sheet.column_dimensions['G'].width = 18
+        sheet.column_dimensions['H'].width = 18
+        sheet.column_dimensions['I'].width = 18
 
         for iteration, data in enumerate(balances):
-
             new_iteration = str(iteration + 2)
-
             sheet["A" + new_iteration] = data.get("numero_compte")
-
             sheet["B" + new_iteration] = data.get("solde_n")
-
             sheet["C" + new_iteration] = data.get("solde_n1")
 
-
+            # Formats: pas de notation scientifique + s?parateurs d'espaces
+            sheet["A" + new_iteration].number_format = "@"
+            sheet["B" + new_iteration].number_format = "# ##0"
+            sheet["C" + new_iteration].number_format = "# ##0"
 
             value_grouping = data.get("numero_compte")[0:2]
-
             variation = data.get("solde_n") - data.get("solde_n1")
 
-
-
             if variation == 0:
-
                 variation_percent = 0
-
             elif data.get("solde_n1") == 0:
-
                 variation_percent = 100
-
             else:
-
                 variation_percent = (variation / data.get("solde_n1")) * 100
 
-
-
             sheet["D" + new_iteration] = value_grouping
-
             sheet["E" + new_iteration] = variation
-
             sheet["F" + new_iteration] = variation_percent
 
-            sheet["G" + new_iteration] = next(item['significant'] for item in grouping if item['compte'] == value_grouping)
+            sheet["E" + new_iteration].number_format = "# ##0"
+            sheet["F" + new_iteration].number_format = "0.00"
+            g_item = grouping_map.get(value_grouping, {})
+            sheet["G" + new_iteration] = g_item.get('significant')
+            sheet["H" + new_iteration] = g_item.get('materiality')
+            sheet["I" + new_iteration] = g_item.get('mat_sign')
 
-            sheet["H" + new_iteration] = next(item['materiality'] for item in grouping if item['compte'] == value_grouping)
-
-            sheet["I" + new_iteration] = next(item['mat_sign'] for item in grouping if item['compte'] == value_grouping)
-
-
-
-        second_sheet = wb.create_sheet(title="Seuil de matérialité")
-
+        # Nom de feuille Excel sûr (éviter caractères interdits comme '?')
+        second_sheet = wb.create_sheet(title="Seuil_materialite")
         second_headers = ['materiality', 'performance materiality', 'trivial misstatements']
-
         second_sheet["A1"] = second_headers[0]
-
         second_sheet["B1"] = second_headers[1]
-
         second_sheet["C1"] = second_headers[2]
 
-
-
-        second_sheet["A2"] = materiality['materiality']
-
-        second_sheet["B2"] = materiality['performance_materiality']
-
-        second_sheet["C2"] = materiality['trivial_misstatements']
-
-
+        second_sheet["A2"] = materiality.get('materiality')
+        second_sheet["B2"] = materiality.get('performance_materiality')
+        second_sheet["C2"] = materiality.get('trivial_misstatements')
 
         excel_io = BytesIO()
-
         wb.save(excel_io)
-
         excel_io.seek(0)
-
         return excel_io

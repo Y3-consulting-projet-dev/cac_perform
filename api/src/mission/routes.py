@@ -491,6 +491,12 @@ def save_revue_analytique_route(id_mission):
 
 @mission.get('/download_grouping/<id_mission>')
 def download_grouping(id_mission):
+    # Assurer une connexion DB pour les fonctions legacy qui utilisent le global `db`
+    try:
+        from src.model import get_db as _get_db
+        _get_db()
+    except Exception as e:
+        return make_response(jsonify({"error": f"Base de données non connectée: {e}"}), 500)
     cls = Mission()
     excel_result = cls.extract_grouping(id_mission)
     return send_file(
