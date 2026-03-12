@@ -66,23 +66,24 @@ function showComp(type) {
 async function downloadGrouping() {
   if (!grouping.value.length) return
 
-  if (grouping.value[0]?.mat_sign) {
-    const response = await axios.get(
-      `/mission/download_grouping/${id_mission}`,
-      { responseType: 'blob' }
-    )
-
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', 'grouping.xlsx')
-    document.body.appendChild(link)
-    link.click()
-    window.URL.revokeObjectURL(url)
-  } else {
-    notif.trigger('Impossible de télécharger car le grouping est incomplet', 'error')
+  if (!grouping.value[0]?.mat_sign) {
+    notif.trigger('Grouping incomplet: téléchargement forcé.', 'warning')
   }
+
+  const response = await axios.get(
+    `/mission/download_grouping/${id_mission}`,
+    { responseType: 'blob' }
+  )
+
+  const url = window.URL.createObjectURL(new Blob([response.data]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', 'grouping.xlsx')
+  document.body.appendChild(link)
+  link.click()
+  window.URL.revokeObjectURL(url)
 }
+
 </script>
 
 

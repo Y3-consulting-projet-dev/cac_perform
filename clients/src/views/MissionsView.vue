@@ -156,7 +156,7 @@ watch(totalPages, (value) => {
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Rechercher une mission ou un client..."
+          placeholder="Rechercher un client..."
           class="flex-1 focus:outline-none"
         />
       </div>
@@ -167,7 +167,6 @@ watch(totalPages, (value) => {
         <thead class="bg-gray-100 text-gray-700">
           <tr class="h-12 text-sm">
             <th class="text-left px-4">Client</th>
-            <th class="text-left px-4">Mission</th>
             <th class="text-left px-4">Mandat</th>
             <th class="text-left px-4">Responsable</th>
             <th class="text-left px-4">Statut</th>
@@ -183,10 +182,6 @@ watch(totalPages, (value) => {
             class="border-b hover:bg-gray-50 transition cursor-pointer"
           >
             <td class="px-4 py-3">{{ getClientName(mission) }}</td>
-
-            <td class="px-4 py-3 font-semibold text-blue-ycube">
-              {{ mission.nom || `Mission ${mission.annee_auditee || ''}` }}
-            </td>
 
             <td class="px-4 py-3">{{ getMandat(mission) }}</td>
 

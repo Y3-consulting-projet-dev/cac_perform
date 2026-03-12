@@ -1,4 +1,4 @@
-from genericpath import exists
+﻿from genericpath import exists
 from mongoengine import Document, StringField, EmbeddedDocument, EmbeddedDocumentField, ListField, DictField
 import bcrypt
 import openpyxl
@@ -6,6 +6,7 @@ from bson import ObjectId
 import json
 from io import BytesIO
 import os
+import unicodedata
 
 # Fallback global pour éviter les NameError si du code legacy
 # référence une variable 'db' sans l'initialiser. Chaque méthode
@@ -23,7 +24,15 @@ def get_db():
     Tente de reconnecter automatiquement si la connexion est perdue
     """
     try:
-        return get_database()
+        global db
+        db = get_database()
+        if db is None:
+            from src.utils.database import ensure_connection
+            ensure_connection()
+            db = get_database()
+        if db is None:
+            raise RuntimeError("Base de données non connectée (get_database a renvoyé None)")
+        return db
     except RuntimeError as e:
         # Si la connexion est perdue, essayer de reconnecter
         from config import db_manager
@@ -32,17 +41,20 @@ def get_db():
         # Si oui, tenter de reconnecter
         if hasattr(db_manager, 'config') and db_manager.config is not None:
             try:
-                print("⚠️ Connexion perdue, tentative de reconnexion automatique...")
+                print("Connexion perdue, tentative de reconnexion automatique...")
                 db_manager.connect()
-                return db_manager.get_db()
+                db = db_manager.get_db()
+                if db is None:
+                    raise RuntimeError("Base de données non connectée (db_manager.get_db a renvoyé None)")
+                return db
             except Exception as reconnect_error:
-                print(f"❌ Échec de la reconnexion: {reconnect_error}")
+                print(f"Échec de la reconnexion: {reconnect_error}")
                 raise RuntimeError(f"Base de données non connectée: {e}") from reconnect_error
         else:
             # Si pas de configuration, la base de données n'a pas été initialisée
             # Cela peut arriver si on appelle get_db() avant l'initialisation de Flask
             error_msg = f"Base de données non initialisée. Assurez-vous que Flask est démarré et que la base de données est connectée. Erreur originale: {e}"
-            print(f"❌ {error_msg}")
+            print(f"{error_msg}")
             raise RuntimeError(error_msg) from e
 
 
@@ -71,14 +83,14 @@ class Client(Document):
         # Normaliser l'id (s'assurer que c'est une string)
         id_str = str(id).strip()
         
-        print(f"🔍 Recherche des missions pour client ID: '{id_str}'")
+        print(f"Recherche des missions pour client ID: '{id_str}'")
         
         # Chercher avec l'id tel quel
         query = {"id_client": id_str}
         results = db.Mission1.find(query)
         
         count = db.Mission1.count_documents(query)
-        print(f"📊 Missions trouvées avec id_client='{id_str}': {count}")
+        print(f"Missions trouvées avec id_client='{id_str}': {count}")
         
         # Si aucune mission trouvée, essayer avec ObjectId si l'id ressemble à un ObjectId
         if count == 0:
@@ -86,7 +98,7 @@ class Client(Document):
                 # Essayer avec ObjectId
                 query_objid = {"id_client": ObjectId(id_str)}
                 count_objid = db.Mission1.count_documents(query_objid)
-                print(f"📊 Tentative avec ObjectId: {count_objid} missions")
+                print(f"Tentative avec ObjectId: {count_objid} missions")
                 if count_objid > 0:
                     results = db.Mission1.find(query_objid)
                     count = count_objid
@@ -95,12 +107,12 @@ class Client(Document):
         
         # Récupérer toutes les missions pour debug
         total_missions = db.Mission1.count_documents({})
-        print(f"📊 Total de missions dans la base: {total_missions}")
+        print(f"Total de missions dans la base: {total_missions}")
         
         if total_missions > 0 and count == 0:
             # Afficher quelques exemples pour debug
             sample_missions = list(db.Mission1.find({}).limit(3))
-            print(f"⚠️  Exemples d'id_client dans la base:")
+            print(f"Exemples d'id_client dans la base:")
             for sample in sample_missions:
                 sample_id_client = sample.get('id_client', 'NON DÉFINI')
                 print(f"   - Mission {sample['_id']}: id_client='{sample_id_client}' (type: {type(sample_id_client)})")
@@ -109,7 +121,7 @@ class Client(Document):
             result['_id'] = str(result['_id'])
             final.append(result)
         
-        print(f"✅ Retour de {len(final)} missions pour le client {id_str}")
+        print(f"Retour de {len(final)} missions pour le client {id_str}")
         return final
 
     @classmethod
@@ -260,7 +272,7 @@ class Mission(Document):
                 data = json.load(file)
             return data.get(referentiel)
         except Exception as e:
-            print(f"❌ Erreur chargement referentiel '{referentiel}': {str(e)}")
+            print(f"Erreur chargement referentiel '{referentiel}': {str(e)}")
             return None
 
     # ---------- Revue analytique ----------
@@ -308,7 +320,7 @@ class Mission(Document):
 
             # Commentaire automatique (EFI + Matérialité)
             commentaire_auto = (
-                f"EFI: {', '.join(efi_refs) if efi_refs else 'Aucun'} — "
+                f"EFI: {', '.join(efi_refs) if efi_refs else 'Aucun'}"
                 f"Matérialité: {'Oui' if (perf_mat and abs(delta) >= perf_mat) else 'Non'}"
             )
 
@@ -416,13 +428,13 @@ class Mission(Document):
             # Si la connexion est absente, tenter une reconnexion propre
             if db is None:
                 from src.utils.database import ensure_connection
-                print("⚠️ Aucune connexion DB détectée, tentative de reconnexion...")
+                print("Aucune connexion DB détectée, tentative de reconnexion...")
                 ensure_connection()
                 db = get_db()
                 if db is None:
                     raise Exception("Base de données non connectée (get_db a renvoyé None)")
         except Exception as e:
-            print(f"❌ ERREUR: Impossible d'obtenir la connexion à la base de données: {e}")
+            print(f"ERREUR: Impossible d'obtenir la connexion à la base de données: {e}")
             raise Exception(f"Erreur de connexion à la base de données: {str(e)}")
         
         balance_ids = []
@@ -452,7 +464,7 @@ class Mission(Document):
                     db = get_db()
                 # Re-lever l'exception avec un message plus clair
                 error_msg = f"Erreur lors de la création de la balance: {str(e)}"
-                print(f"❌ {error_msg}")
+                print(f"{error_msg}")
                 raise Exception(error_msg) from e
 
         balance_variation = self.rapprochement_des_balances(
@@ -467,7 +479,7 @@ class Mission(Document):
         # S'assurer que id_client est bien une string
         id_client_str = str(id_client).strip()
         
-        print(f"💾 Création de mission avec id_client='{id_client_str}'")
+        print(f"Création de mission avec id_client='{id_client_str}'")
         
         # Préparer les données de la mission
         mission_data = {
@@ -494,22 +506,22 @@ class Mission(Document):
         # Ajouter les dates du mandat si fournies
         if date_debut_mandat:
             mission_data["date_debut_mandat"] = date_debut_mandat
-            print(f"📅 Date de début du mandat: {date_debut_mandat}")
+            print(f"Date de début du mandat: {date_debut_mandat}")
         if date_fin_mandat:
             mission_data["date_fin_mandat"] = date_fin_mandat
-            print(f"📅 Date de fin du mandat: {date_fin_mandat}")
+            print(f"Date de fin du mandat: {date_fin_mandat}")
         
         result = db.Mission1.insert_one(mission_data)
 
         insert_id = str(result.inserted_id)
-        print(f"✅ Mission créée avec ID: {insert_id}")
+        print(f"Mission créée avec ID: {insert_id}")
         
         # Vérifier que la mission a bien été sauvegardée
         mission_saved = db.Mission1.find_one({"_id": result.inserted_id})
         if mission_saved:
-            print(f"✅ Mission vérifiée en base: id_client='{mission_saved.get('id_client')}'")
+            print(f"Mission vérifiée en base: id_client='{mission_saved.get('id_client')}'")
         else:
-            print(f"⚠️  ATTENTION: Mission créée mais non trouvée en base!")
+            print(f"ATTENTION: Mission créée mais non trouvée en base!")
         res = {
             "id_client": id_client,
             "annee_auditee": str(annee_balance),
@@ -531,7 +543,7 @@ class Mission(Document):
         try:
             db = get_db()  # Obtenir la connexion à la base de données
         except Exception as e:
-            print(f"❌ ERREUR: Impossible d'obtenir la connexion à la base de données: {e}")
+            print(f"ERREUR: Impossible d'obtenir la connexion à la base de données: {e}")
             raise Exception(f"Erreur de connexion à la base de données: {str(e)}")
         
         balance = balance_data
@@ -563,19 +575,19 @@ class Mission(Document):
                 if name in workbook.sheetnames:
                     sheet = workbook[name]
                     sheet_name = name
-                    print(f"✅ Feuille trouvée: '{name}' dans {balance.filename if hasattr(balance, 'filename') else 'fichier'}")
+                    print(f"Feuille trouvée: '{name}' dans {balance.filename if hasattr(balance, 'filename') else 'fichier'}")
                     break
             
             # Si aucune feuille standard n'est trouvée, prendre la première
             if sheet is None and workbook.sheetnames:
                 sheet = workbook[workbook.sheetnames[0]]
                 sheet_name = workbook.sheetnames[0]
-                print(f"⚠️  Feuille non standard utilisée: '{sheet_name}' dans {balance.filename if hasattr(balance, 'filename') else 'fichier'}")
+                print(f"Feuille non standard utilisée: '{sheet_name}' dans {balance.filename if hasattr(balance, 'filename') else 'fichier'}")
             
             if sheet is None:
                 raise Exception("Aucune feuille trouvée dans le fichier Excel")
 
-            print(f"📊 Traitement de la feuille '{sheet_name}' avec {sheet.max_row} lignes et {sheet.max_column} colonnes")
+            print(f"Traitement de la feuille '{sheet_name}' avec {sheet.max_row} lignes et {sheet.max_column} colonnes")
 
             def _parse_number(value):
                 """Conversion robuste des montants Excel (nombres ou textes formatés)."""
@@ -589,7 +601,7 @@ class Mission(Document):
                     if not s:
                         return 0.0
                     s = s.replace('\u00a0', '').replace(' ', '')
-                    s = s.replace('–', '-').replace('—', '-')
+                    s = s.replace('', '-').replace('', '-')
                     if s in ('-', '--'):
                         return 0.0
 
@@ -618,7 +630,7 @@ class Mission(Document):
                     return 0.0
             
             # Détection automatique du format et des colonnes
-            print(f"🔍 Analyse du format de la feuille '{sheet_name}'...")
+            print(f"Analyse du format de la feuille '{sheet_name}'...")
             
             # Analyser les premières lignes pour détecter le format
             format_detecte = None
@@ -664,25 +676,25 @@ class Mission(Document):
                         format_info = formats_supportes[format_name]
                         if format_info['detection'](row_data):
                             format_detecte = format_name
-                            print(f"✅ Format détecté: {format_name} à la ligne {row_idx}")
+                            print(f"Format détecté: {format_name} à la ligne {row_idx}")
                             break
                 
                 if format_detecte:
                     break
             
             if not format_detecte:
-                print("⚠️  Format non reconnu, utilisation du format par défaut")
+                print("Format non reconnu, utilisation du format par défaut")
                 format_detecte = 'standard'
             
             print(f"\n{'='*60}")
-            print(f"🔍 FORMAT FINAL DÉTECTÉ: {format_detecte}")
+            print(f"FORMAT FINAL DÉTECTÉ: {format_detecte}")
             print(f"   Nombre de colonnes dans le fichier: {sheet.max_column}")
             print(f"{'='*60}\n")
             
             # Traitement selon le format détecté
             if format_detecte == 'sage':
                 # Format Sage: [numero, libelle, solde_n1, mouvement_debit, mouvement_credit, solde_n]
-                print("📊 Traitement format Sage...")
+                print("Traitement format Sage...")
                 
                 # Compteurs pour le diagnostic
                 lignes_traitees = 0
@@ -734,26 +746,26 @@ class Mission(Document):
                         
                     except Exception as e:
                         lignes_erreur += 1
-                        print(f"⚠️  Erreur ligne {row_idx} (Sage): {e}")
+                        print(f"Erreur ligne {row_idx} (Sage): {e}")
                         continue
                 
                 # Afficher le résumé du traitement
-                print(f"📊 Résumé du traitement (format Sage):")
-                print(f"   ✅ Lignes traitées avec succès: {lignes_traitees}")
+                print(f"Résumé du traitement (format Sage):")
+                print(f"Lignes traitées avec succès: {lignes_traitees}")
                 if lignes_ignorees_colonnes > 0:
-                    print(f"   ⚠️  Lignes ignorées (moins de 6 colonnes): {lignes_ignorees_colonnes}")
+                    print(f"Lignes ignorées (moins de 6 colonnes): {lignes_ignorees_colonnes}")
                 if lignes_ignorees_vides > 0:
-                    print(f"   ⚠️  Lignes ignorées (numéro de compte vide): {lignes_ignorees_vides}")
+                    print(f"Lignes ignorées (numéro de compte vide): {lignes_ignorees_vides}")
                 if lignes_ignorees_numero_invalide > 0:
-                    print(f"   ⚠️  Lignes ignorées (numéro de compte invalide, doit être numérique avec 3+ chiffres): {lignes_ignorees_numero_invalide}")
+                    print(f"Lignes ignorées (numéro de compte invalide, doit être numérique avec 3+ chiffres): {lignes_ignorees_numero_invalide}")
                 if lignes_erreur > 0:
-                    print(f"   ❌ Lignes avec erreur: {lignes_erreur}")
+                    print(f"Lignes avec erreur: {lignes_erreur}")
             
             elif format_detecte == 'balance_simple':
                 # Format balance simple: [numero, libelle, debit_initial, credit_initial, debit_fin, credit_fin]
                 # Sans les colonnes de mouvement
                 print(f"\n{'='*60}")
-                print("📊 Traitement format balance simple...")
+                print("Traitement format balance simple...")
                 print(f"{'='*60}\n")
                 
                 # Compteurs pour le diagnostic
@@ -770,7 +782,7 @@ class Mission(Document):
                     row_data = [sheet.cell(row=row_idx, column=col).value for col in range(1, min(9, sheet.max_column + 1))]
                     if any('compte' in str(cell).lower() for cell in row_data if cell):
                         header_row = row_idx
-                        print(f"📝 En-tête détecté à la ligne {row_idx}: {row_data}")
+                        print(f"En-tête détecté à la ligne {row_idx}: {row_data}")
                         break
                 
                 # DÉTECTION DE L'ORDRE DES COLONNES (si 8 colonnes)
@@ -782,7 +794,7 @@ class Mission(Document):
                     col7_val = col7_header.lower()
                     col8_val = col8_header.lower()
                     
-                    print(f"📝 DÉTECTION DE L'ORDRE DES COLONNES (format balance_simple):")
+                    print(f"DÉTECTION DE L'ORDRE DES COLONNES (format balance_simple):")
                     print(f"   Colonne 7 (index 6): '{col7_header}'")
                     print(f"   Colonne 8 (index 7): '{col8_header}'")
                     
@@ -800,9 +812,9 @@ class Mission(Document):
                     
                     if has_solde_credit_col7 and has_solde_debit_col8:
                         colonnes_inversees_balance_simple = True
-                        print(f"✅ Format détecté: Solde crédit (col 7) puis Solde débit (col 8) - COLONNES INVERSÉES")
+                        print(f"Format détecté: Solde crédit (col 7) puis Solde débit (col 8) - COLONNES INVERSÉES")
                     else:
-                        print(f"✅ Format détecté: Débit (col 7) puis Crédit (col 8) - FORMAT STANDARD")
+                        print(f"Format détecté: Débit (col 7) puis Crédit (col 8) - FORMAT STANDARD")
                 
                 # Traitement des lignes de données
                 for row_idx, row in enumerate(sheet.iter_rows(min_row=header_row + 1, values_only=True), start=header_row + 1):
@@ -839,54 +851,34 @@ class Mission(Document):
                         # Vérifier si le fichier Excel contient les colonnes de mouvements
                         # Format 1 (avec mouvements) : debit_initial, credit_initial, debit_mvt, credit_mvt, debit_fin, credit_fin
                         # Format 2 (sans mouvements) : debit_initial, credit_initial, debit_fin, credit_fin
-                        try:
-                            # Essayer de lire les mouvements depuis le fichier (colonnes 4 et 5)
-                            if len(row) > 5 and (row[4] is not None or row[5] is not None):
-                                ligne['debit_mvt'] = _parse_number(row[4])
-                                ligne['credit_mvt'] = _parse_number(row[5])
-                                # Utiliser l'ordre détecté pour les colonnes finales
-                                if colonnes_inversees_balance_simple and len(row) > 7:
-                                    ligne['credit_fin'] = _parse_number(row[6])
-                                    ligne['debit_fin'] = _parse_number(row[7])
-                                else:
-                                    ligne['debit_fin'] = _parse_number(row[6])
-                                    ligne['credit_fin'] = _parse_number(row[7])
+                        # ✅ CORRECT : vérifier que les mouvements ont des valeurs réellement non nulles
+                        debit_mvt_raw = row[4] if len(row) > 4 else None
+                        credit_mvt_raw = row[5] if len(row) > 5 else None
+                        debit_fin_raw = row[6] if len(row) > 6 else None
+                        credit_fin_raw = row[7] if len(row) > 7 else None
+
+                        # On considère qu'il y a des colonnes de mouvements seulement si :
+                        # - les colonnes 7 et 8 (soldes finaux) existent ET ont des valeurs
+                        has_columns_mouvements = (
+                            debit_fin_raw is not None or credit_fin_raw is not None
+                        )
+
+                        if has_columns_mouvements:
+                            # Format 8 colonnes : debit_init, credit_init, debit_mvt, credit_mvt, debit_fin, credit_fin
+                            ligne['debit_mvt'] = _parse_number(debit_mvt_raw)
+                            ligne['credit_mvt'] = _parse_number(credit_mvt_raw)
+                            if colonnes_inversees_balance_simple:
+                                ligne['credit_fin'] = _parse_number(debit_fin_raw)
+                                ligne['debit_fin'] = _parse_number(credit_fin_raw)
                             else:
-                                # Format sans mouvements : utiliser solde_final = solde_initial + mouvements
-                                # Pour la vérification d'identité, on utilise l'équation : 
-                                # (debit_fin - credit_fin) = (debit_initial - credit_initial) + (debit_mvt - credit_mvt)
-                                ligne['debit_fin'] = _parse_number(row[4])
-                                ligne['credit_fin'] = _parse_number(row[5])
-                                
-                                # Calculer le solde initial et final
-                                solde_initial = ligne['debit_initial'] - ligne['credit_initial']
-                                solde_final = ligne['debit_fin'] - ligne['credit_fin']
-                                mouvement_net = solde_final - solde_initial
-                                
-                                # Approximer les mouvements débit/crédit à partir du mouvement net
-                                # Note: Cette approximation n'est pas parfaite car on ne connaît pas
-                                # le détail des mouvements débit/crédit séparément
-                                if mouvement_net > 0:
-                                    # Le solde a augmenté, donc plus de débits que de crédits
-                                    ligne['debit_mvt'] = abs(mouvement_net)
-                                    ligne['credit_mvt'] = 0
-                                elif mouvement_net < 0:
-                                    # Le solde a diminué, donc plus de crédits que de débits
-                                    ligne['debit_mvt'] = 0
-                                    ligne['credit_mvt'] = abs(mouvement_net)
-                                else:
-                                    # Pas de changement, mouvements à zéro ou équilibrés
-                                    # Approximation : répartir selon la variation des totaux débit/crédit
-                                    debit_mvt_calc = max(0, ligne['debit_fin'] - ligne['debit_initial'])
-                                    credit_mvt_calc = max(0, ligne['credit_fin'] - ligne['credit_initial'])
-                                    ligne['debit_mvt'] = debit_mvt_calc
-                                    ligne['credit_mvt'] = credit_mvt_calc
-                        except (IndexError, ValueError, TypeError):
-                            # Si erreur, utiliser le format simple sans mouvements
-                            ligne['debit_mvt'] = 0
+                                ligne['debit_fin'] = _parse_number(debit_fin_raw)
+                                ligne['credit_fin'] = _parse_number(credit_fin_raw)
+                        else:
+                            # Format 6 colonnes : debit_init, credit_init, debit_fin, credit_fin
+                            ligne['debit_mvt']  = 0
                             ligne['credit_mvt'] = 0
-                            ligne['debit_fin'] = _parse_number(row[4])
-                            ligne['credit_fin'] = _parse_number(row[5])
+                            ligne['debit_fin']  = 0
+                            ligne['credit_fin'] = 0
                         
                         ligne['solde_reel'] = ligne['debit_fin'] - ligne['credit_fin']
                         ligne['solde'] = abs(ligne['solde_reel'])
@@ -896,24 +888,24 @@ class Mission(Document):
                         lignes_traitees += 1
                     except Exception as e:
                         lignes_erreur += 1
-                        print(f"⚠️  Erreur ligne {row_idx} (balance simple): {e}")
+                        print(f"Erreur ligne {row_idx} (balance simple): {e}")
                         continue
                 
                 # Afficher le résumé du traitement
-                print(f"📊 Résumé du traitement (format balance simple):")
-                print(f"   ✅ Lignes traitées avec succès: {lignes_traitees}")
+                print(f"Résumé du traitement (format balance simple):")
+                print(f"Lignes traitées avec succès: {lignes_traitees}")
                 if lignes_ignorees_colonnes > 0:
-                    print(f"   ⚠️  Lignes ignorées (moins de 6 colonnes): {lignes_ignorees_colonnes}")
+                    print(f"   Lignes ignorées (moins de 6 colonnes): {lignes_ignorees_colonnes}")
                 if lignes_ignorees_numero_vide > 0:
-                    print(f"   ⚠️  Lignes ignorées (numéro de compte vide): {lignes_ignorees_numero_vide}")
+                    print(f"   Lignes ignorées (numéro de compte vide): {lignes_ignorees_numero_vide}")
                 if lignes_ignorees_vides > 0:
-                    print(f"   ⚠️  Lignes vides détectées: {lignes_ignorees_vides}")
+                    print(f"   Lignes vides détectées: {lignes_ignorees_vides}")
                 if lignes_erreur > 0:
-                    print(f"   ❌ Lignes avec erreur: {lignes_erreur}")
+                    print(f"Lignes avec erreur: {lignes_erreur}")
                         
             else:
                 # Format standard ou autre
-                print("📊 Traitement format standard...")
+                print("Traitement format standard...")
                 header_row = 1
                 
                 # Trouver la ligne d'en-tête
@@ -921,7 +913,7 @@ class Mission(Document):
                     row_data = [sheet.cell(row=row_idx, column=col).value for col in range(1, min(8, sheet.max_column + 1))]
                     if any('compte' in str(cell).lower() for cell in row_data if cell):
                         header_row = row_idx
-                        print(f"📝 En-tête détecté à la ligne {row_idx}: {row_data}")
+                        print(f"En-tête détecté à la ligne {row_idx}: {row_data}")
                         break
                 
                 # DÉTECTION DE L'ORDRE DES COLONNES (une seule fois avant la boucle)
@@ -935,7 +927,7 @@ class Mission(Document):
                 col7_val = col7_header.lower()
                 col8_val = col8_header.lower()
                 
-                print(f"📝 DÉTECTION DE L'ORDRE DES COLONNES:")
+                print(f"DÉTECTION DE L'ORDRE DES COLONNES:")
                 print(f"   Colonne 7 (index 6): '{col7_header}'")
                 print(f"   Colonne 8 (index 7): '{col8_header}'")
                 
@@ -968,16 +960,16 @@ class Mission(Document):
                 colonnes_inversees = False
                 if has_solde_credit_col7 and has_solde_debit_col8:
                     colonnes_inversees = True
-                    print(f"✅ Format détecté: Solde crédit (col 7) puis Solde débit (col 8) - COLONNES INVERSÉES")
+                    print(f"Format détecté: Solde crédit (col 7) puis Solde débit (col 8) - COLONNES INVERSÉES")
                     print(f"   Mapping: credit_fin = row[6] (col 7), debit_fin = row[7] (col 8)")
                 elif has_debit_col7 and has_credit_col8:
                     colonnes_inversees = False
-                    print(f"✅ Format détecté: Débit (col 7) puis Crédit (col 8) - FORMAT STANDARD")
+                    print(f"Format détecté: Débit (col 7) puis Crédit (col 8) - FORMAT STANDARD")
                     print(f"   Mapping: debit_fin = row[6] (col 7), credit_fin = row[7] (col 8)")
                 else:
                     # Par défaut, utiliser le format standard
                     colonnes_inversees = False
-                    print(f"⚠️  Format non reconnu, utilisation du format standard par défaut")
+                    print(f"Format non reconnu, utilisation du format standard par défaut")
                     print(f"   Mapping: debit_fin = row[6] (col 7), credit_fin = row[7] (col 8)")
                 
                 # Compteurs pour le diagnostic
@@ -1029,22 +1021,22 @@ class Mission(Document):
                         lignes_traitees += 1
                     except Exception as e:
                         lignes_erreur += 1
-                        print(f"⚠️  Erreur ligne {row_idx} (standard): {e}")
+                        print(f"Erreur ligne {row_idx} (standard): {e}")
                         continue
                 
                 # Afficher le résumé du traitement
-                print(f"📊 Résumé du traitement:")
-                print(f"   ✅ Lignes traitées avec succès: {lignes_traitees}")
+                print(f"Résumé du traitement:")
+                print(f"Lignes traitées avec succès: {lignes_traitees}")
                 if lignes_ignorees_colonnes > 0:
-                    print(f"   ⚠️  Lignes ignorées (moins de 8 colonnes): {lignes_ignorees_colonnes}")
+                    print(f"   Lignes ignorées (moins de 8 colonnes): {lignes_ignorees_colonnes}")
                 if lignes_ignorees_numero_vide > 0:
-                    print(f"   ⚠️  Lignes ignorées (numéro de compte vide): {lignes_ignorees_numero_vide}")
+                    print(f"   Lignes ignorées (numéro de compte vide): {lignes_ignorees_numero_vide}")
                 if lignes_ignorees_vides > 0:
-                    print(f"   ⚠️  Lignes vides détectées: {lignes_ignorees_vides}")
+                    print(f"   Lignes vides détectées: {lignes_ignorees_vides}")
                 if lignes_erreur > 0:
-                    print(f"   ❌ Lignes avec erreur: {lignes_erreur}")
+                    print(f"Lignes avec erreur: {lignes_erreur}")
             
-            print(f"✅ {len(data)} lignes de données extraites de la feuille '{sheet_name}'")
+            print(f"{len(data)} lignes de données extraites de la feuille '{sheet_name}'")
             
             # Vérifier qu'au moins une ligne de données a été extraite
             if len(data) == 0:
@@ -1065,7 +1057,7 @@ class Mission(Document):
                     f"- Les numéros de compte ne sont pas vides et commencent par un chiffre\n"
                     f"- Les lignes vides ou sans numéro de compte sont ignorées"
                 )
-                print(f"⚠️ {error_msg}")
+                print(f"{error_msg}")
                 pending_error_msg = error_msg
                     
         except Exception as e:
@@ -1084,7 +1076,7 @@ class Mission(Document):
             # Fallback: parsing tr?s permissif sur toutes les feuilles
             def _to_float(v):
                 try:
-                    return float(str(v).replace(' ', '').replace(' ', '').replace(',', '.'))
+                    return float(str(v).replace(' ', '').replace('Â ', '').replace(',', '.'))
                 except Exception:
                     return 0.0
 
@@ -1139,7 +1131,7 @@ class Mission(Document):
                         if c < len(r) and isinstance(r[c], (int, float)):
                             score += 1
                         elif c < len(r) and isinstance(r[c], str):
-                            s = r[c].strip().replace(' ', '').replace(' ', '')
+                            s = r[c].strip().replace(' ', '').replace(' ', '')
                             if s.replace(',', '.').replace('-', '').isdigit():
                                 score += 1
                     if score > 0:
@@ -1212,7 +1204,7 @@ class Mission(Document):
         )
 
         inserted_id = str(result.inserted_id)
-        print(f"✅ Balance insérée en base avec {len(data)} lignes (ID: {inserted_id})")
+        print(f"Balance insérée en base avec {len(data)} lignes (ID: {inserted_id})")
         return inserted_id, data
 
     # ---------- Grouping ----------
@@ -1239,7 +1231,7 @@ class Mission(Document):
         if not isinstance(balances_rapprochee, list):
             raise TypeError("balances_rapprochee doit être une liste")
 
-        print(f"📊 Balances reçues : {len(balances_rapprochee)} comptes")
+        print(f"Balances reçues : {len(balances_rapprochee)} comptes")
 
         # =====================================================================
         # DÉFINITION DES GROUPES SYSCOHADA
@@ -1252,11 +1244,23 @@ class Mission(Document):
             """Vrai si numero commence par l'un des préfixes donnés."""
             return any(numero.startswith(p) for p in prefixes)
 
-        def is_debiteur(solde_n):
-            return (solde_n or 0) >= 0
+        def _solde_pour_signe(solde):
+            """
+            Solde utilisé pour départager actif/passif:
+            - si tuple/list => (solde_n, solde_n1) avec priorité à N puis N-1
+            - sinon => valeur fournie (comportement legacy)
+            """
+            if isinstance(solde, (tuple, list)):
+                solde_n = solde[0] if len(solde) > 0 else 0
+                solde_n1 = solde[1] if len(solde) > 1 else 0
+                return solde_n if (solde_n or 0) != 0 else (solde_n1 or 0)
+            return solde or 0
 
-        def is_crediteur(solde_n):
-            return (solde_n or 0) < 0
+        def is_debiteur(solde):
+            return _solde_pour_signe(solde) >= 0
+
+        def is_crediteur(solde):
+            return _solde_pour_signe(solde) < 0
 
         GROUPES_RULES = [
             # ---- ACTIF ----
@@ -1293,8 +1297,8 @@ class Mission(Document):
             {
                 "libelle": "AUTRES CRÉANCES",
                 "section": "actif",
-                # 42, 43, 44, 185, 45, 46, 47 sauf 478 → débiteur
-                "match": lambda n, s: starts(n, "42", "43", "44", "45", "46", "47", "185") and not starts(n, "478") and is_debiteur(s),
+                # 42, 43, 44, 185, 45, 46, 47 sauf 47 débiteur
+                "match": lambda n, s: starts(n, "42", "43", "44", "45", "46", "47", "185") and not starts(n, "478", "479") and is_debiteur(s),
             },
             {
                 "libelle": "ACTIF CIRCULANT HAO",
@@ -1327,7 +1331,9 @@ class Mission(Document):
             {
                 "libelle": "FOURNISSEURS D'EXPLOITATION",
                 "section": "passif",
-                "match": lambda n, s: starts(n, "40") and not starts(n, "409") and is_crediteur(s),
+                # Tous les 40* (hors 409*) appartiennent à ce grand groupe,
+                # même si le solde est débiteur, créditeur ou nul.
+                "match": lambda n, s: starts(n, "40") and not starts(n, "409"),
             },
             {
                 "libelle": "DETTES FISCALES ET SOCIALES",
@@ -1339,17 +1345,12 @@ class Mission(Document):
                 "libelle": "AUTRES DETTES",
                 "section": "passif",
                 # 185, 45, 46, 47 sauf 479 créditeurs
-                "match": lambda n, s: starts(n, "185", "45", "46", "47") and not starts(n, "479") and is_crediteur(s),
-            },
-            {
-                "libelle": "PASSIF CIRCULANT HAO",
-                "section": "passif",
-                "match": lambda n, s: starts(n, "481", "482", "484"),
+                "match": lambda n, s: starts(n, "185", "45", "46", "47") and not starts(n, "478","479") and is_crediteur(s),
             },
             {
                 "libelle": "DETTES CIRCULANT HAO",
                 "section": "passif",
-                "match": lambda n, s: starts(n, "4998"),
+                "match": lambda n, s: starts(n, "481", "482", "484", "4998"),
             },
             {
                 "libelle": "PROVISIONS POUR RISQUES À COURT TERME",
@@ -1437,19 +1438,9 @@ class Mission(Document):
                 "match": lambda n, s: starts(n, "6033"),
             },
             {
-                "libelle": "ACHATS STOCKÉS DE MATIÈRES PREMIÈRE ET FOURNITURES CONSOMMABLES",
-                "section": "pnl",
-                "match": lambda n, s: starts(n, "604"),
-            },
-            {
                 "libelle": "AUTRES ACHATS",
                 "section": "pnl",
-                "match": lambda n, s: starts(n, "605"),
-            },
-            {
-                "libelle": "ACHATS D'EMBALLAGES",
-                "section": "pnl",
-                "match": lambda n, s: starts(n, "608"),
+                "match": lambda n, s: starts(n, "604", "605", "608"),
             },
             {
                 "libelle": "TRANSPORTS",
@@ -1482,14 +1473,14 @@ class Mission(Document):
                 "match": lambda n, s: starts(n, "67"),
             },
             {
-                "libelle": "DOTATIONS AUX AMORTISSEMENTS",
+                "libelle": "DOTATIONS AUX AMORTISSEMENTS ET AUX PROVISIONS ET DÉPRÉCIATIONS",
                 "section": "pnl",
-                "match": lambda n, s: starts(n, "68"),
+                "match": lambda n, s: starts(n, "681", "691"),
             },
             {
-                "libelle": "DOTATIONS AUX PROVISIONS ET AUX DÉPRÉCIATIONS",
+                "libelle": "DOTATIONS AUX PROVISIONS ET AUX DÉPRÉCIATIONS FINANCIÈRES",
                 "section": "pnl",
-                "match": lambda n, s: starts(n, "69"),
+                "match": lambda n, s: starts(n, "697"),
             },
             {
                 "libelle": "VENTES DE MARCHANDISES",
@@ -1497,29 +1488,14 @@ class Mission(Document):
                 "match": lambda n, s: starts(n, "701"),
             },
             {
-                "libelle": "VENTE DE PRODUITS FINIS",
+                "libelle": "VENTE DE PRODUITS FABRIQUÉS",
                 "section": "pnl",
-                "match": lambda n, s: starts(n, "702"),
+                "match": lambda n, s: starts(n, "702", "703", "704"),
             },
             {
-                "libelle": "VENTES DE PRODUITS INTERMÉDIAIRES",
+                "libelle": "TRAVAUX, SERVICES VENDUS",
                 "section": "pnl",
-                "match": lambda n, s: starts(n, "703"),
-            },
-            {
-                "libelle": "VENTES DE PRODUITS RÉSIDUELS",
-                "section": "pnl",
-                "match": lambda n, s: starts(n, "704"),
-            },
-            {
-                "libelle": "TRAVAUX FACTURÉS",
-                "section": "pnl",
-                "match": lambda n, s: starts(n, "705"),
-            },
-            {
-                "libelle": "SERVICES VENDUS",
-                "section": "pnl",
-                "match": lambda n, s: starts(n, "706"),
+                "match": lambda n, s: starts(n, "705", "706"),
             },
             {
                 "libelle": "PRODUITS ACCESSOIRES",
@@ -1537,7 +1513,7 @@ class Mission(Document):
                 "match": lambda n, s: starts(n, "72"),
             },
             {
-                "libelle": "VARIATIONS DES STOCKS DE BIENS ET DE SERVICES PRODUITS",
+                "libelle": "PRODUCTION STOCKÉE (OU DESTOCKAGE)",
                 "section": "pnl",
                 "match": lambda n, s: starts(n, "73"),
             },
@@ -1547,19 +1523,29 @@ class Mission(Document):
                 "match": lambda n, s: starts(n, "75"),
             },
             {
-                "libelle": "REVENUS FINANCIERS ET PRODUITS ASSIMILÉS",
+                "libelle": "REVENUS FINANCIERS ET ASSIMILÉS",
                 "section": "pnl",
                 "match": lambda n, s: starts(n, "77"),
             },
             {
-                "libelle": "TRANSFERTS DE CHARGES",
+                "libelle": "TRANSFERT DE CHARGES D'EXPLOITATION",
                 "section": "pnl",
-                "match": lambda n, s: starts(n, "78"),
+                "match": lambda n, s: starts(n, "781"),
             },
             {
-                "libelle": "REPRISES DE PROVISIONS, DE DÉPRÉCIATION ET AUTRES",
+                "libelle": "TRANSFERT DE CHARGES FINANCIÈRES",
                 "section": "pnl",
-                "match": lambda n, s: starts(n, "79"),
+                "match": lambda n, s: starts(n, "787"),
+            },
+            {
+                "libelle": "REPRISES D'AMORTISSEMENT, DE PROVISIONS ET DÉPRÉCIATION",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "791", "798", "799"),
+            },
+            {
+                "libelle": "REPRISE DE PROVISIONS ET DÉPRÉCIATIONS FINANCIÈRES",
+                "section": "pnl",
+                "match": lambda n, s: starts(n, "797"),
             },
             {
                 "libelle": "VALEURS COMPTABLES DES CESSIONS D'IMMOBILISATIONS",
@@ -1572,34 +1558,19 @@ class Mission(Document):
                 "match": lambda n, s: starts(n, "82"),
             },
             {
-                "libelle": "CHARGES HORS ACTIVITÉS ORDINAIRES",
+                "libelle": "AUTRES CHARGES HAO",
                 "section": "pnl",
-                "match": lambda n, s: starts(n, "83"),
+                "match": lambda n, s: starts(n, "83", "85"),
             },
             {
-                "libelle": "PRODUITS HORS ACTIVITÉS ORDINAIRES",
+                "libelle": "AUTRES PRODUITS HAO",
                 "section": "pnl",
-                "match": lambda n, s: starts(n, "84"),
-            },
-            {
-                "libelle": "DOTATIONS HORS ACTIVITÉS ORDINAIRES",
-                "section": "pnl",
-                "match": lambda n, s: starts(n, "85"),
-            },
-            {
-                "libelle": "REPRISES HORS ACTIVITÉS ORDINAIRES",
-                "section": "pnl",
-                "match": lambda n, s: starts(n, "86"),
+                "match": lambda n, s: starts(n, "84", "86", "88"),
             },
             {
                 "libelle": "PARTICIPATION DES TRAVAILLEURS",
                 "section": "pnl",
                 "match": lambda n, s: starts(n, "87"),
-            },
-            {
-                "libelle": "SUBVENTIONS D'ÉQUILIBRE",
-                "section": "pnl",
-                "match": lambda n, s: starts(n, "88"),
             },
             {
                 "libelle": "IMPÔTS SUR LE RÉSULTAT",
@@ -1627,6 +1598,40 @@ class Mission(Document):
         # Classifier chaque compte dans son groupe
         # =====================================================================
         non_classes = []
+
+        def sign_of(value):
+            v = value or 0
+            if v > 0:
+                return 1
+            if v < 0:
+                return -1
+            return 0
+
+        def is_sign_sensitive_account(numero_compte):
+            # Comptes dont la bascule actif/passif dépend du sens du solde.
+            return (
+                starts(numero_compte, "41", "42", "43", "44", "45", "46", "47", "185", "52", "53", "54", "55", "57", "58")
+                and not starts(numero_compte, "419", "478", "479")
+            )
+
+        def classify_and_append(numero_compte, libelle_compte, match_solde, add_solde_n, add_solde_n1):
+            for _, g in groupes_data.items():
+                try:
+                    if g["_match"](numero_compte, match_solde):
+                        g["solde_n"] += add_solde_n
+                        g["solde_n1"] += add_solde_n1
+                        g["comptes"].append({
+                            "numero_compte": numero_compte,
+                            "libelle": libelle_compte,
+                            "solde_n": add_solde_n,
+                            "solde_n1": add_solde_n1,
+                            "variation": add_solde_n - add_solde_n1,
+                        })
+                        return True
+                except Exception:
+                    continue
+            return False
+
         # for item in balances_rapprochee:
         #     numero = str(item.get("numero_compte", "")).strip()
         #     if not numero or not numero[0].isdigit():
@@ -1649,31 +1654,30 @@ class Mission(Document):
             solde_n1 = item.get("solde_n1", 0) or 0
             libelle = item.get("libelle", "")
 
-            # ✅ CORRECTION BUG 419 : réaffectation des comptes 419 créditeurs
-            # 419 = avances reçues de clients → passif circulant (DI)
+            # CORRECTION BUG 419 : réaffectation des comptes 419 créditeurs
+            # 419 = avances reçues de client passif circulant (DI)
             # Si solde créditeur (négatif en SYSCOHADA débiteur-normal), on le bascule
             if numero.startswith("419") and solde_n < 0:
                 target_key = "DI_419"  # groupe spécial à créer, voir ci-dessous
                 # OU plus simple : l'affecter à un groupe dédié dans le référentiel
 
-            for key, g in groupes_data.items():
-                try:
-                    if g["_match"](numero, solde_n):
-                        g["solde_n"] += solde_n
-                        g["solde_n1"] += solde_n1
-                        g["comptes"].append({
-                            "numero_compte": numero,
-                            "libelle": libelle,
-                            "solde_n": solde_n,
-                            "solde_n1": solde_n1,
-                            "variation": solde_n - solde_n1,
-                        })
-                        break
-                except Exception:
-                    continue
+            # Si le sens change entre N et N-1 pour un compte sensible au signe,
+            # on classe chaque période séparément pour refléter correctement
+            # actif/passif sur chaque colonne.
+            sign_n = sign_of(solde_n)
+            sign_n1 = sign_of(solde_n1)
+            if is_sign_sensitive_account(numero) and sign_n != 0 and sign_n1 != 0 and sign_n != sign_n1:
+                matched_n = classify_and_append(numero, libelle, solde_n, solde_n, 0)
+                matched_n1 = classify_and_append(numero, libelle, solde_n1, 0, solde_n1)
+                if not (matched_n and matched_n1):
+                    non_classes.append(numero)
+                continue
+
+            if not classify_and_append(numero, libelle, (solde_n, solde_n1), solde_n, solde_n1):
+                non_classes.append(numero)
 
         if non_classes:
-            print(f"⚠️  {len(non_classes)} compte(s) non classés : {non_classes[:20]}")
+            print(f"{len(non_classes)} compte(s) non classés : {non_classes[:20]}")
 
         # =====================================================================
         # Finaliser et construire le résultat
@@ -1698,26 +1702,53 @@ class Mission(Document):
                 "comptes": g["comptes"],
             })
 
-        print(f"✅ Grouping généré : {len(result)} groupes")
+        print(f"Grouping généré : {len(result)} groupes")
         return result
 
 
     # ---------- Variation N vs N-1 ----------
     def rapprochement_des_balances(self, balance_n, balance_n1):
         variation_des_balances = []
-        idx_n = {str(item.get('numero_compte')): item for item in balance_n}
-        idx_n1 = {str(item.get('numero_compte')): item for item in balance_n1}
 
-        # Inclure tous les comptes présents en N ou en N-1
-        # (évite de perdre des comptes comme 419 présents uniquement en N-1).
-        all_numeros = list(dict.fromkeys(list(idx_n.keys()) + list(idx_n1.keys())))
+        def _index_balance(balance_rows):
+            """
+            Indexe une balance par (numéro de compte, libellé) pour conserver
+            les lignes distinctes d'un même compte avec des libellés différents
+            (ex: 409100 + "FOURNISSEURS DIVERS" / "F/SSEURS AVANCE ET ACOMPTE").
+            """
+            index = {}
+            for item in balance_rows or []:
+                numero = str(item.get('numero_compte', '')).strip()
+                if not numero:
+                    continue
 
-        for numero in all_numeros:
-            item_n = idx_n.get(numero, {})
-            item_n1 = idx_n1.get(numero, {})
+                solde = item.get('solde_reel', 0) or 0
+                libelle = str(item.get('libelle', '') or '').strip()
+                key = (numero, libelle)
+
+                if key not in index:
+                    index[key] = {
+                        'numero_compte': numero,
+                        'libelle': libelle,
+                        'solde_reel': solde
+                    }
+                else:
+                    index[key]['solde_reel'] += solde
+            return index
+
+        idx_n = _index_balance(balance_n)
+        idx_n1 = _index_balance(balance_n1)
+
+        # Inclure toutes les lignes présentes en N ou en N-1 par couple
+        # (numero_compte, libelle), sans fusionner des libellés différents.
+        all_keys = list(dict.fromkeys(list(idx_n.keys()) + list(idx_n1.keys())))
+
+        for numero, libelle in all_keys:
+            item_n = idx_n.get((numero, libelle), {})
+            item_n1 = idx_n1.get((numero, libelle), {})
             ligne = {
                 'numero_compte': numero,
-                'libelle': item_n.get('libelle') or item_n1.get('libelle') or '',
+                'libelle': item_n.get('libelle') or item_n1.get('libelle') or libelle or '',
                 'solde_n': item_n.get('solde_reel', 0) or 0,
                 'solde_n1': item_n1.get('solde_reel', 0) or 0
             }
@@ -1927,13 +1958,13 @@ class Mission(Document):
             
             # Si aucune donnée de matérialité, calculer les benchmarks
             if not materiality:
-                print(f"📊 Calcul des benchmarks de matérialité pour la mission {id_mission}")
+                print(f"Calcul des benchmarks de matérialité pour la mission {id_mission}")
                 materiality = self._calculate_materiality_benchmarks(mission)
                 
                 # Sauvegarder les calculs si des benchmarks ont été trouvés
                 if materiality:
                     db.Mission1.update_one({"_id": ObjectId(id_mission)}, {"$set": {"materiality": materiality}})
-                    print(f"✅ {len(materiality)} benchmark(s) sauvegardé(s) dans la base de données")
+                    print(f"{len(materiality)} benchmark(s) sauvegardé(s) dans la base de données")
 
             if not materiality:
                 # Vérifier la cause du problème pour donner un message plus explicite
@@ -1955,7 +1986,7 @@ class Mission(Document):
 
         except Exception as e:
             import traceback
-            print(f"❌ Erreur dans materialite: {e}")
+            print(f"Erreur dans materialite: {e}")
             traceback.print_exc()
             return {"ok": False, "message": f"Erreur lors du calcul de la matérialité: {str(e)}", "materiality": []}
 
@@ -1967,22 +1998,22 @@ class Mission(Document):
             # Récupérer les données financières
             efi = mission.get("efi", {})
             if not efi:
-                print("❌ Aucune donnée EFI trouvée dans la mission")
-                print("💡 Conseil: Veuillez générer les états financiers préliminaires (Étape 5) avant de calculer les matérialités")
+                print("Aucune donnée EFI trouvée dans la mission")
+                print("Conseil: Veuillez générer les états financiers préliminaires (Étape 5) avant de calculer les matérialités")
                 return []
 
             # Vérifier que les données EFI sont structurées correctement
             if not isinstance(efi, dict):
-                print(f"❌ Format de données EFI invalide: {type(efi)}")
+                print(f"Format de données EFI invalide: {type(efi)}")
                 return []
             
             # Vérifier que les sections principales existent
             sections_presentes = [section for section in ["actif", "passif", "pnl"] if section in efi and isinstance(efi[section], list)]
             if not sections_presentes:
-                print("❌ Aucune section EFI valide trouvée (actif, passif, pnl)")
+                print("Aucune section EFI valide trouvée (actif, passif, pnl)")
                 return []
             
-            print(f"✅ Sections EFI trouvées: {sections_presentes}")
+            print(f"Sections EFI trouvées: {sections_presentes}")
             
             benchmarks = []
             valeurs_trouvees = []
@@ -2004,12 +2035,12 @@ class Mission(Document):
                     "performance_materiality": int(abs_materiality * 0.8),
                     "trivial_misstatements": int(abs_materiality * 0.05),
                     "choice": "",
-                    "warning": "⚠️ ATTENTION: Seuil de matérialité négatif !" if is_negative else "",
+                    "warning": "ATTENTION: Seuil de matérialité négatif !" if is_negative else "",
                     "original_value": profit_before_tax
                 })
                 valeurs_trouvees.append(f"profit_before_tax: {profit_before_tax}")
             else:
-                print(f"⚠️ Valeur profit_before_tax non trouvée ou nulle: {profit_before_tax}")
+                print(f"Valeur profit_before_tax non trouvée ou nulle: {profit_before_tax}")
 
             # Benchmark 2: EBITDA
             ebitda = self._get_financial_value(efi, "ebitda")
@@ -2028,12 +2059,12 @@ class Mission(Document):
                     "performance_materiality": int(abs_materiality * 0.8),
                     "trivial_misstatements": int(abs_materiality * 0.05),
                     "choice": "",
-                    "warning": "⚠️ ATTENTION: Seuil de matérialité négatif !" if is_negative else "",
+                    "warning": "ATTENTION: Seuil de matérialité négatif !" if is_negative else "",
                     "original_value": ebitda
                 })
                 valeurs_trouvees.append(f"ebitda: {ebitda}")
             else:
-                print(f"⚠️ Valeur ebitda non trouvée ou nulle: {ebitda}")
+                print(f"Valeur ebitda non trouvée ou nulle: {ebitda}")
 
             # Benchmark 3: Revenue
             revenue = self._get_financial_value(efi, "revenue")
@@ -2052,12 +2083,12 @@ class Mission(Document):
                     "performance_materiality": int(abs_materiality * 0.8),
                     "trivial_misstatements": int(abs_materiality * 0.05),
                     "choice": "",
-                    "warning": "⚠️ ATTENTION: Seuil de matérialité négatif !" if is_negative else "",
+                    "warning": "ATTENTION: Seuil de matérialité négatif !" if is_negative else "",
                     "original_value": revenue
                 })
                 valeurs_trouvees.append(f"revenue: {revenue}")
             else:
-                print(f"⚠️ Valeur revenue non trouvée ou nulle: {revenue}")
+                print(f"Valeur revenue non trouvée ou nulle: {revenue}")
 
             # Benchmark 4: Total Assets
             total_assets = self._get_financial_value(efi, "total_assets")
@@ -2077,7 +2108,7 @@ class Mission(Document):
                 })
                 valeurs_trouvees.append(f"total_assets: {total_assets}")
             else:
-                print(f"⚠️ Valeur total_assets non trouvée ou nulle: {total_assets}")
+                print(f"Valeur total_assets non trouvée ou nulle: {total_assets}")
 
             # Benchmark 5: Total Expenses (Charges)
             total_expenses = self._get_financial_value(efi, "total_expenses")
@@ -2097,19 +2128,19 @@ class Mission(Document):
                 })
                 valeurs_trouvees.append(f"total_expenses: {total_expenses}")
             else:
-                print(f"⚠️ Valeur total_expenses non trouvée ou nulle: {total_expenses}")
+                print(f"Valeur total_expenses non trouvée ou nulle: {total_expenses}")
 
             if benchmarks:
-                print(f"✅ {len(benchmarks)} benchmark(s) calculé(s) avec succès: {valeurs_trouvees}")
+                print(f"{len(benchmarks)} benchmark(s) calculé(s) avec succès: {valeurs_trouvees}")
             else:
-                print("❌ Aucun benchmark n'a pu être calculé. Vérifiez que les états financiers contiennent les données nécessaires.")
-                print("💡 Les valeurs recherchées sont: profit_before_tax, ebitda, revenue, total_assets, total_expenses")
+                print("Aucun benchmark n'a pu être calculé. Vérifiez que les états financiers contiennent les données nécessaires.")
+                print("Les valeurs recherchées sont: profit_before_tax, ebitda, revenue, total_assets, total_expenses")
 
             return benchmarks
 
         except Exception as e:
             import traceback
-            print(f"❌ Erreur lors du calcul des benchmarks: {e}")
+            print(f"Erreur lors du calcul des benchmarks: {e}")
             traceback.print_exc()
             return []
 
@@ -2250,7 +2281,7 @@ class Mission(Document):
         ref, libelle, note, brut_solde_n, amor_solde_n, net_solde_n, net_solde_n1,
         compte_to_be_used, compte_to_be_used_off
 
-        Les lignes agrégées (AD, AI, AZ…) sont calculées en fin de méthode par
+        Les lignes agrégées (AD, AI, AZ) sont calculées en fin de méthode par
         compute_etats_financiers().
         """
 
@@ -2258,16 +2289,15 @@ class Mission(Document):
         # CATALOGUE DES LIGNES SYSCOHADA
         # Chaque entrée : (ref, libelle, nature, note, brut_cpts, amor_cpts,
         #                  net_cpts, brut_except, amor_except, net_except)
-        # • brut + amor  →  net = brut + amor   (amortissements sont négatifs)
-        # • net seul     →  net = somme des comptes net_cpts
-        # • except_cpts  →  comptes exclus du calcul principal puis ré-inclus
-        #                    séparément (voir logique de prod_efi originale)
+        # brut + amor  net = brut + amor   (amortissements sont négatifs)
+        # net seul     net = somme des comptes net_cpts
+        # except_cpts  comptes à EXCLURE du calcul principal (règle "sauf")
         # ------------------------------------------------------------------
         EFI_CATALOGUE = [
-            # ── ACTIF ──────────────────────────────────────────────────────
+            # ACTIF 
             # Immobilisations incorporelles (lignes feuilles)
             ("AE", "Frais de développement et de prospection",               "actif", None,
-            ["211","2181","2191"], ["2811","2818","2911","2918","2919"],      [], ["2181"], [],  ["2181"]),
+            ["211","2181","2191"], ["2811","2818","2911","2918","2919"],      [], [], [], []),
             ("AF", "Brevets, licences, logiciels et droits similaires",       "actif", None,
             ["212","213","214","2193"], ["2812","2813","2814","2912","2913","2914","2919"], [], [], [], []),
             ("AG", "Fonds commercial et droit au bail",                       "actif", None,
@@ -2284,7 +2314,7 @@ class Mission(Document):
             # Immobilisations corporelles (lignes feuilles)
             ("AJ", "Terrains (1) dont Placement Net :",                       "actif", None,
             ["22"], ["282","292"],                                            [], [], [], []),
-            ("AK", "Bâtiments(1)dont Placement Net :",                        "actif", None,
+            ("AK", "BÂtiments(1)dont Placement Net :",                        "actif", None,
             ["231","232","233","237","2391"],
             ["2831","2832","2833","2837","2931","2932","2933","2937","2939"],
             [], [], [], []),
@@ -2292,10 +2322,7 @@ class Mission(Document):
             ["234","235","238","2392","2393"],
             ["2834","2835","2838","2934","2935","2938","2939"],               [], [], [], []),
             ("AM", "Matériel, mobilier et actifs biologiques",                "actif", None,
-            ["241", "242", "243", "244", "246", "247", "248"],
-            ["2841", "2842", "2843", "2844", "2846", "2847", "2848",
-            "2941", "2942", "2943", "2944", "2946", "2947", "2948"],
-            [], [], [], []),
+            ["24"], ["284","294","2949"],                                     [], ["245","2495"], ["2845","2945"], []),
             ("AN", "Matériel de transport",                                   "actif", None,
             ["245","2495"], ["2845","2945","2949"],                           [], [], [], []),
             # Ligne agrégée AI
@@ -2398,7 +2425,7 @@ class Mission(Document):
             [], ["2181","245","2495","419","478"], ["2845","2945","2949"],
             ["2181","245","2495","2845","2945","2949","419","478"]),
 
-            # ── PASSIF ─────────────────────────────────────────────────────
+            # PASSIF
             # Capitaux propres (lignes feuilles)
             ("CA", "Capital",                                                 "passif", None,
             [], [], ["101","102","103","104"],                                [], [], []),
@@ -2414,8 +2441,12 @@ class Mission(Document):
             [], [], ["118"],                                                  [], [], []),
             ("CH", "Report à nouveau (+ ou -)",                               "passif", None,
             [], [], ["121","129"],                                            [], [], []),
-            ("CJ", "Résultat net de l'exercice (bénéfice + ou perte -)",      "passif", None,
-            [], [], ["131","139"],                                            [], [], []),
+            ("CJ", "Résultat net de l'exercice (bénéfice + ou perte -)",                               "passif", None,
+            [], [], ["701","702","703","704","705","706","707","601","6031",
+                    "602","6032","604","605","608","6033","61","62","63","64","65","73","72","71","75","781",
+                    "66","791","798","799","681","691","77","797","787","67","697",
+                    "82","84","86","88","81","83","85","87","89"],
+            [], [], []),
             ("CL", "Subventions d'investissement",                            "passif", None,
             [], [], ["14"],                                                   [], [], []),
             ("CM", "Provisions réglementées",                                 "passif", None,
@@ -2424,7 +2455,10 @@ class Mission(Document):
             ("CP", "TOTAL CAPITAUX PROPRES ET RESSOURCES ASSIMILEES",         "passif", None,
             [], [],
             ["101","102","103","104","109","105","106","111","112","113","118",
-            "121","129","131","139","14","15"],
+            "121","129","131","139","14","15","701","702","703","704","705","706","707","601","6031",
+                    "602","6032","604","605","608","6033","61","62","63","64","65","73","72","71","75","781",
+                    "66","791","798","799","681","691","77","797","787","67","697",
+                    "82","84","86","88","81","83","85","87","89"],
             [], [], []),
 
             # Dettes financières (lignes feuilles)
@@ -2485,7 +2519,7 @@ class Mission(Document):
             "499","599","564","565","52","53","561","566","479"],
             [], [], ["409"]),
 
-            # ── COMPTE DE RÉSULTAT ─────────────────────────────────────────
+            # COMPTE DE RÉSULTAT
             ("TA", "Ventes de marchandises",                                   "pnl", None,
             [], [], ["701"],                                                  [], [], []),
             ("RA", "Achats de marchandises",                                   "pnl", None,
@@ -2631,7 +2665,7 @@ class Mission(Document):
             }
 
             if brut_cpts or amor_cpts:
-                # Cas avec brut + amortissements
+                # Cas avec brut + amortissements (règle "sauf" => exclusions)
                 brut_n   = _sum_prefixes(balance_n,  brut_cpts)
                 amor_n   = _sum_prefixes(balance_n,  amor_cpts)
                 bex_n    = _sum_prefixes(balance_n,  brut_except)
@@ -2639,22 +2673,60 @@ class Mission(Document):
 
                 brut_n1  = _sum_prefixes(balance_n1, brut_cpts)
                 amor_n1  = _sum_prefixes(balance_n1, amor_cpts)
-                nex_n1   = _sum_prefixes(balance_n1, net_except)
+                bex_n1   = _sum_prefixes(balance_n1, brut_except)
+                aex_n1   = _sum_prefixes(balance_n1, amor_except)
 
-                row["brut_solde_n"] = brut_n  + bex_n
-                row["amor_solde_n"] = amor_n  + aex_n
+                row["brut_solde_n"] = brut_n  - bex_n
+                row["amor_solde_n"] = amor_n  - aex_n
                 row["net_solde_n"]  = row["brut_solde_n"] + row["amor_solde_n"]
-                row["net_solde_n1"] = brut_n1 + amor_n1 + nex_n1
+                row["net_solde_n1"] = (brut_n1 - bex_n1) + (amor_n1 - aex_n1)
+
+                if ref == "AM":
+                    # Log détaillé des comptes AM (brut/amor/exclusions) pour audit
+                    def _collect_matched(balance, prefixes):
+                        if not prefixes:
+                            return []
+                        return [
+                            item.get("numero_compte")
+                            for item in balance
+                            if any(str(item.get("numero_compte")).startswith(p) for p in prefixes)
+                        ]
+
+                    brut_matches = _collect_matched(balance_n, brut_cpts)
+                    amor_matches = _collect_matched(balance_n, amor_cpts)
+                    brut_excl    = _collect_matched(balance_n, brut_except)
+                    amor_excl    = _collect_matched(balance_n, amor_except)
+                    print("AM comptes brut:", sorted(set(map(str, brut_matches))))
+                    print("AM comptes brut exclus:", sorted(set(map(str, brut_excl))))
+                    print("AM comptes amort/depr:", sorted(set(map(str, amor_matches))))
+                    print("AM comptes amort/depr exclus:", sorted(set(map(str, amor_excl))))
 
             else:
                 # Cas net seul
-                net_n    = _sum_prefixes(balance_n,  net_cpts)
-                nex_n    = _sum_prefixes(balance_n,  net_except)
-                net_n1   = _sum_prefixes(balance_n1, net_cpts)
-                nex_n1   = _sum_prefixes(balance_n1, net_except)
+                if ref == "CH":
+                    # CH : 121 en positif, 129 en négatif
+                    def _sum_abs_prefix(balance, prefix):
+                        return sum(
+                            abs(item["solde_reel"])
+                            for item in balance
+                            if str(item["numero_compte"]).startswith(prefix)
+                        )
 
-                row["net_solde_n"]  = net_n  + nex_n
-                row["net_solde_n1"] = net_n1 + nex_n1
+                    net_121_n  = _sum_abs_prefix(balance_n,  "121")
+                    net_129_n  = _sum_abs_prefix(balance_n,  "129")
+                    net_121_n1 = _sum_abs_prefix(balance_n1, "121")
+                    net_129_n1 = _sum_abs_prefix(balance_n1, "129")
+
+                    row["net_solde_n"]  = net_121_n  - net_129_n
+                    row["net_solde_n1"] = net_121_n1 - net_129_n1
+                else:
+                    net_n    = _sum_prefixes(balance_n,  net_cpts)
+                    nex_n    = _sum_prefixes(balance_n,  net_except)
+                    net_n1   = _sum_prefixes(balance_n1, net_cpts)
+                    nex_n1   = _sum_prefixes(balance_n1, net_except)
+
+                    row["net_solde_n"]  = net_n  - nex_n
+                    row["net_solde_n1"] = net_n1 - nex_n1
 
             # Champ legacy (chaîne lisible des préfixes)
             all_cpts = _collect_prefixes(brut_cpts, amor_cpts, net_cpts,
@@ -2664,14 +2736,13 @@ class Mission(Document):
             datum[nature].append(row)
 
         # ------------------------------------------------------------------
-        # Recalcul des lignes agrégées (XA, XB…, CP, DD…, AD, AI…)
+        # Recalcul des lignes agrégées (XA, XB, CP, DD, AD, AI)
         # ------------------------------------------------------------------
         datum = self.compute_etats_financiers(datum)
 
         return datum
 
 
-    # ──────────────────────────────────────────────────────────────────────
     def compute_etats_financiers(self, efi):
         """
         Recalcule les lignes agrégées SYSCOHADA en appliquant les formules
@@ -2718,7 +2789,7 @@ class Mission(Document):
             K    = "net_solde_n1"  # alias court
 
             if section == "actif":
-                # Ligne feuilles déjà calculées par prod_efi → on recalcule
+                # Ligne feuilles déjà calculées par prod_ef on recalcule
                 # uniquement les agrégats pour qu'ils soient cohérents.
                 # for agg_ref, leaf_refs in [
                 #     ("AD", ["AE","AF","AG","AH"]),
@@ -2902,11 +2973,27 @@ class Mission(Document):
         for i in range(len(columns)):
             sheet[columns[i] + '1'] = headers[i]
 
+        # Largeurs pour ?viter les ####### et format d'affichage lisible
+        sheet.column_dimensions['A'].width = 14
+        sheet.column_dimensions['B'].width = 16
+        sheet.column_dimensions['C'].width = 16
+        sheet.column_dimensions['D'].width = 10
+        sheet.column_dimensions['E'].width = 16
+        sheet.column_dimensions['F'].width = 12
+        sheet.column_dimensions['G'].width = 18
+        sheet.column_dimensions['H'].width = 18
+        sheet.column_dimensions['I'].width = 18
+
         for iteration, data in enumerate(balances):
             new_iteration = str(iteration + 2)
             sheet["A" + new_iteration] = data.get("numero_compte")
             sheet["B" + new_iteration] = data.get("solde_n")
             sheet["C" + new_iteration] = data.get("solde_n1")
+
+            # Formats: pas de notation scientifique + s?parateurs d'espaces
+            sheet["A" + new_iteration].number_format = "@"
+            sheet["B" + new_iteration].number_format = "# ##0"
+            sheet["C" + new_iteration].number_format = "# ##0"
             sheet["D" + new_iteration] = data.get("numero_compte")[0:2]
 
             list_code_efi = []
@@ -2923,6 +3010,12 @@ class Mission(Document):
     # ---------- Extract grouping Excel ----------
     def extract_grouping(self, id_mission):
         db = get_db()  # Obtenir la connexion à la base de données
+        if db is None:
+            from src.utils.database import ensure_connection
+            ensure_connection()
+            db = get_db()
+        if db is None:
+            raise RuntimeError("extract_grouping: base de données non connectée")
         # Créer un fichier Excel pour l'export du grouping
         wb = openpyxl.Workbook()
         sheet = wb.active
@@ -2931,18 +3024,40 @@ class Mission(Document):
         headers = ['Numéro compte', 'Solde n', 'Solde n-1', 'Grouping', 'Variation', 'Variation %', 'Compte qualitatif', 'Compte quantitatif', 'Compte significatif']
 
         mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
-        balances = mission['balance_variation']
-        grouping = mission['grouping']
-        materiality = next(item for item in mission['materiality'] if item['choice'] is True)
+        if not mission:
+            raise ValueError("Mission non trouvée")
+
+        balances = mission.get('balance_variation', []) or []
+        grouping = mission.get('grouping', []) or []
+        materiality_list = mission.get('materiality', []) or []
+        materiality = next((item for item in materiality_list if item.get('choice') is True), {})
+
+        grouping_map = {item.get('compte'): item for item in grouping if item.get('compte')}
 
         for i in range(len(columns)):
             sheet[columns[i] + '1'] = headers[i]
+
+        # Largeurs pour ?viter les ####### et format d'affichage lisible
+        sheet.column_dimensions['A'].width = 14
+        sheet.column_dimensions['B'].width = 16
+        sheet.column_dimensions['C'].width = 16
+        sheet.column_dimensions['D'].width = 10
+        sheet.column_dimensions['E'].width = 16
+        sheet.column_dimensions['F'].width = 12
+        sheet.column_dimensions['G'].width = 18
+        sheet.column_dimensions['H'].width = 18
+        sheet.column_dimensions['I'].width = 18
 
         for iteration, data in enumerate(balances):
             new_iteration = str(iteration + 2)
             sheet["A" + new_iteration] = data.get("numero_compte")
             sheet["B" + new_iteration] = data.get("solde_n")
             sheet["C" + new_iteration] = data.get("solde_n1")
+
+            # Formats: pas de notation scientifique + s?parateurs d'espaces
+            sheet["A" + new_iteration].number_format = "@"
+            sheet["B" + new_iteration].number_format = "# ##0"
+            sheet["C" + new_iteration].number_format = "# ##0"
 
             value_grouping = data.get("numero_compte")[0:2]
             variation = data.get("solde_n") - data.get("solde_n1")
@@ -2957,9 +3072,13 @@ class Mission(Document):
             sheet["D" + new_iteration] = value_grouping
             sheet["E" + new_iteration] = variation
             sheet["F" + new_iteration] = variation_percent
-            sheet["G" + new_iteration] = next(item['significant'] for item in grouping if item['compte'] == value_grouping)
-            sheet["H" + new_iteration] = next(item['materiality'] for item in grouping if item['compte'] == value_grouping)
-            sheet["I" + new_iteration] = next(item['mat_sign'] for item in grouping if item['compte'] == value_grouping)
+
+            sheet["E" + new_iteration].number_format = "# ##0"
+            sheet["F" + new_iteration].number_format = "0.00"
+            g_item = grouping_map.get(value_grouping, {})
+            sheet["G" + new_iteration] = g_item.get('significant')
+            sheet["H" + new_iteration] = g_item.get('materiality')
+            sheet["I" + new_iteration] = g_item.get('mat_sign')
 
         second_sheet = wb.create_sheet(title="Seuil de matérialité")
         second_headers = ['materiality', 'performance materiality', 'trivial misstatements']
@@ -2967,9 +3086,9 @@ class Mission(Document):
         second_sheet["B1"] = second_headers[1]
         second_sheet["C1"] = second_headers[2]
 
-        second_sheet["A2"] = materiality['materiality']
-        second_sheet["B2"] = materiality['performance_materiality']
-        second_sheet["C2"] = materiality['trivial_misstatements']
+        second_sheet["A2"] = materiality.get('materiality')
+        second_sheet["B2"] = materiality.get('performance_materiality')
+        second_sheet["C2"] = materiality.get('trivial_misstatements')
 
         excel_io = BytesIO()
         wb.save(excel_io)
@@ -2977,7 +3096,7 @@ class Mission(Document):
         return excel_io
 
     # ==============================
-    #  CONTROLES — Cohérence & Intangibilité
+    #  CONTROLES Cohérence & Intangibilité
     # ==============================
     def _load_balance(self, balance_id):
         local_db = get_db()
@@ -3127,7 +3246,7 @@ class Mission(Document):
         
         # Comptes de TVA à solder à chaque déclaration
         comptes_tva = {
-            '44551': ('CRITIQUE', 'TVA à décaisser (44551) doit être soldée lors du paiement de la TVA. Un solde ancien indique une TVA non payée → risque fiscal.'),
+            '44551': ('CRITIQUE', 'TVA à décaisser (44551) doit être soldée lors du paiement de la TVA. Un solde ancien indique une TVA non payé risque fiscal.'),
             '44567': ('MOYENNE', 'Crédit de TVA à reporter (44567) doit être soldé lorsque le crédit est imputé ou remboursé. Vérifier la cohérence avec les déclarations.'),
             '44558': ('MOYENNE', 'TVA à régulariser ou en attente (44558) - compte temporaire à solder rapidement. Tout solde doit être justifié précisément.'),
         }
@@ -3209,7 +3328,7 @@ class Mission(Document):
                                         pass
                                 
                                 # Construire le message détaillé
-                                message_detaille = f"⚠️ ANOMALIE DÉTECTÉE : Le compte {numero_compte} présente un solde {sens_actuel.lower()}, alors que selon les règles SYSCOHADA pour la classe {classe}, il devrait être {sens_attendu.lower()}."
+                                message_detaille = f"ANOMALIE DÉTECTÉE : Le compte {numero_compte} présente un solde {sens_actuel.lower()}, alors que selon les règles SYSCOHADA pour la classe {classe}, il devrait être {sens_attendu.lower()}."
                                 if montant:
                                     message_detaille += f" Le solde anormal s'élève à {montant}."
                                 
@@ -3649,8 +3768,8 @@ class Mission(Document):
             comptes_anormaux.sort(key=lambda x: x["solde"], reverse=True)
             
             # Message d'alerte justifié et clair
-            message = f"⚠️ ALERTE : Déséquilibre détecté dans la balance\n\n"
-            message += f"🔴 ÉCART DÉTECTÉ : {ecart:,} FCFA\n\n"
+            message = f"ALERTE : Déséquilibre détecté dans la balance\n\n"
+            message += f"ÉCART DÉTECTÉ : {ecart:,} FCFA\n\n"
             
             if sum_deb_fin > sum_cre_fin:
                 message += f"Justification : Le total des DÉBITS ({sum_deb_fin:,} FCFA) est supérieur au total des CRÉDITS ({sum_cre_fin:,} FCFA).\n"
@@ -3665,7 +3784,7 @@ class Mission(Document):
             if comptes_anormaux:
                 message += f"Comptes concernés ({len(comptes_anormaux)} compte(s)) :\n"
                 for compte_info in comptes_anormaux:
-                    message += f"• {compte_info['compte']} - {compte_info['libelle']} : Débit {compte_info['debit_fin']:,} | Crédit {compte_info['credit_fin']:,} | Solde {compte_info['solde']:,} FCFA\n"
+                    message += f"{compte_info['compte']} - {compte_info['libelle']} : Débit {compte_info['debit_fin']:,} | Crédit {compte_info['credit_fin']:,} | Solde {compte_info['solde']:,} FCFA\n"
             
             # Ajouter l'erreur d'équilibre à la liste des erreurs
             erreur_equilibre = {
@@ -3700,7 +3819,7 @@ class Mission(Document):
         else:
             # Les totaux sont égaux - équilibre OK
             report["equilibre_global"] = True
-            print(f"[PREMIER CONTRÔLE] ✅ Équilibre OK : Total débits = Total crédits = {sum_deb_fin:,} FCFA")
+            print(f"[PREMIER CONTRÔLE] Équilibre OK : Total débits = Total crédits = {sum_deb_fin:,} FCFA")
             
             # Ajouter une information de vérification réussie dans le rapport
             report["verification_equilibre"] = {
@@ -3812,7 +3931,7 @@ class Mission(Document):
             
             # Log pour tous les comptes (pour debug)
             if numero_compte == "46210010":
-                print(f"[SECOND CONTRÔLE] ⚠️  COMPTE 46210010 DÉTECTÉ - Début de la vérification")
+                print(f"[SECOND CONTRÔLE] COMPTE 46210010 DÉTECTÉ - Début de la vérification")
             
             # Récupérer les mouvements explicites s'ils sont fournis
             # Les mouvements peuvent être stockés sous différents noms selon le format d'import
@@ -3890,17 +4009,17 @@ class Mission(Document):
                 
                 # Message d'alerte justifié et clair
                 compte_display = "[SANS NUMÉRO]" if numero_compte.startswith("LIGNE_SANS_NUMERO_") else numero_compte
-                message = f"⚠️ ALERTE : Formule non respectée pour le compte {compte_display}\n"
+                message = f"ALERTE : Formule non respectée pour le compte {compte_display}\n"
                 message += f"Libellé : {libelle}\n\n"
-                message += f"🔴 ÉCART DÉTECTÉ : {ecart:,} FCFA\n\n"
+                message += f"ÉCART DÉTECTÉ : {ecart:,} FCFA\n\n"
                 message += f"Formule attendue : Solde de clôture = Solde d'ouverture + Mouvements de période\n"
-                message += f"• Solde attendu : {solde_cloture_attendu:,} FCFA\n"
-                message += f"• Solde réel : {solde_fin:,} FCFA\n"
-                message += f"• Écart : {ecart:,} FCFA\n\n"
+                message += f"Solde attendu : {solde_cloture_attendu:,} FCFA\n"
+                message += f"Solde réel : {solde_fin:,} FCFA\n"
+                message += f"Écart : {ecart:,} FCFA\n\n"
                 message += f"Détails des valeurs :\n"
-                message += f"• Solde d'ouverture : {solde_initial:,} FCFA (Débit initial {di:,} - Crédit initial {ci:,})\n"
-                message += f"• Mouvements : Débit {mouvement_debit:,} | Crédit {mouvement_credit:,} | Net {mouvement_debit - mouvement_credit:,} FCFA\n"
-                message += f"• Solde de clôture : {solde_fin:,} FCFA (Débit fin {df:,} - Crédit fin {cf:,})\n\n"
+                message += f"Solde d'ouverture : {solde_initial:,} FCFA (Débit initial {di:,} - Crédit initial {ci:,})\n"
+                message += f"Mouvements : Débit {mouvement_debit:,} | Crédit {mouvement_credit:,} | Net {mouvement_debit - mouvement_credit:,} FCFA\n"
+                message += f"Solde de clôture : {solde_fin:,} FCFA (Débit fin {df:,} - Crédit fin {cf:,})\n\n"
                 message += f"Justification : La formule comptable fondamentale n'est pas respectée. "
                 message += f"Le solde de clôture devrait être {solde_cloture_attendu:,} FCFA mais il est {solde_fin:,} FCFA. "
                 message += f"Cet écart de {ecart:,} FCFA indique une erreur dans les écritures comptables de ce compte."
@@ -4064,9 +4183,9 @@ class Mission(Document):
             statut_formule = "OK" if nb_comptes_formule_erreur == 0 else "ERREUR"
             
             if nb_comptes_formule_erreur == 0:
-                explication = f"✅ Le système a vérifié la formule 'Solde de clôture = Solde d'ouverture + Mouvements de période' pour {nb_comptes_verifies_formule} compte(s). Tous les comptes ({nb_comptes_formule_ok}) respectent correctement la formule comptable fondamentale."
+                explication = f"Le système a vérifié la formule 'Solde de clôture = Solde d'ouverture + Mouvements de période' pour {nb_comptes_verifies_formule} compte(s). Tous les comptes ({nb_comptes_formule_ok}) respectent correctement la formule comptable fondamentale."
             else:
-                explication = f"⚠️ Le système a vérifié la formule 'Solde de clôture = Solde d'ouverture + Mouvements de période' pour {nb_comptes_verifies_formule} compte(s). {nb_comptes_formule_ok} compte(s) respectent la formule, mais {nb_comptes_formule_erreur} compte(s) présentent des ERREURS. Les comptes en erreur sont listés ci-dessous avec les détails de l'écart détecté."
+                explication = f"Le système a vérifié la formule 'Solde de clôture = Solde d'ouverture + Mouvements de période' pour {nb_comptes_verifies_formule} compte(s). {nb_comptes_formule_ok} compte(s) respectent la formule, mais {nb_comptes_formule_erreur} compte(s) présentent des ERREURS. Les comptes en erreur sont listés ci-dessous avec les détails de l'écart détecté."
             
             report["verification_formule"] = {
                 "statut": statut_formule,
@@ -4086,9 +4205,9 @@ class Mission(Document):
             statut_vraisemblance = "OK" if (nb_comptes_erreur_signe == 0 and nb_comptes_erreur_soldes == 0) else "ERREUR"
             
             if nb_comptes_erreur_signe == 0 and nb_comptes_erreur_soldes == 0:
-                explication = f"✅ Le système a vérifié la vraisemblance des soldes pour {nb_comptes_verifies_vraisemblance} compte(s). Tous les comptes ({nb_comptes_vraisemblance_ok}) respectent les règles comptables SYSCOHADA (sens des soldes et comptes à solder)."
+                explication = f"Le système a vérifié la vraisemblance des soldes pour {nb_comptes_verifies_vraisemblance} compte(s). Tous les comptes ({nb_comptes_vraisemblance_ok}) respectent les règles comptables SYSCOHADA (sens des soldes et comptes à solder)."
             else:
-                explication = f"⚠️ Le système a vérifié la vraisemblance des soldes pour {nb_comptes_verifies_vraisemblance} compte(s). {nb_comptes_vraisemblance_ok} compte(s) sont conformes, mais {nb_comptes_erreur_signe} compte(s) présentent des anomalies de sens et {nb_comptes_erreur_soldes} compte(s) devraient être soldés. Les comptes en erreur sont listés ci-dessous."
+                explication = f"Le système a vérifié la vraisemblance des soldes pour {nb_comptes_verifies_vraisemblance} compte(s). {nb_comptes_vraisemblance_ok} compte(s) sont conformes, mais {nb_comptes_erreur_signe} compte(s) présentent des anomalies de sens et {nb_comptes_erreur_soldes} compte(s) devraient être soldés. Les comptes en erreur sont listés ci-dessous."
             
             # Générer la structure complète du contrôle de vraisemblance avec les erreurs détectées pour cette balance
             # NOTE : La structure de base (règles générales) est identique pour toutes les balances,
@@ -4106,8 +4225,8 @@ class Mission(Document):
             }
             
             print(f"[CONTRÔLE VRAISEMBLANCE] Rapport créé pour cette balance : statut={statut_vraisemblance}, vérifiés={nb_comptes_verifies_vraisemblance}, OK={nb_comptes_vraisemblance_ok}, Erreurs signe={nb_comptes_erreur_signe}, Erreurs soldes={nb_comptes_erreur_soldes}")
-            print(f"[CONTRÔLE VRAISEMBLANCE] ⚠️ NOTE : La structure (tableaux des classes, comptes à solder) est identique pour toutes les balances car ce sont des règles générales SYSCOHADA.")
-            print(f"[CONTRÔLE VRAISEMBLANCE] ⚠️ Les statistiques ci-dessus sont spécifiques à cette balance et peuvent différer d'une balance à l'autre.")
+            print(f"[CONTRÔLE VRAISEMBLANCE] NOTE : La structure (tableaux des classes, comptes à solder) est identique pour toutes les balances car ce sont des règles générales SYSCOHADA.")
+            print(f"[CONTRÔLE VRAISEMBLANCE] Les statistiques ci-dessus sont spécifiques à cette balance et peuvent différer d'une balance à l'autre.")
 
         # Récap totaux pour UI
         report["totaux"] = {
@@ -4233,7 +4352,7 @@ class Mission(Document):
             
             # Debug pour les premières lignes
             if idx < 3:
-                print(f"  📋 Ligne {idx}: numero_compte={num_compte} (type: {type(num_compte)}, bool: {bool(num_compte)})")
+                print(f"Ligne {idx}: numero_compte={num_compte} (type: {type(num_compte)}, bool: {bool(num_compte)})")
             
             # Gérer le cas où num_compte pourrait être 0 (qui est False mais valide comme numéro)
             if num_compte is None:
@@ -4267,11 +4386,11 @@ class Mission(Document):
         
         print(f"[INDEX_BY_COMPTE] {len(index)} comptes indexes")
         if lignes_ignorees > 0:
-            print(f"   ⚠️  Lignes None ignorées: {lignes_ignorees}")
+            print(f"   Lignes None ignorées: {lignes_ignorees}")
         if lignes_ignorees_none > 0:
-            print(f"   ⚠️  Numéros None ignorés: {lignes_ignorees_none}")
+            print(f"   Numéros None ignorés: {lignes_ignorees_none}")
         if lignes_ignorees_vide > 0:
-            print(f"   ⚠️  Numéros vides ignorés: {lignes_ignorees_vide}")
+            print(f"   Numéros vides ignorés: {lignes_ignorees_vide}")
         
         return index
 
@@ -4285,43 +4404,43 @@ class Mission(Document):
                 local_db = get_db()
                 if local_db is None:
                     from src.utils.database import ensure_connection
-                    print("⚠️ controle_intangibilite: get_db() a renvoyé None, tentative de reconnexion...")
+                    print("controle_intangibilite: get_db() a renvoyé None, tentative de reconnexion...")
                     ensure_connection()
                     local_db = get_db()
                 if local_db is None:
                     raise RuntimeError("controle_intangibilite: Base de données non connectée (get_db a renvoyé None)")
             except Exception as e:
-                print(f"❌ controle_intangibilite: impossible d'obtenir la connexion DB: {e}")
+                print(f"controle_intangibilite: impossible d'obtenir la connexion DB: {e}")
                 raise
             
             # Essayer de trouver la mission avec ObjectId d'abord
             mission = None
             try:
                 mission = local_db.Mission1.find_one({"_id": ObjectId(id_mission)})
-                print(f"🔍 Recherche avec ObjectId: Mission trouvée = {mission is not None}")
+                print(f"Recherche avec ObjectId: Mission trouvée = {mission is not None}")
             except Exception as e:
-                print(f"⚠️ Erreur lors de la conversion en ObjectId: {e}")
+                print(f"Erreur lors de la conversion en ObjectId: {e}")
                 # Essayer avec l'ID tel quel (string)
                 try:
                     mission = local_db.Mission1.find_one({"_id": id_mission})
-                    print(f"🔍 Recherche avec ID string: Mission trouvée = {mission is not None}")
+                    print(f"Recherche avec ID string: Mission trouvée = {mission is not None}")
                 except Exception as e2:
-                    print(f"⚠️ Erreur lors de la recherche avec ID string: {e2}")
+                    print(f"Erreur lors de la recherche avec ID string: {e2}")
             
             if not mission:
                 print(f"[CONTROLE_INTANGIBILITE] ERREUR: Mission non trouvee avec ID: {id_mission}")
                 # Aider l'utilisateur en listant quelques missions existantes
-                print(f"🔍 Recherche de missions existantes pour aider au debug...")
+                print(f"Recherche de missions existantes pour aider au debug...")
                 try:
                     sample_missions = list(local_db.Mission1.find({}).limit(5))
                     if sample_missions:
-                        print(f"📋 Exemples de missions existantes:")
+                        print(f"Exemples de missions existantes:")
                         for m in sample_missions:
                             print(f"   - ID: {m['_id']}, id_client: {m.get('id_client', 'N/A')}, année: {m.get('annee_auditee', 'N/A')}")
                     else:
-                        print(f"⚠️ Aucune mission trouvée dans la base de données")
+                        print(f"Aucune mission trouvée dans la base de données")
                 except Exception as e:
-                    print(f"⚠️ Erreur lors de la recherche d'exemples: {e}")
+                    print(f"Erreur lors de la recherche d'exemples: {e}")
                 
                 return {
                     "ok": False, 
@@ -4385,22 +4504,22 @@ class Mission(Document):
             if not bal_N1 or len(bal_N1) == 0:
                 return {"ok": False, "message": f"La balance N-1 ({periode_N1}) ne contient aucune donnée.", "periodes": {"N": periode_N, "N-1": periode_N1}, "comptes": []}
             
-            print(f"📊 Lignes brutes dans balance N: {len(bal_N)}")
-            print(f"📊 Lignes brutes dans balance N-1: {len(bal_N1)}")
+            print(f"Lignes brutes dans balance N: {len(bal_N)}")
+            print(f"Lignes brutes dans balance N-1: {len(bal_N1)}")
             
             # Vérifier les premières lignes pour debug
             if len(bal_N) > 0:
-                print(f"📋 Exemple ligne N (première): {list(bal_N[0].keys()) if bal_N[0] else 'vide'}")
+                print(f"Exemple ligne N (première): {list(bal_N[0].keys()) if bal_N[0] else 'vide'}")
                 if bal_N[0] and 'numero_compte' in bal_N[0]:
                     num_compte = bal_N[0].get('numero_compte')
-                    print(f"📋 Premier numero_compte N: '{num_compte}' (type: {type(num_compte)}, value: {repr(num_compte)})")
+                    print(f"Premier numero_compte N: '{num_compte}' (type: {type(num_compte)}, value: {repr(num_compte)})")
                 else:
-                    print(f"📋 Première ligne N ne contient pas 'numero_compte': {bal_N[0].keys() if bal_N[0] else 'ligne vide'}")
+                    print(f"Première ligne N ne contient pas 'numero_compte': {bal_N[0].keys() if bal_N[0] else 'ligne vide'}")
             
             if len(bal_N1) > 0:
                 if bal_N1[0] and 'numero_compte' in bal_N1[0]:
                     num_compte = bal_N1[0].get('numero_compte')
-                    print(f"📋 Premier numero_compte N-1: '{num_compte}' (type: {type(num_compte)}, value: {repr(num_compte)})")
+                    print(f"Premier numero_compte N-1: '{num_compte}' (type: {type(num_compte)}, value: {repr(num_compte)})")
             
             print(f"[CONTROLE_INTANGIBILITE] Indexation des comptes...")
             print(f"[CONTROLE_INTANGIBILITE] Avant indexation: bal_N contient {len(bal_N)} lignes, bal_N1 contient {len(bal_N1)} lignes")
@@ -4430,29 +4549,29 @@ class Mission(Document):
             
             # DIAGNOSTIC: Vérifier si l'indexation a échoué inopinément
             if len(bal_N) > 0 and len(idxN) == 0:
-                print(f"⚠️  PROBLÈME: bal_N contient {len(bal_N)} lignes mais idxN est vide!")
+                print(f"PROBLÈME: bal_N contient {len(bal_N)} lignes mais idxN est vide!")
                 print(f"   - Type de bal_N[0]: {type(bal_N[0])}")
                 if len(bal_N) > 0 and isinstance(bal_N[0], dict):
                     print(f"   - Clés de la première ligne: {list(bal_N[0].keys())}")
                     print(f"   - numero_compte de la première ligne: {bal_N[0].get('numero_compte')}")
             
             if len(bal_N1) > 0 and len(idxN1) == 0:
-                print(f"⚠️  PROBLÈME: bal_N1 contient {len(bal_N1)} lignes mais idxN1 est vide!")
+                print(f"PROBLÈME: bal_N1 contient {len(bal_N1)} lignes mais idxN1 est vide!")
                 print(f"   - Type de bal_N1[0]: {type(bal_N1[0])}")
                 if len(bal_N1) > 0 and isinstance(bal_N1[0], dict):
                     print(f"   - Clés de la première ligne: {list(bal_N1[0].keys())}")
                     print(f"   - numero_compte de la première ligne: {bal_N1[0].get('numero_compte')}")
             
             if len(idxN) > 0:
-                print(f"📋 Exemple compte indexé N: {list(idxN.keys())[:3]}")
+                print(f"Exemple compte indexé N: {list(idxN.keys())[:3]}")
             if len(idxN1) > 0:
-                print(f"📋 Exemple compte indexé N-1: {list(idxN1.keys())[:3]}")
+                print(f"Exemple compte indexé N-1: {list(idxN1.keys())[:3]}")
             
             # Vérifier que les index contiennent des comptes
             # MODIFICATION: Ne pas retourner si au moins une balance a des comptes
             # On peut faire le contrôle même si une seule balance a des comptes
             if len(idxN) == 0 and len(idxN1) == 0:
-                print("❌ Aucun compte trouvé dans les balances")
+                print("Aucun compte trouvé dans les balances")
                 print(f"   - Balance N: {len(bal_N)} lignes brutes, mais 0 comptes indexés")
                 print(f"   - Balance N-1: {len(bal_N1)} lignes brutes, mais 0 comptes indexés")
                 print(f"   - Vérifiez que les lignes contiennent bien un champ 'numero_compte' avec une valeur non vide")
@@ -4464,11 +4583,11 @@ class Mission(Document):
                     premiere_ligne = bal_N[0]
                     print(f"   - Exemple ligne N: {premiere_ligne}")
                     if 'numero_compte' not in premiere_ligne:
-                        print(f"   - ⚠️  Le champ 'numero_compte' est absent de la première ligne")
+                        print(f"   - Le champ 'numero_compte' est absent de la première ligne")
                     elif premiere_ligne.get('numero_compte') is None:
-                        print(f"   - ⚠️  Le champ 'numero_compte' est None")
+                        print(f"   - Le champ 'numero_compte' est None")
                     elif str(premiere_ligne.get('numero_compte')).strip() == "":
-                        print(f"   - ⚠️  Le champ 'numero_compte' est une chaîne vide")
+                        print(f"   - Le champ 'numero_compte' est une chaîne vide")
                 
                 return {
                     "ok": False, 
@@ -4523,13 +4642,13 @@ class Mission(Document):
                     return _to_float(row.get("solde_reel", 0))
                 return 0.0
             
-            print(f"🔍 Début du traitement: {len(idxN)} comptes en N, {len(idxN1)} comptes en N-1")
+            print(f"Début du traitement: {len(idxN)} comptes en N, {len(idxN1)} comptes en N-1")
             
             if len(idxN) == 0:
-                print(f"⚠️  ATTENTION: idxN est vide même si bal_N contient {len(bal_N)} lignes")
+                print(f"ATTENTION: idxN est vide même si bal_N contient {len(bal_N)} lignes")
             
             if len(idxN1) == 0:
-                print(f"⚠️  ATTENTION: idxN1 est vide même si bal_N1 contient {len(bal_N1)} lignes")
+                print(f"ATTENTION: idxN1 est vide même si bal_N1 contient {len(bal_N1)} lignes")
             
             comptes_ajoutes = 0
             comptes_erreur = 0
@@ -4549,7 +4668,7 @@ class Mission(Document):
                         
                         # Afficher les 5 premiers comptes pour debug
                         if len(tous_comptes) < 5:
-                            print(f"  📋 Compte {num}: ouvN={ouvN}, clotN1={clotN1}, ecart={ecart} (ouvN - clotN1)")
+                            print(f"Compte {num}: ouvN={ouvN}, clotN1={clotN1}, ecart={ecart} (ouvN - clotN1)")
                         
                         # Ajouter tous les comptes, pas seulement ceux avec des écarts
                         ecart_normal_130 = (ecart != 0 and is_compte_130(num))
@@ -4563,7 +4682,7 @@ class Mission(Document):
                             "message": (
                                 f"Écart normal sur le compte 130 : Ouverture N {ouvN} vs Clôture N-1 {clotN1}"
                                 if ecart_normal_130 else
-                                (f"Ouverture N {ouvN} ≠ Clôture N-1 {clotN1}" if ecart != 0 else f"Ouverture N {ouvN} = Clôture N-1 {clotN1}")
+                                (f"Ouverture N {ouvN} Clôture N-1 {clotN1}" if ecart != 0 else f"Ouverture N {ouvN} = Clôture N-1 {clotN1}")
                             ),
                             "justification": (
                                 f"Le compte 130 (résultat en instance d'affectation) peut varier entre la clôture N-1 ({clotN1}) et l'ouverture N ({ouvN}). Écart normal: {ecart}."
@@ -4608,13 +4727,13 @@ class Mission(Document):
                         comptes_ajoutes += 1
                 except Exception as e:
                     comptes_erreur += 1
-                    print(f"⚠️  Erreur lors du traitement du compte {num}: {e}")
+                    print(f"Erreur lors du traitement du compte {num}: {e}")
                     if comptes_erreur <= 3:
                         import traceback
                         traceback.print_exc()
                     continue
             
-            print(f"📊 Après traitement des comptes N: {comptes_ajoutes} comptes ajoutés, {comptes_erreur} erreurs")
+            print(f"Après traitement des comptes N: {comptes_ajoutes} comptes ajoutés, {comptes_erreur} erreurs")
             
             # 2. Ajouter les comptes présents en N-1 mais absents en N
             for num, ln in idxN1.items():
@@ -4653,10 +4772,10 @@ class Mission(Document):
                         comptes_ajoutes += 1
                 except Exception as e:
                     comptes_erreur += 1
-                    print(f"⚠️  Erreur lors du traitement du compte N-1 {num}: {e}")
+                    print(f"Erreur lors du traitement du compte N-1 {num}: {e}")
                     continue
             
-            print(f"📊 Après traitement des comptes N-1: {len(tous_comptes)} comptes au total")
+            print(f"Après traitement des comptes N-1: {len(tous_comptes)} comptes au total")
 
             # Trier par numéro de compte
             tous_comptes.sort(key=lambda x: x["numero_compte"])
@@ -4664,7 +4783,7 @@ class Mission(Document):
             # Compter les écarts
             ecarts_count = len([c for c in tous_comptes if c["status"] in ["ecart", "nouveau", "supprime"]])
             
-            print(f"📊 Résumé final: {len(tous_comptes)} comptes traités")
+            print(f"Résumé final: {len(tous_comptes)} comptes traités")
             print(f"   - Comptes OK: {len([c for c in tous_comptes if c['status'] == 'ok'])}")
             print(f"   - Comptes avec écart: {len([c for c in tous_comptes if c['status'] == 'ecart'])}")
             print(f"   - Comptes nouveaux: {len([c for c in tous_comptes if c['status'] == 'nouveau'])}")
@@ -4672,7 +4791,7 @@ class Mission(Document):
             
             # Si aucun compte n'a été trouvé, retourner un message d'aide
             if len(tous_comptes) == 0:
-                print("⚠️  Aucun compte trouvé dans les balances")
+                print("Aucun compte trouvé dans les balances")
                 return {
                     "ok": False,
                     "message": "Aucun compte trouvé dans les balances N et N-1. Vérifiez que les balances contiennent bien des données avec des numéros de compte valides.",
@@ -4693,13 +4812,13 @@ class Mission(Document):
                 "comptes": tous_comptes
             }
             
-            print(f"✅ Rapport généré: {len(tous_comptes)} comptes, {ecarts_count} écarts")
-            print(f"📋 Clés du rapport: {list(report.keys())}")
-            print(f"📋 Nombre de comptes dans le rapport: {len(report.get('comptes', []))}")
+            print(f"Rapport généré: {len(tous_comptes)} comptes, {ecarts_count} écarts")
+            print(f"Clés du rapport: {list(report.keys())}")
+            print(f"Nombre de comptes dans le rapport: {len(report.get('comptes', []))}")
             
             # CRITIQUE: Vérifier que tous_comptes n'est pas vide avant de sauvegarder
             if len(tous_comptes) == 0:
-                print(f"❌ ERREUR CRITIQUE: tous_comptes est vide avant sauvegarde!")
+                print(f"ERREUR CRITIQUE: tous_comptes est vide avant sauvegarde!")
                 print(f"   - idxN avait {len(idxN)} comptes")
                 print(f"   - idxN1 avait {len(idxN1)} comptes")
                 print(f"   - Vérifiez les logs ci-dessus pour comprendre pourquoi tous_comptes est vide")
@@ -4757,7 +4876,7 @@ class Mission(Document):
                 if local_db is None:
                     raise RuntimeError("ajouter_reclassement_intangibilite: Base de données non connectée")
             except Exception as e:
-                print(f"❌ ajouter_reclassement_intangibilite: impossible d'obtenir la connexion DB: {e}")
+                print(f"ajouter_reclassement_intangibilite: impossible d'obtenir la connexion DB: {e}")
                 raise
             
             # Vérifier que la mission existe
@@ -4841,7 +4960,7 @@ class Mission(Document):
                 if local_db is None:
                     raise RuntimeError("supprimer_reclassement_intangibilite: Base de données non connectée")
             except Exception as e:
-                print(f"❌ supprimer_reclassement_intangibilite: impossible d'obtenir la connexion DB: {e}")
+                print(f"supprimer_reclassement_intangibilite: impossible d'obtenir la connexion DB: {e}")
                 raise
             
             mission = local_db.Mission1.find_one({"_id": ObjectId(id_mission)})
@@ -4881,7 +5000,7 @@ class Mission(Document):
                 if local_db is None:
                     raise RuntimeError("lister_reclassements_intangibilite: Base de données non connectée")
             except Exception as e:
-                print(f"❌ lister_reclassements_intangibilite: impossible d'obtenir la connexion DB: {e}")
+                print(f"lister_reclassements_intangibilite: impossible d'obtenir la connexion DB: {e}")
                 raise
             
             mission = local_db.Mission1.find_one({"_id": ObjectId(id_mission)})
@@ -5019,7 +5138,7 @@ class Mission(Document):
 
     def classement_bilan(self, id_mission):
         try:
-            # 🔹 1. Charger la mission
+            #1. Charger la mission
             mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
             if not mission:
                 return {"ok": False, "message": "Mission non trouvée", "classement": []}
@@ -5028,7 +5147,7 @@ class Mission(Document):
             if len(balances_ids) < 2:
                 return {"ok": False, "message": "Balances manquantes", "classement": []}
 
-            # 🔹 2. Charger balances N et N-1
+            #2. Charger balances N et N-1
             balance_n = db.Balance.find_one(
                 {"_id": ObjectId(balances_ids[0])},
                 {"balance": 1}
@@ -5044,13 +5163,13 @@ class Mission(Document):
             balance_n_data = balance_n.get("balance", [])
             balance_n1_data = balance_n1.get("balance", [])
 
-            # 🔹 3. Index balance N-1
+            #3. Index balance N-1
             balance_n1_index = {
                 str(item.get("numero_compte")): item
                 for item in balance_n1_data
             }
 
-            # 🔹 4. Détection des préfixes depuis les balances
+            #4. Détection des préfixes depuis les balances
             prefixes = set()
             for item in balance_n_data:
                 numero = str(item.get("numero_compte", "")).strip()
@@ -5060,7 +5179,7 @@ class Mission(Document):
             if not prefixes:
                 return {"ok": False, "message": "Aucun compte valide trouvé", "classement": []}
 
-            # 🔹 5. Création dynamique des groupes
+            #5. Création dynamique des groupes
             table_grouping = []
             for prefixe in sorted(prefixes):
                 table_grouping.append({
@@ -5069,7 +5188,7 @@ class Mission(Document):
                     "libelle": f"AUTRES - COMPTE {prefixe}"
                 })
 
-            # 🔹 6. Calcul du classement
+            #6. Calcul du classement
             classement = []
 
             for group in table_grouping:
@@ -5114,7 +5233,7 @@ class Mission(Document):
                     "comptes_detaille": comptes_detaille
                 })
 
-            # 🔹 7. Sauvegarde propre en base
+            #7. Sauvegarde propre en base
             report = {
                 "ok": True,
                 "message": f"Classement généré ({len(classement)} groupes)",
@@ -5160,8 +5279,13 @@ class Mission(Document):
             balance_n_data = balance_n.get("balance", [])
             balance_n1_data = balance_n1.get("balance", [])
 
+            # Garantir une balance de variation exploitable pour l'alignement EFI/grouping
+            balance_variation = mission.get("balance_variation", []) or []
+            if not balance_variation:
+                balance_variation = self.rapprochement_des_balances(balance_n_data, balance_n1_data)
+
             # Générer les états financiers en utilisant la méthode existante prod_efi
-            efi_data = self.prod_efi(balance_n_data, balance_n1_data, [])
+            efi_data = self.prod_efi(balance_n_data, balance_n1_data, balance_variation)
 
             # prod_efi retourne déjà un dictionnaire organisé par nature (actif, passif, pnl)
             # Utiliser directement les données organisées
@@ -5172,7 +5296,35 @@ class Mission(Document):
             }
             
             # Log pour vérifier le nombre de lignes générées
-            print(f"📊 États financiers générés - Actif: {len(efi_organized.get('actif', []))} lignes, Passif: {len(efi_organized.get('passif', []))} lignes, PNL: {len(efi_organized.get('pnl', []))} lignes")
+            print(f"États financiers générés - Actif: {len(efi_organized.get('actif', []))} lignes, Passif: {len(efi_organized.get('passif', []))} lignes, PNL: {len(efi_organized.get('pnl', []))} lignes")
+
+            # Log détaillé AM (comptes réellement rencontrés dans la balance N)
+            def _match_accounts(balance, prefixes):
+                if not prefixes:
+                    return []
+                return sorted({
+                    str(item.get("numero_compte"))
+                    for item in balance
+                    if any(str(item.get("numero_compte")).startswith(p) for p in prefixes)
+                })
+
+            am_brut_prefixes = ["24"]
+            am_brut_excl = ["245", "2495"]
+            am_amor_prefixes = ["284", "294", "2949"]
+            am_amor_excl = ["2845", "2945"]
+
+            am_brut_all = _match_accounts(balance_n_data, am_brut_prefixes)
+            am_brut_ex = _match_accounts(balance_n_data, am_brut_excl)
+            am_brut_final = [c for c in am_brut_all if c not in set(am_brut_ex)]
+
+            am_amor_all = _match_accounts(balance_n_data, am_amor_prefixes)
+            am_amor_ex = _match_accounts(balance_n_data, am_amor_excl)
+            am_amor_final = [c for c in am_amor_all if c not in set(am_amor_ex)]
+
+            print("AM comptes brut (N) retenus:", am_brut_final)
+            print("AM comptes brut exclus (N):", am_brut_ex)
+            print("AM comptes amort/depr (N) retenus:", am_amor_final)
+            print("AM comptes amort/depr exclus (N):", am_amor_ex)
 
             # Sauvegarder les états financiers dans la mission
             report = {
@@ -5281,7 +5433,7 @@ class Mission(Document):
                 "Sensibilité de l'entité aux anomalies issues de fraudes (Si oui, le risque est obligatoirement Significant)",
                 "Niveau de complexité des normes, règles, méthodes comptables, notes annexes, estimations ou jugements liées aux comptes ou aux notes annexes",
                 "Exposition du COTABD à des pertes (charges ou dépréciations)",
-                "Probabilité que des passifs éventuels significatifs (procès, contentieux, litiges etc…) puissent être issus des transactions enregistrées dans le COTABD",
+                "Probabilité que des passifs éventuels significatifs (procès, contentieux, litiges etc) puissent être issus des transactions enregistrées dans le COTABD",
                 "Existence de transactions avec des parties liées dans le COTABD",
                 "Niveau de contrôle interne et fiabilité des systèmes d'information liés aux comptes"
             ]
@@ -5969,7 +6121,7 @@ class Mission(Document):
                         {"$set": {"balance_variation": balance_variation}}
                     )
             except Exception as e:
-                print(f"⚠️ make_final_sm: échec recalcul balance_variation: {e}")
+                print(f"make_final_sm: échec recalcul balance_variation: {e}")
 
         # Régénérer le grouping depuis la balance variation pour refléter
         # les dernières règles (ex: compte 419 au passif), puis conserver
@@ -6050,6 +6202,14 @@ class Mission(Document):
     # ---------- Production COMMENTAIRE ----------
 
     def prod_efi(self, balance_n, balance_n1, balance_variation):
+        # Fallback défensif : certains appels historiques envoient [].
+        # Sans balance_variation, l'alignement EFI/grouping (notamment comptes mixtes
+        # 42/43/44... selon solde débiteur/créditeur) ne peut pas s'appliquer.
+        if not isinstance(balance_variation, list) or not balance_variation:
+            try:
+                balance_variation = self.rapprochement_des_balances(balance_n, balance_n1)
+            except Exception:
+                balance_variation = []
 
         mapping_path = os.path.join(os.path.dirname(__file__), "..", "mapping_efi.json")
 
@@ -6090,7 +6250,7 @@ class Mission(Document):
             select_mapping = [elt for elt in mapping if elt['nature'] == efi]
             
             # Log pour vérifier le nombre de lignes dans le mapping
-            print(f"📊 Mapping {efi}: {len(select_mapping)} lignes trouvées")
+            print(f"Mapping {efi}: {len(select_mapping)} lignes trouvées")
 
             for idx, data in enumerate(select_mapping):
 
@@ -6101,7 +6261,7 @@ class Mission(Document):
                 
                 # Log pour debug si ref est vide
                 if not ref:
-                    print(f"⚠️ Ligne {idx+1} sans ref dans {efi}: {libelle[:50]}")
+                    print(f"Ligne {idx+1} sans ref dans {efi}: {libelle[:50]}")
 
                 # Vérifier si brut_cpt ou net_cpt existe (au moins un des deux doit être défini)
                 brut_cpt = data.get('brut_cpt')
@@ -6133,7 +6293,7 @@ class Mission(Document):
                     row['compte_to_be_used'] = ''
                     row['compte_to_be_used_off'] = []
                     structure.append(row)
-                    print(f"✅ Ligne {idx+1} ({ref}) ajoutée sans comptes")
+                    print(f"Ligne {idx+1} ({ref}) ajoutée sans comptes")
                     continue
 
                 if has_brut_amor:
@@ -6150,13 +6310,15 @@ class Mission(Document):
 
                     amor_except_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('amor_except_cpt', [])))
 
+                    net_except_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('net_except_cpt', [])))
 
 
-                    data['brut_solde_n'] = brut_solde_n + brut_except_n
 
-                    data['amor_solde_n'] = amor_solde_n + amor_except_n
+                    data['brut_solde_n'] = brut_solde_n - brut_except_n
 
-                    data['net_solde_n'] = data['brut_solde_n'] + data['amor_solde_n']
+                    data['amor_solde_n'] = amor_solde_n - amor_except_n
+
+                    data['net_solde_n'] = data['brut_solde_n'] + data['amor_solde_n'] - net_except_n
 
 
 
@@ -6166,27 +6328,38 @@ class Mission(Document):
 
                     amor_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data['amor_cpt']))
 
+                    brut_except_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('brut_except_cpt', [])))
+
+                    amor_except_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('amor_except_cpt', [])))
+
                     net_except_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('net_except_cpt', [])))
 
-                    data['net_solde_n1'] = brut_n1 + amor_n1 + net_except_n1
+                    data['net_solde_n1'] = (brut_n1 - brut_except_n1) + (amor_n1 - amor_except_n1) - net_except_n1
 
                 else:
 
-                    net_solde_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data['net_cpt']))
+                    if ref == "CH":
+                        # CH : 121 en positif, 129 en négatif
+                        def _sum_abs_prefix(balance, prefix):
+                            return sum(
+                                abs(item['solde_reel'])
+                                for item in balance
+                                if str(item['numero_compte']).startswith(prefix)
+                            )
 
-                    net_solde_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data['net_cpt']))
-
-
+                        net_solde_n = _sum_abs_prefix(balance_n, "121") - _sum_abs_prefix(balance_n, "129")
+                        net_solde_n1 = _sum_abs_prefix(balance_n1, "121") - _sum_abs_prefix(balance_n1, "129")
+                    else:
+                        net_solde_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data['net_cpt']))
+                        net_solde_n1 = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data['net_cpt']))
 
                     net_except_n = sum(item['solde_reel'] for item in balance_n if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('net_except_cpt', [])))
 
                     net_except_n1_bis = sum(item['solde_reel'] for item in balance_n1 if any(str(item['numero_compte']).startswith(cpt) for cpt in data.get('net_except_cpt', [])))
 
+                    data['net_solde_n'] = net_solde_n - net_except_n
 
-
-                    data['net_solde_n'] = net_solde_n + net_except_n
-
-                    data['net_solde_n1'] = net_solde_n1 + net_except_n1_bis
+                    data['net_solde_n1'] = net_solde_n1 - net_except_n1_bis
 
 
 
@@ -6231,22 +6404,333 @@ class Mission(Document):
 
 
                 structure.append(row)
-                print(f"✅ Ligne {idx+1} ({ref}) ajoutée avec comptes")
+                print(f"Ligne {idx+1} ({ref}) ajoutée avec comptes")
 
             # Log pour vérifier le nombre de lignes générées
-            print(f"📊 Structure {efi} générée: {len(structure)} lignes sur {len(select_mapping)} attendues")
+            print(f"Structure {efi} générée: {len(structure)} lignes sur {len(select_mapping)} attendues")
             
             # Log des références pour vérifier
             refs = [row.get('ref', '') for row in structure]
-            print(f"📊 Références {efi} ({len(refs)}): {', '.join(refs[:30])}{'...' if len(refs) > 30 else ''}")
+            print(f"Références {efi} ({len(refs)}): {', '.join(refs[:30])}{'...' if len(refs) > 30 else ''}")
             
             # Vérifier si toutes les lignes sont incluses
             if len(structure) < len(select_mapping):
                 missing_refs = [data.get('ref', 'NO_REF') for data in select_mapping if data.get('ref', '') not in refs]
-                print(f"⚠️ Lignes manquantes dans {efi}: {missing_refs}")
+                print(f"Lignes manquantes dans {efi}: {missing_refs}")
 
             datum[efi] = structure
+        # Ajustement cible des comptes mixtes (actif/passif selon le signe)
+        # pour conserver la structure historique des EFI.
+        try:
+            def _starts(numero, *prefixes):
+                s = str(numero or "")
+                return any(s.startswith(p) for p in prefixes)
 
+            def _sum_mixed(prefixes, *, is_debiteur, exclude_prefixes=()):
+                total_n = 0
+                total_n1 = 0
+                for item in (balance_variation or []):
+                    numero = str(item.get("numero_compte", "") or "")
+                    if not _starts(numero, *prefixes):
+                        continue
+                    if exclude_prefixes and _starts(numero, *exclude_prefixes):
+                        continue
+                    s_n = item.get("solde_n", 0) or 0
+                    s_n1 = item.get("solde_n1", 0) or 0
+                    if is_debiteur:
+                        if s_n >= 0:
+                            total_n += s_n
+                        if s_n1 >= 0:
+                            total_n1 += s_n1
+                    else:
+                        if s_n < 0:
+                            total_n += s_n
+                        if s_n1 < 0:
+                            total_n1 += s_n1
+                return total_n, total_n1
+
+            def _set_row(section, ref, n_val, n1_val):
+                rows = datum.get(section, [])
+                row = next((r for r in rows if str(r.get("ref", "")).strip().upper() == ref), None)
+                if not row:
+                    return
+                row["net_solde_n"] = n_val
+                row["net_solde_n1"] = n1_val
+                row["brut_solde_n"] = n_val
+                row["amor_solde_n"] = 0
+
+            # BI: 41 debiteurs (hors 419)
+            bi_n, bi_n1 = _sum_mixed(("41",), is_debiteur=True, exclude_prefixes=("419",))
+            _set_row("actif", "BI", bi_n, bi_n1)
+
+            # BJ: 42/43/44/45/46/47/185 debiteurs (hors 478/479)
+            bj_n, bj_n1 = _sum_mixed(
+                ("42", "43", "44", "45", "46", "47", "185"),
+                is_debiteur=True,
+                exclude_prefixes=("478", "479"),
+            )
+            _set_row("actif", "BJ", bj_n, bj_n1)
+
+            # DI: 419 (clients avances recues), quel que soit le signe
+            di_n_d, di_n1_d = _sum_mixed(("419",), is_debiteur=True)
+            di_n_c, di_n1_c = _sum_mixed(("419",), is_debiteur=False)
+            _set_row("passif", "DI", di_n_d + di_n_c, di_n1_d + di_n1_c)
+
+            # DK: 42/43/44 crediteurs
+            dk_n, dk_n1 = _sum_mixed(("42", "43", "44"), is_debiteur=False)
+            _set_row("passif", "DK", dk_n, dk_n1)
+
+            # DM: 185/45/46/47 crediteurs (hors 478/479)
+            dm_n, dm_n1 = _sum_mixed(
+                ("185", "45", "46", "47"),
+                is_debiteur=False,
+                exclude_prefixes=("478", "479"),
+            )
+            _set_row("passif", "DM", dm_n, dm_n1)
+
+            # DJ: tous les 40* sauf 409* (quel que soit le signe)
+            dj_n = 0
+            dj_n1 = 0
+            for item in (balance_variation or []):
+                numero = str(item.get("numero_compte", "") or "")
+                if not _starts(numero, "40") or _starts(numero, "409"):
+                    continue
+                dj_n += item.get("solde_n", 0) or 0
+                dj_n1 += item.get("solde_n1", 0) or 0
+            _set_row("passif", "DJ", dj_n, dj_n1)
+
+            # Classe 5 mixte:
+            # - BS (actif): comptes 52/53/54/55/57/58 en solde debiteur
+            # - DR (passif): comptes 52/53/54/55/57/58 en solde crediteur + 561/566
+            bs_n, bs_n1 = _sum_mixed(("52", "53", "54", "55", "57", "58"), is_debiteur=True)
+            _set_row("actif", "BS", bs_n, bs_n1)
+
+            dr_mix_n, dr_mix_n1 = _sum_mixed(("52", "53", "54", "55", "57", "58"), is_debiteur=False)
+            dr_561_n_d, dr_561_n1_d = _sum_mixed(("561",), is_debiteur=True)
+            dr_561_n_c, dr_561_n1_c = _sum_mixed(("561",), is_debiteur=False)
+            dr_566_n_d, dr_566_n1_d = _sum_mixed(("566",), is_debiteur=True)
+            dr_566_n_c, dr_566_n1_c = _sum_mixed(("566",), is_debiteur=False)
+            _set_row(
+                "passif",
+                "DR",
+                dr_mix_n + dr_561_n_d + dr_561_n_c + dr_566_n_d + dr_566_n_c,
+                dr_mix_n1 + dr_561_n1_d + dr_561_n1_c + dr_566_n1_d + dr_566_n1_c,
+            )
+
+            # CH (Report à nouveau) est désormais calculé avec 121 positif / 129 négatif
+            passif_rows = datum.get("passif", [])
+
+            # CA (Capital): toujours affiché en positif au passif.
+            ca_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "CA"), None)
+            if ca_row:
+                ca_n = ca_row.get("net_solde_n", 0) or 0
+                ca_n1 = ca_row.get("net_solde_n1", 0) or 0
+                ca_row["net_solde_n"] = abs(ca_n)
+                ca_row["net_solde_n1"] = abs(ca_n1)
+                ca_row["brut_solde_n"] = ca_row["net_solde_n"]
+                ca_row["amor_solde_n"] = 0
+
+            # CB : toujours affiché en négatif au passif.
+            cb_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "CB"), None)
+            if cb_row:
+                cb_n = cb_row.get("net_solde_n", 0) or 0
+                cb_n1 = cb_row.get("net_solde_n1", 0) or 0
+                cb_row["net_solde_n"] = -abs(cb_n)
+                cb_row["net_solde_n1"] = -abs(cb_n1)
+                cb_row["brut_solde_n"] = cb_row["net_solde_n"]
+                cb_row["amor_solde_n"] = 0
+
+            # CD : toujours affiché en positif au passif.
+            cd_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "CD"), None)
+            if cd_row:
+                cd_n = cd_row.get("net_solde_n", 0) or 0
+                cd_n1 = cd_row.get("net_solde_n1", 0) or 0
+                cd_row["net_solde_n"] = abs(cd_n)
+                cd_row["net_solde_n1"] = abs(cd_n1)
+                cd_row["brut_solde_n"] = cd_row["net_solde_n"]
+                cd_row["amor_solde_n"] = 0
+
+            # CE : toujours affiché en positif au passif.
+            ce_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "CE"), None)
+            if ce_row:
+                ce_n = ce_row.get("net_solde_n", 0) or 0
+                ce_n1 = ce_row.get("net_solde_n1", 0) or 0
+                ce_row["net_solde_n"] = abs(ce_n)
+                ce_row["net_solde_n1"] = abs(ce_n1)
+                ce_row["brut_solde_n"] = ce_row["net_solde_n"]
+                ce_row["amor_solde_n"] = 0
+
+            # CF : toujours affiché en positif au passif.
+            cf_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "CF"), None)
+            if cf_row:
+                cf_n = cf_row.get("net_solde_n", 0) or 0
+                cf_n1 = cf_row.get("net_solde_n1", 0) or 0
+                cf_row["net_solde_n"] = abs(cf_n)
+                cf_row["net_solde_n1"] = abs(cf_n1)
+                cf_row["brut_solde_n"] = cf_row["net_solde_n"]
+                cf_row["amor_solde_n"] = 0
+
+            # CG : toujours affiché en positif au passif.
+            cg_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "CG"), None)
+            if cg_row:
+                cg_n = cg_row.get("net_solde_n", 0) or 0
+                cg_n1 = cg_row.get("net_solde_n1", 0) or 0
+                cg_row["net_solde_n"] = abs(cg_n)
+                cg_row["net_solde_n1"] = abs(cg_n1)
+                cg_row["brut_solde_n"] = cg_row["net_solde_n"]
+                cg_row["amor_solde_n"] = 0
+
+            # CL : toujours affiché en positif au passif.
+            cl_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "CL"), None)
+            if cl_row:
+                cl_n = cl_row.get("net_solde_n", 0) or 0
+                cl_n1 = cl_row.get("net_solde_n1", 0) or 0
+                cl_row["net_solde_n"] = abs(cl_n)
+                cl_row["net_solde_n1"] = abs(cl_n1)
+                cl_row["brut_solde_n"] = cl_row["net_solde_n"]
+                cl_row["amor_solde_n"] = 0
+
+            # CM : toujours affiché en positif au passif.
+            cm_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "CM"), None)
+            if cm_row:
+                cm_n = cm_row.get("net_solde_n", 0) or 0
+                cm_n1 = cm_row.get("net_solde_n1", 0) or 0
+                cm_row["net_solde_n"] = abs(cm_n)
+                cm_row["net_solde_n1"] = abs(cm_n1)
+                cm_row["brut_solde_n"] = cm_row["net_solde_n"]
+                cm_row["amor_solde_n"] = 0
+
+            # DA : toujours affiché en positif au passif.
+            da_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DA"), None)
+            if da_row:
+                da_n = da_row.get("net_solde_n", 0) or 0
+                da_n1 = da_row.get("net_solde_n1", 0) or 0
+                da_row["net_solde_n"] = abs(da_n)
+                da_row["net_solde_n1"] = abs(da_n1)
+                da_row["brut_solde_n"] = da_row["net_solde_n"]
+                da_row["amor_solde_n"] = 0
+
+            # DB : toujours affiché en positif au passif.
+            db_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DB"), None)
+            if db_row:
+                db_n = db_row.get("net_solde_n", 0) or 0
+                db_n1 = db_row.get("net_solde_n1", 0) or 0
+                db_row["net_solde_n"] = abs(db_n)
+                db_row["net_solde_n1"] = abs(db_n1)
+                db_row["brut_solde_n"] = db_row["net_solde_n"]
+                db_row["amor_solde_n"] = 0
+
+            # DC : toujours affiché en positif au passif.
+            dc_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DC"), None)
+            if dc_row:
+                dc_n = dc_row.get("net_solde_n", 0) or 0
+                dc_n1 = dc_row.get("net_solde_n1", 0) or 0
+                dc_row["net_solde_n"] = abs(dc_n)
+                dc_row["net_solde_n1"] = abs(dc_n1)
+                dc_row["brut_solde_n"] = dc_row["net_solde_n"]
+                dc_row["amor_solde_n"] = 0
+
+            # DH : toujours affiché en positif au passif.
+            dh_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DH"), None)
+            if dh_row:
+                dh_n = dh_row.get("net_solde_n", 0) or 0
+                dh_n1 = dh_row.get("net_solde_n1", 0) or 0
+                dh_row["net_solde_n"] = abs(dh_n)
+                dh_row["net_solde_n1"] = abs(dh_n1)
+                dh_row["brut_solde_n"] = dh_row["net_solde_n"]
+                dh_row["amor_solde_n"] = 0
+
+            # DI : toujours affiché en positif au passif.
+            di_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DI"), None)
+            if di_row:
+                di_n = di_row.get("net_solde_n", 0) or 0
+                di_n1 = di_row.get("net_solde_n1", 0) or 0
+                di_row["net_solde_n"] = abs(di_n)
+                di_row["net_solde_n1"] = abs(di_n1)
+                di_row["brut_solde_n"] = di_row["net_solde_n"]
+                di_row["amor_solde_n"] = 0
+
+            # DJ : toujours affiché en positif au passif.
+            dj_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DJ"), None)
+            if dj_row:
+                dj_n = dj_row.get("net_solde_n", 0) or 0
+                dj_n1 = dj_row.get("net_solde_n1", 0) or 0
+                dj_row["net_solde_n"] = abs(dj_n)
+                dj_row["net_solde_n1"] = abs(dj_n1)
+                dj_row["brut_solde_n"] = dj_row["net_solde_n"]
+                dj_row["amor_solde_n"] = 0
+
+            # DK : toujours affiché en positif au passif.
+            dk_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DK"), None)
+            if dk_row:
+                dk_n = dk_row.get("net_solde_n", 0) or 0
+                dk_n1 = dk_row.get("net_solde_n1", 0) or 0
+                dk_row["net_solde_n"] = abs(dk_n)
+                dk_row["net_solde_n1"] = abs(dk_n1)
+                dk_row["brut_solde_n"] = dk_row["net_solde_n"]
+                dk_row["amor_solde_n"] = 0
+
+            # DL : toujours affiché en positif au passif.
+            dl_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DL"), None)
+            if dl_row:
+                dl_n = dl_row.get("net_solde_n", 0) or 0
+                dl_n1 = dl_row.get("net_solde_n1", 0) or 0
+                dl_row["net_solde_n"] = abs(dl_n)
+                dl_row["net_solde_n1"] = abs(dl_n1)
+                dl_row["brut_solde_n"] = dl_row["net_solde_n"]
+                dl_row["amor_solde_n"] = 0
+
+            # DM : toujours affiché en positif au passif.
+            dm_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DM"), None)
+            if dm_row:
+                dm_n = dm_row.get("net_solde_n", 0) or 0
+                dm_n1 = dm_row.get("net_solde_n1", 0) or 0
+                dm_row["net_solde_n"] = abs(dm_n)
+                dm_row["net_solde_n1"] = abs(dm_n1)
+                dm_row["brut_solde_n"] = dm_row["net_solde_n"]
+                dm_row["amor_solde_n"] = 0
+
+            # DN : toujours affiché en positif au passif.
+            dn_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DN"), None)
+            if dn_row:
+                dn_n = dn_row.get("net_solde_n", 0) or 0
+                dn_n1 = dn_row.get("net_solde_n1", 0) or 0
+                dn_row["net_solde_n"] = abs(dn_n)
+                dn_row["net_solde_n1"] = abs(dn_n1)
+                dn_row["brut_solde_n"] = dn_row["net_solde_n"]
+                dn_row["amor_solde_n"] = 0
+
+            # DQ : toujours affiché en positif au passif.
+            dq_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DQ"), None)
+            if dq_row:
+                dq_n = dq_row.get("net_solde_n", 0) or 0
+                dq_n1 = dq_row.get("net_solde_n1", 0) or 0
+                dq_row["net_solde_n"] = abs(dq_n)
+                dq_row["net_solde_n1"] = abs(dq_n1)
+                dq_row["brut_solde_n"] = dq_row["net_solde_n"]
+                dq_row["amor_solde_n"] = 0
+
+            # DR : toujours affiché en positif au passif.
+            dr_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DR"), None)
+            if dr_row:
+                dr_n = dr_row.get("net_solde_n", 0) or 0
+                dr_n1 = dr_row.get("net_solde_n1", 0) or 0
+                dr_row["net_solde_n"] = abs(dr_n)
+                dr_row["net_solde_n1"] = abs(dr_n1)
+                dr_row["brut_solde_n"] = dr_row["net_solde_n"]
+                dr_row["amor_solde_n"] = 0
+
+            # DV : toujours affiché en positif au passif.
+            dv_row = next((r for r in passif_rows if str(r.get("ref", "")).strip().upper() == "DV"), None)
+            if dv_row:
+                dv_n = dv_row.get("net_solde_n", 0) or 0
+                dv_n1 = dv_row.get("net_solde_n1", 0) or 0
+                dv_row["net_solde_n"] = abs(dv_n)
+                dv_row["net_solde_n1"] = abs(dv_n1)
+                dv_row["brut_solde_n"] = dv_row["net_solde_n"]
+                dv_row["amor_solde_n"] = 0
+        except Exception as e:
+            print(f"Ajustement comptes mixtes EFI ignore: {e}")
         # Recalcule des agrégats ACTIF selon les formules officielles
         # pour éviter toute dérive liée à une configuration mapping.
         actif_rows = datum.get('actif', [])
@@ -6258,42 +6742,24 @@ class Mission(Document):
                 value = row.get(key, 0)
                 return value if value is not None else 0
 
-            def _set(ref, n_val, n1_val):
+            def _sum_refs(refs, key):
+                return sum(_g(r, key) for r in refs)
+
+            def _set_from_refs(ref, refs):
                 if ref in idx:
-                    idx[ref]['net_solde_n'] = n_val
-                    idx[ref]['net_solde_n1'] = n1_val
+                    idx[ref]['brut_solde_n'] = _sum_refs(refs, 'brut_solde_n')
+                    idx[ref]['amor_solde_n'] = _sum_refs(refs, 'amor_solde_n')
+                    idx[ref]['net_solde_n'] = _sum_refs(refs, 'net_solde_n')
+                    idx[ref]['net_solde_n1'] = _sum_refs(refs, 'net_solde_n1')
 
-            ad_n = _g('AE', 'net_solde_n') + _g('AF', 'net_solde_n') + _g('AG', 'net_solde_n') + _g('AH', 'net_solde_n')
-            ad_n1 = _g('AE', 'net_solde_n1') + _g('AF', 'net_solde_n1') + _g('AG', 'net_solde_n1') + _g('AH', 'net_solde_n1')
-            _set('AD', ad_n, ad_n1)
-
-            ai_n = _g('AJ', 'net_solde_n') + _g('AK', 'net_solde_n') + _g('AL', 'net_solde_n') + _g('AM', 'net_solde_n') + _g('AN', 'net_solde_n')
-            ai_n1 = _g('AJ', 'net_solde_n1') + _g('AK', 'net_solde_n1') + _g('AL', 'net_solde_n1') + _g('AM', 'net_solde_n1') + _g('AN', 'net_solde_n1')
-            _set('AI', ai_n, ai_n1)
-
-            aq_n = _g('AR', 'net_solde_n') + _g('AS', 'net_solde_n')
-            aq_n1 = _g('AR', 'net_solde_n1') + _g('AS', 'net_solde_n1')
-            _set('AQ', aq_n, aq_n1)
-
-            bg_n = _g('BH', 'net_solde_n') + _g('BI', 'net_solde_n') + _g('BJ', 'net_solde_n')
-            bg_n1 = _g('BH', 'net_solde_n1') + _g('BI', 'net_solde_n1') + _g('BJ', 'net_solde_n1')
-            _set('BG', bg_n, bg_n1)
-
-            az_n = _g('AD', 'net_solde_n') + _g('AI', 'net_solde_n') + _g('AP', 'net_solde_n') + _g('AQ', 'net_solde_n')
-            az_n1 = _g('AD', 'net_solde_n1') + _g('AI', 'net_solde_n1') + _g('AP', 'net_solde_n1') + _g('AQ', 'net_solde_n1')
-            _set('AZ', az_n, az_n1)
-
-            bk_n = _g('BA', 'net_solde_n') + _g('BB', 'net_solde_n') + _g('BG', 'net_solde_n')
-            bk_n1 = _g('BA', 'net_solde_n1') + _g('BB', 'net_solde_n1') + _g('BG', 'net_solde_n1')
-            _set('BK', bk_n, bk_n1)
-
-            bt_n = _g('BQ', 'net_solde_n') + _g('BR', 'net_solde_n') + _g('BS', 'net_solde_n')
-            bt_n1 = _g('BQ', 'net_solde_n1') + _g('BR', 'net_solde_n1') + _g('BS', 'net_solde_n1')
-            _set('BT', bt_n, bt_n1)
-
-            bz_n = _g('AZ', 'net_solde_n') + _g('BK', 'net_solde_n') + _g('BT', 'net_solde_n') + _g('BU', 'net_solde_n')
-            bz_n1 = _g('AZ', 'net_solde_n1') + _g('BK', 'net_solde_n1') + _g('BT', 'net_solde_n1') + _g('BU', 'net_solde_n1')
-            _set('BZ', bz_n, bz_n1)
+            _set_from_refs('AD', ['AE', 'AF', 'AG', 'AH'])
+            _set_from_refs('AI', ['AJ', 'AK', 'AL', 'AM', 'AN'])
+            _set_from_refs('AQ', ['AR', 'AS'])
+            _set_from_refs('BG', ['BH', 'BI', 'BJ'])
+            _set_from_refs('AZ', ['AD', 'AI', 'AP', 'AQ'])
+            _set_from_refs('BK', ['BA', 'BB', 'BG'])
+            _set_from_refs('BT', ['BQ', 'BR', 'BS'])
+            _set_from_refs('BZ', ['AZ', 'BK', 'BT', 'BU'])
 
         # Recalcule des agrégats PASSIF selon les formules officielles.
         passif_rows = datum.get('passif', [])
@@ -6305,34 +6771,22 @@ class Mission(Document):
                 value = row.get(key, 0)
                 return value if value is not None else 0
 
-            def _set(ref, n_val, n1_val):
+            def _sum_refs(refs, key):
+                return sum(_g(r, key) for r in refs)
+
+            def _set_from_refs(ref, refs):
                 if ref in idx:
-                    idx[ref]['net_solde_n'] = n_val
-                    idx[ref]['net_solde_n1'] = n1_val
+                    idx[ref]['brut_solde_n'] = _sum_refs(refs, 'brut_solde_n')
+                    idx[ref]['amor_solde_n'] = _sum_refs(refs, 'amor_solde_n')
+                    idx[ref]['net_solde_n'] = _sum_refs(refs, 'net_solde_n')
+                    idx[ref]['net_solde_n1'] = _sum_refs(refs, 'net_solde_n1')
 
-            cp_n = _g('CA', 'net_solde_n') + _g('CB', 'net_solde_n') + _g('CD', 'net_solde_n') + _g('CE', 'net_solde_n') + _g('CF', 'net_solde_n') + _g('CG', 'net_solde_n') + _g('CH', 'net_solde_n') + _g('CJ', 'net_solde_n') + _g('CL', 'net_solde_n') + _g('CM', 'net_solde_n')
-            cp_n1 = _g('CA', 'net_solde_n1') + _g('CB', 'net_solde_n1') + _g('CD', 'net_solde_n1') + _g('CE', 'net_solde_n1') + _g('CF', 'net_solde_n1') + _g('CG', 'net_solde_n1') + _g('CH', 'net_solde_n1') + _g('CJ', 'net_solde_n1') + _g('CL', 'net_solde_n1') + _g('CM', 'net_solde_n1')
-            _set('CP', cp_n, cp_n1)
-
-            dd_n = _g('DA', 'net_solde_n') + _g('DB', 'net_solde_n') + _g('DC', 'net_solde_n')
-            dd_n1 = _g('DA', 'net_solde_n1') + _g('DB', 'net_solde_n1') + _g('DC', 'net_solde_n1')
-            _set('DD', dd_n, dd_n1)
-
-            df_n = _g('CP', 'net_solde_n') + _g('DD', 'net_solde_n')
-            df_n1 = _g('CP', 'net_solde_n1') + _g('DD', 'net_solde_n1')
-            _set('DF', df_n, df_n1)
-
-            dp_n = _g('DH', 'net_solde_n') + _g('DI', 'net_solde_n') + _g('DJ', 'net_solde_n') + _g('DK', 'net_solde_n') + _g('DM', 'net_solde_n') + _g('DN', 'net_solde_n')
-            dp_n1 = _g('DH', 'net_solde_n1') + _g('DI', 'net_solde_n1') + _g('DJ', 'net_solde_n1') + _g('DK', 'net_solde_n1') + _g('DM', 'net_solde_n1') + _g('DN', 'net_solde_n1')
-            _set('DP', dp_n, dp_n1)
-
-            dt_n = _g('DQ', 'net_solde_n') + _g('DR', 'net_solde_n')
-            dt_n1 = _g('DQ', 'net_solde_n1') + _g('DR', 'net_solde_n1')
-            _set('DT', dt_n, dt_n1)
-
-            dz_n = _g('DF', 'net_solde_n') + _g('DP', 'net_solde_n') + _g('DT', 'net_solde_n') + _g('DV', 'net_solde_n')
-            dz_n1 = _g('DF', 'net_solde_n1') + _g('DP', 'net_solde_n1') + _g('DT', 'net_solde_n1') + _g('DV', 'net_solde_n1')
-            _set('DZ', dz_n, dz_n1)
+            _set_from_refs('CP', ['CA', 'CB', 'CD', 'CE', 'CF', 'CG', 'CH', 'CJ', 'CL', 'CM'])
+            _set_from_refs('DD', ['DA', 'DB', 'DC'])
+            _set_from_refs('DF', ['CP', 'DD'])
+            _set_from_refs('DP', ['DH', 'DI', 'DJ', 'DK', 'DM', 'DN'])
+            _set_from_refs('DT', ['DQ', 'DR'])
+            _set_from_refs('DZ', ['DF', 'DP', 'DT', 'DV'])
 
         # Recalcule des agrégats PNL selon les formules officielles.
         pnl_rows = datum.get('pnl', [])
@@ -6349,6 +6803,13 @@ class Mission(Document):
                     idx[ref]['net_solde_n'] = n_val
                     idx[ref]['net_solde_n1'] = n1_val
 
+            def _pm(val):
+                # Règle demandée pour les termes +/- :
+                # solde négatif => on fait "+"
+                # solde positif => on fait "-"
+                # En pratique : contribution = val si val < 0, sinon -val
+                return val if val < 0 else -val
+
             xa_n = -_g('TA', 'net_solde_n') - _g('RA', 'net_solde_n') + _g('RB', 'net_solde_n')
             xa_n1 = -_g('TA', 'net_solde_n1') - _g('RA', 'net_solde_n1') + _g('RB', 'net_solde_n1')
             _set('XA', xa_n, xa_n1)
@@ -6359,18 +6820,18 @@ class Mission(Document):
 
             xc_n = (
                 xb_n
-                - _g('RA', 'net_solde_n') + _g('RB', 'net_solde_n')
-                + _g('TE', 'net_solde_n') - _g('TF', 'net_solde_n') - _g('TG', 'net_solde_n') - _g('TH', 'net_solde_n') - _g('TI', 'net_solde_n')
-                - _g('RC', 'net_solde_n') + _g('RD', 'net_solde_n')
-                - _g('RE', 'net_solde_n') + _g('RF', 'net_solde_n')
+                - _g('RA', 'net_solde_n') + _pm(_g('RB', 'net_solde_n'))
+                + _pm(_g('TE', 'net_solde_n')) - _g('TF', 'net_solde_n') - _g('TG', 'net_solde_n') - _g('TH', 'net_solde_n') - _g('TI', 'net_solde_n')
+                - _g('RC', 'net_solde_n') + _pm(_g('RD', 'net_solde_n'))
+                - _g('RE', 'net_solde_n') + _pm(_g('RF', 'net_solde_n'))
                 - _g('RG', 'net_solde_n') - _g('RH', 'net_solde_n') - _g('RI', 'net_solde_n') - _g('RJ', 'net_solde_n')
             )
             xc_n1 = (
                 xb_n1
-                - _g('RA', 'net_solde_n1') + _g('RB', 'net_solde_n1')
-                + _g('TE', 'net_solde_n1') - _g('TF', 'net_solde_n1') - _g('TG', 'net_solde_n1') - _g('TH', 'net_solde_n1') - _g('TI', 'net_solde_n1')
-                - _g('RC', 'net_solde_n1') + _g('RD', 'net_solde_n1')
-                - _g('RE', 'net_solde_n1') + _g('RF', 'net_solde_n1')
+                - _g('RA', 'net_solde_n1') + _pm(_g('RB', 'net_solde_n1'))
+                + _pm(_g('TE', 'net_solde_n1')) - _g('TF', 'net_solde_n1') - _g('TG', 'net_solde_n1') - _g('TH', 'net_solde_n1') - _g('TI', 'net_solde_n1')
+                - _g('RC', 'net_solde_n1') + _pm(_g('RD', 'net_solde_n1'))
+                - _g('RE', 'net_solde_n1') + _pm(_g('RF', 'net_solde_n1'))
                 - _g('RG', 'net_solde_n1') - _g('RH', 'net_solde_n1') - _g('RI', 'net_solde_n1') - _g('RJ', 'net_solde_n1')
             )
             _set('XC', xc_n, xc_n1)
@@ -6399,6 +6860,116 @@ class Mission(Document):
             xi_n1 = xg_n1 + xh_n1 - _g('RQ', 'net_solde_n1') - _g('RS', 'net_solde_n1')
             _set('XI', xi_n, xi_n1)
 
+            # Inversion de signe des comptes "à additionner" du CR
+            # (positif -> négatif, négatif -> positif), ex: TB, TD, TF...
+            pnl_component_refs = {
+                'TA', 'TB', 'TC', 'TD',
+                'RA', 'RB', 'TE', 'TF', 'TG', 'TH', 'TI',
+                'RC', 'RD', 'RE', 'RF', 'RG', 'RH', 'RI', 'RJ',
+                'RK', 'TJ', 'RL',
+                'TK', 'TL', 'TM', 'RM', 'RN',
+                'TN', 'TO', 'RO', 'RP',
+                'RQ', 'RS',
+            }
+            for ref in pnl_component_refs:
+                row = idx.get(ref)
+                if not row:
+                    continue
+                row['net_solde_n'] = -(row.get('net_solde_n', 0) or 0)
+                row['net_solde_n1'] = -(row.get('net_solde_n1', 0) or 0)
+
+            # Recalcul final des agrégats PNL après inversion des comptes composants
+            # pour que les lignes XA..XI soient cohérentes avec les montants affichés.
+            xa_n = -_g('TA', 'net_solde_n') - _g('RA', 'net_solde_n') + _g('RB', 'net_solde_n')
+            xa_n1 = -_g('TA', 'net_solde_n1') - _g('RA', 'net_solde_n1') + _g('RB', 'net_solde_n1')
+            _set('XA', - xa_n, - xa_n1)
+
+            xb_n = -_g('TA', 'net_solde_n') - _g('TB', 'net_solde_n') - _g('TC', 'net_solde_n') - _g('TD', 'net_solde_n')
+            xb_n1 = -_g('TA', 'net_solde_n1') - _g('TB', 'net_solde_n1') - _g('TC', 'net_solde_n1') - _g('TD', 'net_solde_n1')
+            _set('XB', - xb_n, - xb_n1)
+
+            xc_n = (
+                xb_n
+                - _g('RA', 'net_solde_n') + _pm(_g('RB', 'net_solde_n'))
+                + _pm(_g('TE', 'net_solde_n')) - _g('TF', 'net_solde_n') - _g('TG', 'net_solde_n') - _g('TH', 'net_solde_n') - _g('TI', 'net_solde_n')
+                - _g('RC', 'net_solde_n') + _pm(_g('RD', 'net_solde_n'))
+                - _g('RE', 'net_solde_n') + _pm(_g('RF', 'net_solde_n'))
+                - _g('RG', 'net_solde_n') - _g('RH', 'net_solde_n') - _g('RI', 'net_solde_n') - _g('RJ', 'net_solde_n')
+            )
+            xc_n1 = (
+                xb_n1
+                - _g('RA', 'net_solde_n1') + _pm(_g('RB', 'net_solde_n1'))
+                + _pm(_g('TE', 'net_solde_n1')) - _g('TF', 'net_solde_n1') - _g('TG', 'net_solde_n1') - _g('TH', 'net_solde_n1') - _g('TI', 'net_solde_n1')
+                - _g('RC', 'net_solde_n1') + _pm(_g('RD', 'net_solde_n1'))
+                - _g('RE', 'net_solde_n1') + _pm(_g('RF', 'net_solde_n1'))
+                - _g('RG', 'net_solde_n1') - _g('RH', 'net_solde_n1') - _g('RI', 'net_solde_n1') - _g('RJ', 'net_solde_n1')
+            )
+            _set('XC', - xc_n, - xc_n1)
+
+            xd_n = xc_n - _g('RK', 'net_solde_n')
+            xd_n1 = xc_n1 - _g('RK', 'net_solde_n1')
+            _set('XD', - xd_n, - xd_n1)
+
+            xe_n = xd_n - _g('TJ', 'net_solde_n') - _g('RL', 'net_solde_n')
+            xe_n1 = xd_n1 - _g('TJ', 'net_solde_n1') - _g('RL', 'net_solde_n1')
+            _set('XE', - xe_n, - xe_n1)
+
+            xf_n = -_g('TK', 'net_solde_n') - _g('TL', 'net_solde_n') - _g('TM', 'net_solde_n') - _g('RM', 'net_solde_n') - _g('RN', 'net_solde_n')
+            xf_n1 = -_g('TK', 'net_solde_n1') - _g('TL', 'net_solde_n1') - _g('TM', 'net_solde_n1') - _g('RM', 'net_solde_n1') - _g('RN', 'net_solde_n1')
+            _set('XF', - xf_n, - xf_n1)
+
+            xg_n = xe_n + xf_n
+            xg_n1 = xe_n1 + xf_n1
+            _set('XG', - xg_n, - xg_n1)
+
+            xh_n = -_g('TN', 'net_solde_n') - _g('TO', 'net_solde_n') - _g('RO', 'net_solde_n') - _g('RP', 'net_solde_n')
+            xh_n1 = -_g('TN', 'net_solde_n1') - _g('TO', 'net_solde_n1') - _g('RO', 'net_solde_n1') - _g('RP', 'net_solde_n1')
+            _set('XH', - xh_n, - xh_n1)
+
+            xi_n = xg_n + xh_n - _g('RQ', 'net_solde_n') - _g('RS', 'net_solde_n')
+            xi_n1 = xg_n1 + xh_n1 - _g('RQ', 'net_solde_n1') - _g('RS', 'net_solde_n1')
+            _set('XI', - xi_n, - xi_n1)
+
+        # Alimentation explicite de CJ (Résultat net de l'exercice)
+        # depuis la balance PNL: somme des comptes de classes 6 à 8.
+        # Puis recalcul des agrégats passif impactés (CP, DF, DZ).
+        passif_rows = datum.get('passif', [])
+        if passif_rows:
+            idxp = {row.get('ref'): row for row in passif_rows if row.get('ref')}
+
+            cj_n = - sum(
+                (item.get('solde_reel', 0) or 0)
+                for item in (balance_n or [])
+                if str(item.get('numero_compte', '')).startswith(('6', '7', '8'))
+            )
+            cj_n1 = - sum(
+                (item.get('solde_reel', 0) or 0)
+                for item in (balance_n1 or [])
+                if str(item.get('numero_compte', '')).startswith(('6', '7', '8'))
+            )
+
+            if 'CJ' in idxp:
+                idxp['CJ']['net_solde_n'] = cj_n
+                idxp['CJ']['net_solde_n1'] = cj_n1
+                idxp['CJ']['brut_solde_n'] = cj_n
+                idxp['CJ']['amor_solde_n'] = 0
+
+            def _gp(ref, key):
+                row = idxp.get(ref) or {}
+                value = row.get(key, 0)
+                return value if value is not None else 0
+
+            def _setp_from_refs(ref, refs):
+                if ref in idxp:
+                    idxp[ref]['brut_solde_n'] = sum(_gp(r, 'brut_solde_n') for r in refs)
+                    idxp[ref]['amor_solde_n'] = sum(_gp(r, 'amor_solde_n') for r in refs)
+                    idxp[ref]['net_solde_n'] = sum(_gp(r, 'net_solde_n') for r in refs)
+                    idxp[ref]['net_solde_n1'] = sum(_gp(r, 'net_solde_n1') for r in refs)
+
+            _setp_from_refs('CP', ['CA', 'CB', 'CD', 'CE', 'CF', 'CG', 'CH', 'CJ', 'CL', 'CM'])
+            _setp_from_refs('DF', ['CP', 'DD'])
+            _setp_from_refs('DZ', ['DF', 'DP', 'DT', 'DV'])
+
         return datum
 
 
@@ -6411,13 +6982,13 @@ class Mission(Document):
             local_db = get_db()
             if local_db is None:
                 from src.utils.database import ensure_connection
-                print("⚠️ audit_trail: get_db() a renvoyé None, tentative de reconnexion...")
+                print("audit_trail: get_db() a renvoyé None, tentative de reconnexion...")
                 ensure_connection()
                 local_db = get_db()
             if local_db is None:
                 raise RuntimeError("audit_trail: Base de données non connectée (get_db a renvoyé None)")
         except Exception as e:
-            print(f"❌ audit_trail: impossible d'obtenir la connexion DB: {e}")
+            print(f"audit_trail: impossible d'obtenir la connexion DB: {e}")
             raise
 
         # Créer un fichier Excel pour la piste d'audit
@@ -6494,106 +7065,90 @@ class Mission(Document):
     # ---------- Extract grouping Excel ----------
 
     def extract_grouping(self, id_mission):
+        db = get_db()
+        if db is None:
+            from src.utils.database import ensure_connection
+            ensure_connection()
+            db = get_db()
+        if db is None:
+            raise RuntimeError("extract_grouping: base de donn?es non connect?e")
 
-        # Créer un fichier Excel pour l'export du grouping
+        # Cr?er un fichier Excel pour l'export du grouping
         wb = openpyxl.Workbook()
-
         sheet = wb.active
 
-
-
         columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
-
-        headers = ['Numéro compte', 'Solde n', 'Solde n-1', 'Grouping', 'Variation', 'Variation %', 'Compte qualitatif', 'Compte quantitatif', 'Compte significatif']
-
-
+        headers = ['Num?ro compte', 'Solde n', 'Solde n-1', 'Grouping', 'Variation', 'Variation %', 'Compte qualitatif', 'Compte quantitatif', 'Compte significatif']
 
         mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
+        if not mission:
+            raise ValueError("Mission non trouv?e")
 
-        balances = mission['balance_variation']
+        balances = mission.get('balance_variation', []) or []
+        grouping = mission.get('grouping', []) or []
+        materiality_list = mission.get('materiality', []) or []
+        materiality = next((item for item in materiality_list if item.get('choice') is True), {})
 
-        grouping = mission['grouping']
-
-        materiality = next(item for item in mission['materiality'] if item['choice'] is True)
-
-
+        grouping_map = {item.get('compte'): item for item in grouping if item.get('compte')}
 
         for i in range(len(columns)):
-
             sheet[columns[i] + '1'] = headers[i]
 
-
+        # Largeurs pour ?viter les ####### et format d'affichage lisible
+        sheet.column_dimensions['A'].width = 14
+        sheet.column_dimensions['B'].width = 16
+        sheet.column_dimensions['C'].width = 16
+        sheet.column_dimensions['D'].width = 10
+        sheet.column_dimensions['E'].width = 16
+        sheet.column_dimensions['F'].width = 12
+        sheet.column_dimensions['G'].width = 18
+        sheet.column_dimensions['H'].width = 18
+        sheet.column_dimensions['I'].width = 18
 
         for iteration, data in enumerate(balances):
-
             new_iteration = str(iteration + 2)
-
             sheet["A" + new_iteration] = data.get("numero_compte")
-
             sheet["B" + new_iteration] = data.get("solde_n")
-
             sheet["C" + new_iteration] = data.get("solde_n1")
 
-
+            # Formats: pas de notation scientifique + s?parateurs d'espaces
+            sheet["A" + new_iteration].number_format = "@"
+            sheet["B" + new_iteration].number_format = "# ##0"
+            sheet["C" + new_iteration].number_format = "# ##0"
 
             value_grouping = data.get("numero_compte")[0:2]
-
             variation = data.get("solde_n") - data.get("solde_n1")
 
-
-
             if variation == 0:
-
                 variation_percent = 0
-
             elif data.get("solde_n1") == 0:
-
                 variation_percent = 100
-
             else:
-
                 variation_percent = (variation / data.get("solde_n1")) * 100
 
-
-
             sheet["D" + new_iteration] = value_grouping
-
             sheet["E" + new_iteration] = variation
-
             sheet["F" + new_iteration] = variation_percent
 
-            sheet["G" + new_iteration] = next(item['significant'] for item in grouping if item['compte'] == value_grouping)
+            sheet["E" + new_iteration].number_format = "# ##0"
+            sheet["F" + new_iteration].number_format = "0.00"
+            g_item = grouping_map.get(value_grouping, {})
+            sheet["G" + new_iteration] = g_item.get('significant')
+            sheet["H" + new_iteration] = g_item.get('materiality')
+            sheet["I" + new_iteration] = g_item.get('mat_sign')
 
-            sheet["H" + new_iteration] = next(item['materiality'] for item in grouping if item['compte'] == value_grouping)
-
-            sheet["I" + new_iteration] = next(item['mat_sign'] for item in grouping if item['compte'] == value_grouping)
-
-
-
-        second_sheet = wb.create_sheet(title="Seuil de matérialité")
-
+        # Nom de feuille Excel sûr (éviter caractères interdits comme '?')
+        second_sheet = wb.create_sheet(title="Seuil_materialite")
         second_headers = ['materiality', 'performance materiality', 'trivial misstatements']
-
         second_sheet["A1"] = second_headers[0]
-
         second_sheet["B1"] = second_headers[1]
-
         second_sheet["C1"] = second_headers[2]
 
-
-
-        second_sheet["A2"] = materiality['materiality']
-
-        second_sheet["B2"] = materiality['performance_materiality']
-
-        second_sheet["C2"] = materiality['trivial_misstatements']
-
-
+        second_sheet["A2"] = materiality.get('materiality')
+        second_sheet["B2"] = materiality.get('performance_materiality')
+        second_sheet["C2"] = materiality.get('trivial_misstatements')
 
         excel_io = BytesIO()
-
         wb.save(excel_io)
-
         excel_io.seek(0)
-
         return excel_io

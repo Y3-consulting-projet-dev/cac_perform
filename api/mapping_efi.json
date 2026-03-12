@@ -114,8 +114,8 @@
         "net_solde_n": 0,
         "net_solde_n1": 0,
         "brut_except_cpt": "245,2495",
-        "amor_except_cpt": "2845,2945,2949",
-        "net_except_cpt": "245,2495,2845,2945,2949"
+        "amor_except_cpt": "2845,2945",
+        "net_except_cpt": ""
         },
         {
         "ref": "AN",
