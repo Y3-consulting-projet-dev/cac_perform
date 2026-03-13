@@ -6046,16 +6046,25 @@ class Mission(Document):
         grouping = mission.get('grouping', [])
         materialities = mission.get('materiality', [])
 
+        # On récupère le benchmark choisi par l'utilisateur
         materiality = next((mat for mat in materialities if mat.get('choice')), None)
 
         if not materiality:
             return 0
 
-        seuil = int(materiality.get('materiality', 0))
+        # ⚙️ NOUVELLE RÈGLE :
+        # Étape 8 – Décision finale des comptes à tester basée sur la Performance Materiality
+        # On compare les soldes N (2024) au seuil de performance_materiality.
+        # Si solde_n >= performance_materiality → compte "matériel" (à tester)
+        # Sinon → compte non matériel (pas de test quantitatif).
+        seuil_performance = int(materiality.get('performance_materiality') or 0)
+        # Par sécurité, si la performance materiality n'est pas renseignée, on retombe sur la matérialité globale
+        if seuil_performance <= 0:
+            seuil_performance = int(materiality.get('materiality', 0) or 0)
 
         for item in grouping:
             solde = int(item.get('solde_n', 0))
-            item['materiality'] = solde >= seuil
+            item['materiality'] = solde >= seuil_performance
 
         result = local_db.Mission1.update_one(
             {"_id": ObjectId(id_mission)},

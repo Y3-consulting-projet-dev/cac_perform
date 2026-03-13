@@ -155,6 +155,10 @@ const bench = ref({
   id: "",
   balanceValue: "",
   factor: "",
+  // Pourcentages manuels
+  performance_factor: "",
+  trivial_factor: "",
+  // Montants calculés
   amount_based_on_factor: null,
   performance_materiality: null,
   thresold: null,
@@ -166,8 +170,9 @@ const bench = ref({
 bench.value.custom_label = "";
 bench.value.custom_balance = null;
 
-const FACTOR_PERFORMANCE_MATERIALITY = 0.08;
-const FACTOR_THRESHOLD = 0.05;
+// Bornes des pourcentages manuels
+const PERFORMANCE_FACTOR_RANGE = { min: 50, max: 80 };
+const TRIVIAL_FACTOR_RANGE = { min: 1, max: 5 };
 const FACTOR_RANGES = {
   ebitda: { min: 3, max: 5 },
   expenses: { min: 3, max: 5 },
@@ -735,9 +740,16 @@ watch(selectedBench, (newValue) => {
 // Calculer les valeurs dépendantes du facteur saisi
 function updateSelectBenchmark() {
   const factor = parseFloat(bench.value.factor);
+  const performanceFactor = parseFloat(bench.value.performance_factor);
+  const trivialFactor = parseFloat(bench.value.trivial_factor);
   // support custom benchmark when selected
   const balance = bench.value.id === 'autre' ? Number(bench.value.custom_balance) : bench.value.balanceValue;
+
+  // 1. Vérification factor (matérialité de base)
   if (!Number.isFinite(factor) || !Number.isFinite(Number(balance))) {
+    bench.value.amount_based_on_factor = null;
+    bench.value.performance_materiality = null;
+    bench.value.thresold = null;
     if (!factor) {
       errorMsg.value = "";
     }
@@ -752,11 +764,45 @@ function updateSelectBenchmark() {
     bench.value.thresold = null;
     return;
   }
-  errorMsg.value = "";
-  // Calculer la matérialité réelle (peut être négative)
+  // Calculer la matérialité (Materiality Threshold)
   bench.value.amount_based_on_factor = Math.round((balance * factor) / 100);
-  bench.value.performance_materiality = Math.round(bench.value.amount_based_on_factor * FACTOR_PERFORMANCE_MATERIALITY);
-  bench.value.thresold = Math.round(bench.value.amount_based_on_factor * FACTOR_THRESHOLD);
+
+  // 2. Vérification et calcul Performance Materiality (50–80 %)
+  if (!Number.isFinite(performanceFactor)) {
+    bench.value.performance_materiality = null;
+    bench.value.thresold = null;
+    errorMsg.value = "";
+    return;
+  }
+  if (performanceFactor < PERFORMANCE_FACTOR_RANGE.min || performanceFactor > PERFORMANCE_FACTOR_RANGE.max) {
+    errorMsg.value = `Le pourcentage de Performance Materiality doit être compris entre ${PERFORMANCE_FACTOR_RANGE.min}% et ${PERFORMANCE_FACTOR_RANGE.max}%.`;
+    notyf.trigger(errorMsg.value, 'error');
+    bench.value.performance_materiality = null;
+    bench.value.thresold = null;
+    return;
+  }
+  bench.value.performance_materiality = Math.round(
+    bench.value.amount_based_on_factor * (performanceFactor / 100)
+  );
+
+  // 3. Vérification et calcul Clearly Trivial Threshold (1–5 %)
+  if (!Number.isFinite(trivialFactor)) {
+    bench.value.thresold = null;
+    errorMsg.value = "";
+    return;
+  }
+  if (trivialFactor < TRIVIAL_FACTOR_RANGE.min || trivialFactor > TRIVIAL_FACTOR_RANGE.max) {
+    errorMsg.value = `Le pourcentage de Clearly Trivial Threshold doit être compris entre ${TRIVIAL_FACTOR_RANGE.min}% et ${TRIVIAL_FACTOR_RANGE.max}%.`;
+    notyf.trigger(errorMsg.value, 'error');
+    bench.value.thresold = null;
+    return;
+  }
+
+  bench.value.thresold = Math.round(
+    bench.value.performance_materiality * (trivialFactor / 100)
+  );
+
+  errorMsg.value = "";
 }
 
 // Calculer seuil de signification et enregistrer dans la BD
@@ -775,6 +821,8 @@ async function validerSeuil() {
       performance_materiality: bench.value.performance_materiality,
       trivial_misstatements: bench.value.thresold,
       factor: bench.value.factor,
+      performance_factor: bench.value.performance_factor,
+      trivial_factor: bench.value.trivial_factor,
       commentaire: bench.value.commentaire || ""
     };
 
@@ -3507,7 +3555,8 @@ function formatAmount(value) {
               <!-- Calcul du seuil de signification -->
               <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
                 <h4 class="text-base font-semibold text-gray-800 mb-3">Calcul du seuil</h4>
-                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <!-- Grille responsive avec colonnes plus larges pour éviter le chevauchement -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                   <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">Choisir benchmark</label>
                     <select v-model="selectedBench"
@@ -3543,6 +3592,24 @@ function formatAmount(value) {
                     <div v-if="bench.text" class="mt-1 text-xs text-gray-600">
                       <i class="fas fa-info-circle mr-1"></i>{{ bench.text }}
                     </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Performance Materiality (%)</label>
+                    <input
+                      v-model="bench.performance_factor"
+                      @input="updateSelectBenchmark"
+                      class="w-full px-3 py-2 border-2 border-blue-500 rounded-md focus:outline-none focus:border-blue-600"
+                      type="number" step="0.1" placeholder="Entre 50 et 80 %">
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Clearly Trivial (%)</label>
+                    <input
+                      v-model="bench.trivial_factor"
+                      @input="updateSelectBenchmark"
+                      class="w-full px-3 py-2 border-2 border-blue-500 rounded-md focus:outline-none focus:border-blue-600"
+                      type="number" step="0.1" placeholder="Entre 1 et 5 %">
                   </div>
 
                   <div>
