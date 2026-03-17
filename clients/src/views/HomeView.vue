@@ -218,11 +218,11 @@ async function deleteClient() {
       <!-- Profil / Notifications -->
       <div class="mt-auto flex flex-col gap-6 pt-10 border-t border-white/30">
 
-        <!-- Notifications -->
+        <!-- Notifications 
         <div class="flex items-center gap-4 cursor-pointer hover:text-gray-200 transition">
           <i class="fa-solid fa-bell text-orange-400 text-xl"></i>
           <span class="text-sm">Notifications ({{ unreadNotifications }})</span>
-        </div>
+        </div> -->
 
         <!-- Profil utilisateur -->
         <div class="flex items-center gap-3">
@@ -275,10 +275,9 @@ async function deleteClient() {
 
       </div>
 
-      <!-- CARD : MISSION EN COURS -->
+      <!-- CARD : MISSION EN COURS -
       <div class="bg-white rounded-xl shadow p-6">
 
-        <!-- Header -->
         <div class="flex justify-between items-start mb-4">
           <div>
             <h3 class="text-lg font-semibold text-gray-800">Mission en cours</h3>
@@ -292,7 +291,6 @@ async function deleteClient() {
           </span>
         </div>
 
-        <!-- Nom + étape -->
         <p class="text-sm text-gray-700 mb-2">
           Mission :
           <span class="font-semibold text-blue-ycube">
@@ -307,7 +305,6 @@ async function deleteClient() {
           </span>
         </p>
 
-        <!-- Barre de progression -->
         <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
           <div class="bg-blue-ycube h-3 rounded-full transition-all duration-500"
             :style="{ width: currentMission.progression + '%' }"></div>
@@ -323,8 +320,8 @@ async function deleteClient() {
             Reprendre la mission →
           </button>
         </div>
-
-      </div>
+        
+      </div> -->
 
 
       <!-- TABLEAU 10 DERNIERS CLIENTS -->

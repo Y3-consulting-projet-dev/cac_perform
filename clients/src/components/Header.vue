@@ -90,7 +90,7 @@ function markAllAsRead() {
     <div class="profil flex items-center gap-6">
 
       <!-- Notifications -->
-      <div class="relative">
+      <!-- <div class="relative">
         <button @click="toggleNotifications" class="relative focus:outline-none hover:text-orange-600 transition">
           <i class="fa-solid fa-bell text-2xl text-orange-500"></i>
           <span v-if="unreadCount > 0"
@@ -99,7 +99,6 @@ function markAllAsRead() {
           </span>
         </button>
 
-        <!-- Popup Notifications -->
         <Teleport to="body">
           <div v-if="showNotifications"
             class="fixed top-20 right-12 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
@@ -136,7 +135,7 @@ function markAllAsRead() {
             </div>
           </div>
         </Teleport>
-      </div>
+      </div> -->
 
       <!-- Divider -->
       <div class="w-px h-8 bg-gray-300"></div>

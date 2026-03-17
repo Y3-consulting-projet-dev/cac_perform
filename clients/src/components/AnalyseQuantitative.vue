@@ -8,7 +8,7 @@ const notyf = useNotyf()
 // Facteur du seuil de matérialité (bench * factor %) : déjà géré via bench.factor
 // Nouveau : facteurs MANUELS pour
 //  - Performance materiality : 50 % à 80 % du seuil de matérialité
-//  - Clearly trivial threshold : 1 % à 5 % de la performance materiality
+//  - Clearly trivial threshold : 1 % à 5 % de la matérialité (materiality threshold)
 const PERFORMANCE_FACTOR_RANGE = { min: 50, max: 80 }
 const TRIVIAL_FACTOR_RANGE = { min: 1, max: 5 }
 
@@ -16,7 +16,7 @@ const FACTOR_RANGES = {
     ebitda: { min: 3, max: 5 },
     expenses: { min: 3, max: 5 },
     profit_before_tax: { min: 5, max: 10 },
-    revenue: { min: 0.8, max: 2 },
+    revenue: { min: 0.8, max: 5 },
     total_assets: { min: 1, max: 2 },
     total_equity_net_assets: { min: 1.0, max: 3.0 },
     cash_flows_from_operations: { min: 3.0, max: 5.0 }
@@ -221,7 +221,7 @@ function updateSelectBenchmark() {
         return
     }
     bench.value.thresold = Math.round(
-        bench.value.performance_materiality * (trivialFactor / 100)
+        bench.value.amount_based_on_factor * (trivialFactor / 100)
     )
 }
 
@@ -387,7 +387,5 @@ async function applySeuil(benchmark) {
         </div>
     </div>
 </template>
-
-
 
 
