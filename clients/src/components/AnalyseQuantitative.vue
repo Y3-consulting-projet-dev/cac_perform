@@ -4,13 +4,19 @@ import { ref, onMounted, inject, watch } from 'vue';
 import { useNotyf } from '@/composables/useNotyf';
 const axios = inject('axios')
 const notyf = useNotyf()
-const FACTOR_PERFORMANCE_MATERIALITY = 0.08
-const FACTOR_THRESHOLD = 0.05
+
+// Facteur du seuil de matérialité (bench * factor %) : déjà géré via bench.factor
+// Nouveau : facteurs MANUELS pour
+//  - Performance materiality : 50 % à 80 % du seuil de matérialité
+//  - Clearly trivial threshold : 1 % à 5 % de la matérialité (materiality threshold)
+const PERFORMANCE_FACTOR_RANGE = { min: 50, max: 80 }
+const TRIVIAL_FACTOR_RANGE = { min: 1, max: 5 }
+
 const FACTOR_RANGES = {
     ebitda: { min: 3, max: 5 },
     expenses: { min: 3, max: 5 },
     profit_before_tax: { min: 5, max: 10 },
-    revenue: { min: 0.8, max: 2 },
+    revenue: { min: 0.8, max: 5 },
     total_assets: { min: 1, max: 2 },
     total_equity_net_assets: { min: 1.0, max: 3.0 },
     cash_flows_from_operations: { min: 3.0, max: 5.0 }
@@ -106,6 +112,8 @@ const bench = ref({
     id: "",
     balanceValue: "",
     factor: "",
+    performance_factor: "",
+    trivial_factor: "",
     amount_based_on_factor: null,
     performance_materiality: null,
     thresold: null,
@@ -163,6 +171,8 @@ async function getListMaterialities() {
 // Calculer les valeurs dépendants du facteur saisi
 function updateSelectBenchmark() {
     const factor = parseFloat(bench.value.factor)
+    const performanceFactor = parseFloat(bench.value.performance_factor)
+    const trivialFactor = parseFloat(bench.value.trivial_factor)
     const balance = Number(bench.value.balanceValue)
     if (!Number.isFinite(factor) || !Number.isFinite(balance)) {
         bench.value.amount_based_on_factor = null
@@ -174,9 +184,45 @@ function updateSelectBenchmark() {
     if (range && (factor < range.min || factor > range.max)) {
         return
     }
+
+    // 1. Calcul du seuil de matérialité (Materiality Threshold) à partir du bench et du factor (%)
     bench.value.amount_based_on_factor = Math.round((balance * factor) / 100)
-    bench.value.performance_materiality = Math.round(bench.value.amount_based_on_factor * FACTOR_PERFORMANCE_MATERIALITY)
-    bench.value.thresold = Math.round(bench.value.amount_based_on_factor * FACTOR_THRESHOLD)
+
+    // 2. Calcul de la performance materiality à partir d'un pourcentage MANUEL (50–80 %)
+    if (!Number.isFinite(performanceFactor)) {
+        bench.value.performance_materiality = null
+        bench.value.thresold = null
+        return
+    }
+    if (
+        performanceFactor < PERFORMANCE_FACTOR_RANGE.min ||
+        performanceFactor > PERFORMANCE_FACTOR_RANGE.max
+    ) {
+        notyf.trigger(
+            `Le pourcentage de Performance Materiality doit être compris entre ${PERFORMANCE_FACTOR_RANGE.min}% et ${PERFORMANCE_FACTOR_RANGE.max}%`,
+            'error'
+        )
+        return
+    }
+    bench.value.performance_materiality = Math.round(
+        bench.value.amount_based_on_factor * (performanceFactor / 100)
+    )
+
+    // 3. Calcul du Clearly Trivial Threshold à partir d'un pourcentage MANUEL (1–5 %) appliqué à la performance materiality
+    if (!Number.isFinite(trivialFactor)) {
+        bench.value.thresold = null
+        return
+    }
+    if (trivialFactor < TRIVIAL_FACTOR_RANGE.min || trivialFactor > TRIVIAL_FACTOR_RANGE.max) {
+        notyf.trigger(
+            `Le pourcentage de Clearly Trivial Threshold doit être compris entre ${TRIVIAL_FACTOR_RANGE.min}% et ${TRIVIAL_FACTOR_RANGE.max}%`,
+            'error'
+        )
+        return
+    }
+    bench.value.thresold = Math.round(
+        bench.value.amount_based_on_factor * (trivialFactor / 100)
+    )
 }
 
 // Calculer seuil de signification et enregistrer dans la BD
@@ -194,7 +240,9 @@ async function validerSeuil() {
         materiality : bench.value.amount_based_on_factor,
         performance_materiality : bench.value.performance_materiality,
         trivial_misstatements: bench.value.thresold,
-        factor: bench.value.factor
+        factor: bench.value.factor,
+        performance_factor: bench.value.performance_factor,
+        trivial_factor: bench.value.trivial_factor
     }
     const result = (await axios.put(`/mission/save_materiality/${id_mission}`, field)).data.response
     console.log(result)
@@ -235,7 +283,7 @@ async function applySeuil(benchmark) {
             <div class="mx-auto w-[95%] h-[180px] flex flex-col px-6 pb-6 bg-gray-300 rounded-md">
                 <h3 class="pt-3 pb-1 pl-0 text-base font-semibold uppercase tracking-wider">Calcul du seuil</h3>
                 <div class="flex space-x-2">
-                    <div class="w-[30%]">
+                    <div class="w-[22%]">
                         <label for="" class="font-bold uppercase text-xs">Choisir benchmark</label>
                         <select v-model="selectedBench" name="" id="" class="px-2 border-2 border-blue-ycube w-full h-8">
                             <option value="" disabled>Aucun benchmark choisi</option>
@@ -244,19 +292,40 @@ async function applySeuil(benchmark) {
                         <!-- <div v-if="selectedBench.balance_value" class="px-2 border-2 border-blue-ycube w-full h-8">{{ selectedBench.balance_value }}</div>
                         <div v-else class="px-2 border-2 border-blue-ycube w-full italic h-8">Aucune benchmark choisi</div> -->
                     </div>
-                    <div class="w-[30%]">
+                    <div class="w-[22%]">
                         <label for="" class="font-bold uppercase text-xs">Benchmark Balance</label>
                         <div v-if="bench.id" class="px-2 border-2 border-blue-ycube w-full h-8">{{ bench.balanceValue }}</div>
                         <div v-else class="px-2 border-2 border-blue-ycube w-full italic h-8">Aucun benchmark choisi</div>
                     </div>
 
-                    <div class="w-[30%]">
-                        <label for="">Factor (%)</label>
+                    <div class="w-[18%]">
+                        <label for="" class="font-bold uppercase text-xs">Factor (%)</label>
                         <input v-model="bench.factor" class="px-2 border-2 border-blue-ycube w-full h-8 placeholder:italic" type="text" placeholder="Enter factor...">
                         <div v-if="bench.id" class="mt-2 text-xs italic"><i class="mdi mdi-information font-bold text-base"></i> {{ bench.text }}</div>
                         <!-- <button @click="console.log(selectedBench)">Test</button> -->
                     </div>
-                    <div class="w-[10%]">
+
+                    <div class="w-[18%]">
+                        <label for="" class="font-bold uppercase text-xs">Performance Materiality (%)</label>
+                        <input
+                            v-model="bench.performance_factor"
+                            class="px-2 border-2 border-blue-ycube w-full h-8 placeholder:italic"
+                            type="text"
+                            placeholder="Entre 50 et 80 %"
+                        >
+                    </div>
+
+                    <div class="w-[18%]">
+                        <label for="" class="font-bold uppercase text-xs">Clearly Trivial (%)</label>
+                        <input
+                            v-model="bench.trivial_factor"
+                            class="px-2 border-2 border-blue-ycube w-full h-8 placeholder:italic"
+                            type="text"
+                            placeholder="Entre 1 et 5 %"
+                        >
+                    </div>
+
+                    <div class="w-[10%] flex items-end">
                         <button class="mt-6 py-2 px-8 bg-blue-ycube rounded-md text-xs font-semibold text-white" @click="validerSeuil">Valider</button>
                     </div>
                 </div>
@@ -318,7 +387,5 @@ async function applySeuil(benchmark) {
         </div>
     </div>
 </template>
-
-
 
 

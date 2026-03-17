@@ -150,11 +150,32 @@ const listBenchmark = ref([
 
 
 const listMaterialities = ref([]);
+const HIDDEN_MATERIALITY_BENCHMARKS = ['profit_before_tax', 'total_assets', 'total_expenses'];
+const forcedVisibleBenchmarks = ref(new Set());
+
+function markBenchmarkVisible(benchmark) {
+  if (!benchmark || !HIDDEN_MATERIALITY_BENCHMARKS.includes(benchmark)) return;
+  const next = new Set(forcedVisibleBenchmarks.value);
+  next.add(benchmark);
+  forcedVisibleBenchmarks.value = next;
+}
+
+const visibleMaterialities = computed(() => {
+  const forced = forcedVisibleBenchmarks.value;
+  return (listMaterialities.value || []).filter(m => {
+    if (!HIDDEN_MATERIALITY_BENCHMARKS.includes(m.benchmark)) return true;
+    return forced.has(m.benchmark);
+  });
+});
 const selectedBench = ref("");
 const bench = ref({
   id: "",
   balanceValue: "",
   factor: "",
+  // Pourcentages manuels
+  performance_factor: "",
+  trivial_factor: "",
+  // Montants calculés
   amount_based_on_factor: null,
   performance_materiality: null,
   thresold: null,
@@ -166,13 +187,14 @@ const bench = ref({
 bench.value.custom_label = "";
 bench.value.custom_balance = null;
 
-const FACTOR_PERFORMANCE_MATERIALITY = 0.08;
-const FACTOR_THRESHOLD = 0.05;
+// Bornes des pourcentages manuels
+const PERFORMANCE_FACTOR_RANGE = { min: 50, max: 80 };
+const TRIVIAL_FACTOR_RANGE = { min: 1, max: 5 };
 const FACTOR_RANGES = {
   ebitda: { min: 3, max: 5 },
   expenses: { min: 3, max: 5 },
   profit_before_tax: { min: 5, max: 10 },
-  revenue: { min: 0.8, max: 2 },
+  revenue: { min: 0.8, max: 5 },
   total_assets: { min: 1, max: 2 },
   total_equity_net_assets: { min: 1.0, max: 3.0 },
   cash_flows_from_operations: { min: 3.0, max: 5.0 }
@@ -185,6 +207,125 @@ const selectedEfiTab = ref('actif');
 const loading = ref(false);
 const errorMsg = ref("");
 const expandedRows = ref([]);
+const revueExpandedRows = ref(new Set());
+
+function getQualitativeKey(item, index) {
+  const base = item?.compte || item?.numero_compte || item?._id || "row";
+  return `${base}__${index}`;
+}
+
+// Toggle statut (quantitatif)
+function toggleQuantitativeStatus(item) {
+  if (!item) return;
+  item.is_significant = !item.is_significant;
+  item.status = item.is_significant ? "À tester" : "Ne pas tester";
+  updateQuantitativeStatistics();
+}
+
+function updateQuantitativeStatistics() {
+  if (!analyseQuantitativeReport.value || !analyseQuantitativeReport.value.analyse) return;
+  const analyse = analyseQuantitativeReport.value.analyse;
+  let significantAccounts = 0;
+  let nonSignificantAccounts = 0;
+  let totalSignificantAmount = 0;
+
+  analyse.forEach(item => {
+    if (item.is_significant) {
+      significantAccounts++;
+      totalSignificantAmount += Number(item.solde_n || 0);
+    } else {
+      nonSignificantAccounts++;
+    }
+  });
+
+  if (!analyseQuantitativeReport.value.statistics) {
+    analyseQuantitativeReport.value.statistics = {};
+  }
+  analyseQuantitativeReport.value.statistics.significant_accounts = significantAccounts;
+  analyseQuantitativeReport.value.statistics.non_significant_accounts = nonSignificantAccounts;
+  analyseQuantitativeReport.value.statistics.total_significant_amount = totalSignificantAmount;
+}
+
+// Toggle statut (qualitatif)
+function toggleQualitativeStatus(item) {
+  if (!item) return;
+  const isTest = item.status === "À tester";
+  item.status = isTest ? "Ne pas tester" : "À tester";
+  item.is_qualitatively_significant = !isTest;
+  updateQualitativeStatistics();
+}
+
+// Toggle statut (présentation - décision finale)
+function syncPresentationSignificativite(item) {
+  const isSignificant = !!(item.is_quantitatively_significant || item.is_qualitatively_significant);
+  item.significativite_status = isSignificant ? "Significatif" : "Non significatif";
+}
+
+function updatePresentationStatistics() {
+  if (!presentationComptesSignificatifsReport.value || !presentationComptesSignificatifsReport.value.presentation) {
+    return;
+  }
+  const list = presentationComptesSignificatifsReport.value.presentation;
+  let significantAccounts = 0;
+  let nonSignificantAccounts = 0;
+  let highPriorityAccounts = 0;
+  let totalSignificantAmount = 0;
+
+  list.forEach(item => {
+    const isQuant = !!item.is_quantitatively_significant;
+    const isQual = !!item.is_qualitatively_significant;
+    const isSignificant = item.significativite_status === "Significatif" || isQuant || isQual;
+
+    if (isSignificant) {
+      significantAccounts++;
+      totalSignificantAmount += Number(item.solde_n || 0);
+    } else {
+      nonSignificantAccounts++;
+    }
+
+    if (isQuant && isQual) {
+      highPriorityAccounts++;
+    }
+  });
+
+  if (!presentationComptesSignificatifsReport.value.statistics) {
+    presentationComptesSignificatifsReport.value.statistics = {};
+  }
+  presentationComptesSignificatifsReport.value.statistics.significant_accounts = significantAccounts;
+  presentationComptesSignificatifsReport.value.statistics.non_significant_accounts = nonSignificantAccounts;
+  presentationComptesSignificatifsReport.value.statistics.high_priority_accounts = highPriorityAccounts;
+  presentationComptesSignificatifsReport.value.statistics.total_significant_amount = totalSignificantAmount;
+}
+
+function togglePresentationQuantitative(item) {
+  if (!item) return;
+  item.is_quantitatively_significant = !item.is_quantitatively_significant;
+  syncPresentationSignificativite(item);
+  updatePresentationStatistics();
+}
+
+function togglePresentationQualitative(item) {
+  if (!item) return;
+  item.is_qualitatively_significant = !item.is_qualitatively_significant;
+  syncPresentationSignificativite(item);
+  updatePresentationStatistics();
+}
+
+function togglePresentationSignificativite(item) {
+  if (!item) return;
+  const next = item.significativite_status === "Significatif" ? "Non significatif" : "Significatif";
+  item.significativite_status = next;
+  if (next === "Significatif") {
+    if (!item.is_quantitatively_significant && !item.is_qualitatively_significant) {
+      item.is_quantitatively_significant = true;
+      item.is_qualitatively_significant = true;
+    }
+  } else {
+    item.is_quantitatively_significant = false;
+    item.is_qualitatively_significant = false;
+  }
+  updatePresentationStatistics();
+}
 
 function hasBalanceValues(item) {
   if (!item || typeof item !== 'object') return false;
@@ -200,6 +341,77 @@ function hasBalanceValues(item) {
 function filterByBalanceRows(list) {
   if (!Array.isArray(list)) return [];
   return list.filter(hasBalanceValues);
+}
+
+function toggleRevueRow(index) {
+  revueExpandedRows.value.has(index)
+    ? revueExpandedRows.value.delete(index)
+    : revueExpandedRows.value.add(index);
+}
+
+function hasRevueComptes(row) {
+  const comptes = row?.comptes_detaille || row?.comptes;
+  return Array.isArray(comptes) && comptes.length > 0;
+}
+
+const revueAnalytiqueGroups = computed(() => {
+  const groups = groupingData.value?.grouping;
+  if (!Array.isArray(groups) || groups.length === 0) return [];
+
+  const byCompte = new Map(
+    (revueAnalytique.value || []).map(r => [String(r.numero_compte ?? ''), r])
+  );
+
+  return groups
+    .map(group => {
+      const comptes = (group.comptes || group.comptes_detaille || []).map(c => {
+        const numero = String(c.numero_compte ?? c.compte ?? '');
+        const r = byCompte.get(numero);
+        const soldeN = Number(c.solde_n ?? r?.solde_n ?? 0);
+        const soldeN1 = Number(c.solde_n1 ?? r?.solde_n1 ?? 0);
+        const delta = Number(r?.delta_abs ?? (soldeN - soldeN1));
+        const deltaPct = Number(r?.delta_pct ?? ((soldeN1 ? delta / Math.abs(soldeN1) : 0)));
+
+        return {
+          ...c,
+          numero_compte: c.numero_compte ?? r?.numero_compte ?? c.compte,
+          libelle: c.libelle ?? r?.libelle,
+          solde_n: soldeN,
+          solde_n1: soldeN1,
+          delta_abs: delta,
+          delta_pct: deltaPct,
+          commentaire_auto: r?.commentaire_auto ?? '',
+          commentaire_perso: r?.commentaire_perso ?? ''
+        };
+      });
+
+      return { ...group, comptes_detaille: comptes };
+    })
+    .filter(hasRevueComptes);
+});
+
+function getCompteFromItem(item) {
+  if (!item || typeof item !== 'object') return '';
+  const candidates = [
+    item.compte,
+    item.numero_compte,
+    item.num_compte,
+    item.code_compte,
+    item.compte_num,
+    item.account,
+    item.numero,
+    item.num,
+    item.code,
+    item.ref
+  ];
+  const val = candidates.find(v => v !== undefined && v !== null && String(v).trim() !== '');
+  return val != null ? String(val).trim() : '';
+}
+
+function getClasseFromItem(item) {
+  const compte = getCompteFromItem(item);
+  const digits = compte.replace(/\D/g, '');
+  return digits ? digits.charAt(0) : '';
 }
 
 // Variables réactives pour les statistiques
@@ -239,6 +451,8 @@ const workflowPhases = ref([
       { id: 3, name: "Contrôle de cohérence", key: "coherence"},
       { id: 4, name: "Contrôle d’intangibilité", key: "intang" },
       { id: 5, name: "Calcul des seuils", key: "materialite" },
+      { id: 6, name: "Analyse quantitative", key: "quantitatif" },
+      { id: 7, name: "Analyse qualitative", key: "qualitatif" },
       { id: 6, name: "Grouping", key: "grouping" },
       { id: 7, name: "États financiers préliminaires", key: "efi" },
       { id: 8, name: "Décision finale des comptes à tester", key: "presentation" }
@@ -249,15 +463,25 @@ const workflowPhases = ref([
     label: 'Phase 3 – Conclusion',
     open: false,
     steps: [
-      { id: 9, name: "Revue analytique finale", key: "revue", checked: false, static: false }
+      { id: 11, name: "Revue analytique finale", key: "revue", checked: false, static: false }
     ]
   }
-]);
+  ]);
+  
+const DEFAULT_STEP_KEY = 'coherence';
 
-// Toggle ouverture phase
-function togglePhase(phase) {
-  phase.open = !phase.open;
+const stepKeys = computed(() => new Set(
+  workflowPhases.value.flatMap(p => p.steps.map(s => s.key))
+));
+
+function isValidStepKey(key) {
+  return typeof key === 'string' && stepKeys.value.has(key);
 }
+
+  // Toggle ouverture phase
+  function togglePhase(phase) {
+    phase.open = !phase.open;
+  }
 
 // Checkbox (phase 1 & 3 uniquement)
 function toggleStep(step) {
@@ -301,6 +525,11 @@ onMounted(async () => {
   const result = (await axios.get(`/mission/affichage_infos_mission/${id_mission}`)).data.response;
   infoMission.value = typeof result === 'object' ? result : null;
   console.log("infoooo:", infoMission.value);
+
+  const initialStep = isValidStepKey(route.query?.step)
+    ? route.query.step
+    : DEFAULT_STEP_KEY;
+  showComponent(initialStep);
 });
 
 watch(
@@ -321,6 +550,15 @@ watch(
     }
   },
   { immediate: true }
+);
+
+watch(
+  () => route.query?.step,
+  (val) => {
+    if (isValidStepKey(val) && val !== componentKey.value) {
+      showComponent(val, { skipRouteUpdate: true });
+    }
+  }
 );
 
 /* === Workflow libre - toutes les étapes accessibles === */
@@ -369,6 +607,9 @@ function toggleDetail(index) {
 async function loadRevueAnalytique() {
   loading.value = true; errorMsg.value = "";
   try {
+    if (!groupingData.value?.grouping) {
+      await loadGrouping();
+    }
     const { data } = await axios.get(`/mission/revue_analytique/${props.missionId}`);
     revueAnalytique.value = filterByBalanceRows(data.response || []);
   } catch (e) {
@@ -549,7 +790,12 @@ async function loadIntangibilite() {
 }
 
 /* === Navigation === */
-function showComponent(type) {
+function showComponent(type, options = {}) {
+  const { skipRouteUpdate = false } = options;
+  if (!skipRouteUpdate && route.query?.step !== type) {
+    router.replace({ path: route.path, query: { ...route.query, step: type } });
+  }
+
   const subProps = { data: infoMission.value };
   selectBtn.value = type;     // <- ACTIVE LA NOUVELLE SIDEBAR
   componentKey.value = type;  // <- Gère l’affichage composant
@@ -607,6 +853,12 @@ function showComponent(type) {
       break;
     case "materialite":
       loadMaterialite();
+      break;
+    case "quantitatif":
+      loadQuantitatif();
+      break;
+    case "qualitatif":
+      loadQualitatif();
       break;
     case "presentation":
       loadPresentationComptesSignificatifs();
@@ -735,9 +987,16 @@ watch(selectedBench, (newValue) => {
 // Calculer les valeurs dépendantes du facteur saisi
 function updateSelectBenchmark() {
   const factor = parseFloat(bench.value.factor);
+  const performanceFactor = parseFloat(bench.value.performance_factor);
+  const trivialFactor = parseFloat(bench.value.trivial_factor);
   // support custom benchmark when selected
   const balance = bench.value.id === 'autre' ? Number(bench.value.custom_balance) : bench.value.balanceValue;
+
+  // 1. Vérification factor (matérialité de base)
   if (!Number.isFinite(factor) || !Number.isFinite(Number(balance))) {
+    bench.value.amount_based_on_factor = null;
+    bench.value.performance_materiality = null;
+    bench.value.thresold = null;
     if (!factor) {
       errorMsg.value = "";
     }
@@ -752,11 +1011,45 @@ function updateSelectBenchmark() {
     bench.value.thresold = null;
     return;
   }
-  errorMsg.value = "";
-  // Calculer la matérialité réelle (peut être négative)
+  // Calculer la matérialité (Materiality Threshold)
   bench.value.amount_based_on_factor = Math.round((balance * factor) / 100);
-  bench.value.performance_materiality = Math.round(bench.value.amount_based_on_factor * FACTOR_PERFORMANCE_MATERIALITY);
-  bench.value.thresold = Math.round(bench.value.amount_based_on_factor * FACTOR_THRESHOLD);
+
+  // 2. Vérification et calcul Performance Materiality (50–80 %)
+  if (!Number.isFinite(performanceFactor)) {
+    bench.value.performance_materiality = null;
+    bench.value.thresold = null;
+    errorMsg.value = "";
+    return;
+  }
+  if (performanceFactor < PERFORMANCE_FACTOR_RANGE.min || performanceFactor > PERFORMANCE_FACTOR_RANGE.max) {
+    errorMsg.value = `Le pourcentage de Performance Materiality doit être compris entre ${PERFORMANCE_FACTOR_RANGE.min}% et ${PERFORMANCE_FACTOR_RANGE.max}%.`;
+    notyf.trigger(errorMsg.value, 'error');
+    bench.value.performance_materiality = null;
+    bench.value.thresold = null;
+    return;
+  }
+  bench.value.performance_materiality = Math.round(
+    bench.value.amount_based_on_factor * (performanceFactor / 100)
+  );
+
+  // 3. Vérification et calcul Clearly Trivial Threshold (1–5 %)
+  if (!Number.isFinite(trivialFactor)) {
+    bench.value.thresold = null;
+    errorMsg.value = "";
+    return;
+  }
+  if (trivialFactor < TRIVIAL_FACTOR_RANGE.min || trivialFactor > TRIVIAL_FACTOR_RANGE.max) {
+    errorMsg.value = `Le pourcentage de Clearly Trivial Threshold doit être compris entre ${TRIVIAL_FACTOR_RANGE.min}% et ${TRIVIAL_FACTOR_RANGE.max}%.`;
+    notyf.trigger(errorMsg.value, 'error');
+    bench.value.thresold = null;
+    return;
+  }
+
+  bench.value.thresold = Math.round(
+    bench.value.amount_based_on_factor * (trivialFactor / 100)
+  );
+
+  errorMsg.value = "";
 }
 
 // Calculer seuil de signification et enregistrer dans la BD
@@ -769,12 +1062,15 @@ async function validerSeuil() {
       return;
     }
 
+    const usedBenchmark = bench.value.id;
     const field = {
       benchmark: bench.value.id,
       materiality: bench.value.amount_based_on_factor,
       performance_materiality: bench.value.performance_materiality,
       trivial_misstatements: bench.value.thresold,
       factor: bench.value.factor,
+      performance_factor: bench.value.performance_factor,
+      trivial_factor: bench.value.trivial_factor,
       commentaire: bench.value.commentaire || ""
     };
 
@@ -790,6 +1086,7 @@ async function validerSeuil() {
 
     if (result === 1) {
       console.log("✅ Seuil enregistré avec succès");
+      markBenchmarkVisible(usedBenchmark);
       // Recharger la liste des matérialités
       await getListMaterialities();
       // Réinitialiser le formulaire
@@ -832,6 +1129,7 @@ async function applySeuil(benchmark) {
 
     // ✅ validate_materiality OK
     if (response.status === 200) {
+      markBenchmarkVisible(benchmark);
 
       const res = await axios.put(
         `/mission/quantitative_analysis/${props.missionId}`
@@ -886,19 +1184,21 @@ async function loadQualitatif() {
     // Initialiser les réponses (même si vides)
     if (analyseQualitativeReport.value && analyseQualitativeReport.value.analyse) {
       const responses = {};
-      analyseQualitativeReport.value.analyse.forEach(item => {
-        responses[item.compte] = {};
+      analyseQualitativeReport.value.analyse.forEach((item, index) => {
+        const key = getQualitativeKey(item, index);
+        responses[key] = {};
         // Initialiser toutes les questions Q1-Q8
         for (let q = 1; q <= 8; q++) {
           const questionId = `Q${q}`;
-          responses[item.compte][questionId] = item.responses_detail.find(r => r.question_id === questionId)?.response || false;
+          const detail = Array.isArray(item.responses_detail) ? item.responses_detail : [];
+          responses[key][questionId] = detail.find(r => r.question_id === questionId)?.response || false;
         }
       });
       qualitativeResponses.value = responses;
 
       // Recalculer tous les statuts avec les réponses chargées
-      analyseQualitativeReport.value.analyse.forEach(item => {
-        updateQualitativeStatus(item.compte);
+      analyseQualitativeReport.value.analyse.forEach((item, index) => {
+        updateQualitativeStatus(item, getQualitativeKey(item, index));
       });
 
       // Initialiser les statistiques si elles n'existent pas
@@ -1101,25 +1401,22 @@ const filteredData = computed(() => {
 })
 
 // Fonctions pour l'analyse qualitative
-async function handleQualitativeResponse(compte, questionId, checked) {
-  if (!qualitativeResponses.value[compte]) {
-    qualitativeResponses.value[compte] = {};
+async function handleQualitativeResponse(item, key, questionId, checked) {
+  if (!qualitativeResponses.value[key]) {
+    qualitativeResponses.value[key] = {};
   }
-  qualitativeResponses.value[compte][questionId] = checked;
+  qualitativeResponses.value[key][questionId] = checked;
 
   // Recalculer le statut en temps réel
-  await updateQualitativeStatus(compte);
+  await updateQualitativeStatus(item, key);
 }
 
 // Fonction pour calculer le statut en temps réel
-async function updateQualitativeStatus(compte) {
-  if (!analyseQualitativeReport.value || !analyseQualitativeReport.value.analyse) return;
-
-  const item = analyseQualitativeReport.value.analyse.find(i => i.compte === compte);
+async function updateQualitativeStatus(item, key) {
   if (!item) return;
 
   // Compter les réponses positives (cochées)
-  const responses = qualitativeResponses.value[compte] || {};
+  const responses = qualitativeResponses.value[key] || {};
   let positiveResponses = 0;
   let totalQuestions = 0;
 
@@ -1889,82 +2186,110 @@ function formatAmount(value) {
           <div v-if="revueAnalytique.length === 0 && !loading" class="text-sm text-gray-600">Aucune donnée.</div>
           <button v-if="revueAnalytique.length" @click="exportToXlsx(revueAnalytique, 'revue_analytique')"
             class="mb-3 px-4 py-2 bg-green-ycube text-white rounded-md shadow-md">Télécharger (XLSX)</button>
-          <div class="overflow-x-auto rounded-xl shadow-xl bg-white border border-gray-100"
-            v-if="revueAnalytique.length">
+          <div
+            v-if="revueAnalytique.length"
+            class="overflow-x-auto rounded-xl shadow-xl bg-white border border-gray-100"
+          >
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
                 <tr>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte</th>
+                  <th class="px-4 py-4 w-12"></th>
                   <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Libellé</th>
                   <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">N</th>
                   <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">N-1</th>
                   <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Δ</th>
                   <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Δ %</th>
-                  <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Commentaire
-                    Auto</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="r in revueAnalytique" :key="r.numero_compte"
-                  class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                      <div
-                        class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                        <span class="text-xs font-bold text-white">{{ r.numero_compte.charAt(0) }}</span>
-                      </div>
-                      <div
-                        class="text-sm font-mono font-bold text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
-                        {{ r.numero_compte }}</div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div
-                      class="text-sm text-gray-900 max-w-xs truncate group-hover:text-blue-700 transition-colors duration-200"
-                      :title="r.libelle">{{ r.libelle }}</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right">
-                    <div
-                      class="text-sm font-mono text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
-                      {{ formatAmount(r.solde_n) }}</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right">
-                    <div
-                      class="text-sm font-mono text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
-                      {{ formatAmount(r.solde_n1) }}</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right">
-                    <div class="flex items-center justify-end">
-                      <div
-                        class="text-sm font-mono font-semibold transform group-hover:scale-105 transition-all duration-200"
-                        :class="r.delta_abs >= 0 ? 'text-emerald-600' : 'text-red-600'">
-                        {{ formatAmount(r.delta_abs) }}
-                      </div>
-                      <div class="ml-2 w-2 h-2 rounded-full"
-                        :class="r.delta_abs >= 0 ? 'bg-emerald-500' : 'bg-red-500'"></div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right">
-                    <div class="flex items-center justify-end">
-                      <div
-                        class="text-sm font-mono font-semibold transform group-hover:scale-105 transition-all duration-200"
-                        :class="Math.abs(r.delta_pct * 100) > 20 ? 'text-red-600' : 'text-gray-600'">
-                        {{ (r.delta_pct * 100).toFixed(1) }}%
-                      </div>
-                      <svg v-if="Math.abs(r.delta_pct * 100) > 20" class="w-4 h-4 ml-1 text-red-500 animate-pulse"
-                        fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd"
-                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                          clip-rule="evenodd"></path>
-                      </svg>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div
-                      class="text-sm text-gray-900 max-w-xs truncate group-hover:text-blue-700 transition-colors duration-200"
-                      :title="r.commentaire_auto || '-'">{{ r.commentaire_auto || '-' }}</div>
-                  </td>
-                </tr>
+                <template v-if="revueAnalytiqueGroups.length">
+                  <template v-for="(group, index) in revueAnalytiqueGroups" :key="index">
+                    <tr class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group">
+                      <td class="px-4 py-4 text-center">
+                        <button
+                          v-if="hasRevueComptes(group)"
+                          @click="toggleRevueRow(index)"
+                          class="p-1 rounded-md hover:bg-blue-100 transition-colors duration-200"
+                          :title="revueExpandedRows.has(index) ? 'Réduire' : 'Voir le détail'"
+                        >
+                          <svg
+                            class="w-5 h-5 text-blue-600 transition-transform duration-200"
+                            :class="{ 'rotate-90': revueExpandedRows.has(index) }"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                        <span v-else class="w-5 h-5 inline-block"></span>
+                      </td>
+                      <td class="px-6 py-4 text-sm font-semibold">{{ group.libelle }}</td>
+                      <td class="px-6 py-4 text-right text-sm font-mono">{{ formatAmount(group.solde_n) }}</td>
+                      <td class="px-6 py-4 text-right text-sm font-mono">{{ formatAmount(group.solde_n1) }}</td>
+                      <td class="px-6 py-4 text-right text-sm font-mono">
+                        {{ formatAmount((group.solde_n || 0) - (group.solde_n1 || 0)) }}
+                      </td>
+                      <td class="px-6 py-4 text-right text-sm font-mono">
+                        {{
+                          ((group.solde_n1 ? ((group.solde_n || 0) - (group.solde_n1 || 0)) / Math.abs(group.solde_n1) : 0) * 100).toFixed(1)
+                        }}%
+                      </td>
+                    </tr>
+
+                    <tr v-if="revueExpandedRows.has(index) && hasRevueComptes(group)">
+                      <td colspan="100%" class="px-6 py-4 bg-gray-50">
+                        <div class="border-l-4 border-blue-500 pl-4">
+                          <h4 class="text-sm font-semibold text-gray-900 mb-2">
+                            Détail des comptes du groupe {{ group.compte || group.ref || '' }}
+                          </h4>
+                          <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                            <table class="min-w-full divide-y divide-gray-200">
+                              <thead class="bg-gray-50">
+                                <tr>
+                                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Compte</th>
+                                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Libellé</th>
+                                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">N</th>
+                                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">N-1</th>
+                                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Δ</th>
+                                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Δ %</th>
+                                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Commentaire auto</th>
+                                </tr>
+                              </thead>
+                              <tbody class="divide-y divide-gray-200">
+                                <tr
+                                  v-for="(r, rIndex) in (group.comptes_detaille || group.comptes)"
+                                  :key="rIndex"
+                                  class="hover:bg-gray-50 transition"
+                                >
+                                  <td class="px-4 py-3 text-sm font-mono">{{ r.numero_compte }}</td>
+                                  <td class="px-4 py-3 text-sm">{{ r.libelle }}</td>
+                                  <td class="px-4 py-3 text-sm font-mono text-right">{{ formatAmount(r.solde_n) }}</td>
+                                  <td class="px-4 py-3 text-sm font-mono text-right">{{ formatAmount(r.solde_n1) }}</td>
+                                  <td class="px-4 py-3 text-sm font-mono text-right">{{ formatAmount(r.delta_abs) }}</td>
+                                  <td class="px-4 py-3 text-sm font-mono text-right">{{ (Number(r.delta_pct || 0) * 100).toFixed(1) }}%</td>
+                                  <td class="px-4 py-3 text-sm">{{ r.commentaire_auto || '-' }}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </template>
+
+                <template v-else>
+                  <tr v-for="r in revueAnalytique" :key="r.numero_compte"
+                    class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group">
+                    <td class="px-4 py-4"></td>
+                    <td class="px-6 py-4 text-sm">{{ r.libelle }}</td>
+                    <td class="px-6 py-4 text-right text-sm font-mono">{{ formatAmount(r.solde_n) }}</td>
+                    <td class="px-6 py-4 text-right text-sm font-mono">{{ formatAmount(r.solde_n1) }}</td>
+                    <td class="px-6 py-4 text-right text-sm font-mono">{{ formatAmount(r.delta_abs) }}</td>
+                    <td class="px-6 py-4 text-right text-sm font-mono">{{ ((Number(r.delta_pct || 0)) * 100).toFixed(1) }}%</td>
+                  </tr>
+                </template>
               </tbody>
             </table>
           </div>
@@ -2234,7 +2559,7 @@ function formatAmount(value) {
                   </div>
 
                   <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
+                    <table class="min-w-full table-hide-compte divide-y divide-gray-200">
                       <thead class="bg-gray-50">
                         <tr>
                           <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -2321,7 +2646,7 @@ function formatAmount(value) {
                   </div>
 
                   <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
+                    <table class="min-w-full table-hide-compte divide-y divide-gray-200">
                       <thead class="bg-gray-50">
                         <tr>
                           <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -2372,7 +2697,7 @@ function formatAmount(value) {
               <div
                 v-if="viewMode === 'table' && selectedControlType !== 'vraisemblance' && yearReport.erreurs && yearReport.erreurs.length > 0"
                 class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
-                <table class="min-w-full divide-y divide-gray-200">
+                <table class="min-w-full table-hide-compte divide-y divide-gray-200">
                   <thead class="bg-linear-to-r from-blue-ycube to-blue-ycube-3">
                     <tr>
                       <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Type
@@ -2411,7 +2736,7 @@ function formatAmount(value) {
                       <td class="px-6 py-4 whitespace-nowrap text-center">
                         <div v-if="e.numero_compte && e.numero_compte !== '-'"
                           class="inline-flex items-center px-3 py-1.5 bg-blue-50 rounded-md border border-blue-200 font-mono font-semibold text-blue-900 text-sm">
-                          {{ e.numero_compte }}
+                          {{ getCompteFromItem(e) }}
                         </div>
                         <span v-else class="text-gray-400 text-sm">-</span>
                       </td>
@@ -2423,7 +2748,7 @@ function formatAmount(value) {
                             <div class="flex items-center justify-between mb-2">
                               <div class="flex items-center gap-2">
                                 <span class="text-xs font-semibold text-pink-800 uppercase">Compte</span>
-                                <span class="font-mono font-bold text-pink-900">{{ e.numero_compte }}</span>
+                                <span class="font-mono font-bold text-pink-900">{{ getCompteFromItem(e) }}</span>
                               </div>
                               <span
                                 class="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-md font-bold border border-red-300">
@@ -2602,7 +2927,7 @@ function formatAmount(value) {
                     <div v-if="e.numero_compte && e.numero_compte !== '-'" class="mb-3">
                       <span class="text-xs text-gray-500">Compte :</span>
                       <span class="ml-2 px-2 py-1 bg-blue-50 rounded font-mono text-sm font-semibold text-blue-900">
-                        {{ e.numero_compte }}
+                        {{ getCompteFromItem(e) }}
                       </span>
                     </div>
 
@@ -2719,7 +3044,7 @@ function formatAmount(value) {
                       <div class="flex items-center justify-between mb-2">
                         <span v-if="e.numero_compte && e.numero_compte !== '-'"
                           class="px-3 py-1 bg-blue-50 rounded font-mono text-sm font-semibold text-blue-900">
-                          {{ e.numero_compte }}
+                          {{ getCompteFromItem(e) }}
                         </span>
                         <span v-else class="text-gray-400 text-sm">-</span>
                         <span v-if="e.gravite === 'CRITIQUE'" class="text-xs font-bold text-red-600 uppercase">⚠️
@@ -2798,7 +3123,7 @@ function formatAmount(value) {
                         <span class="text-sm font-semibold text-gray-900">{{ getTypeLabel(e.type) }}</span>
                         <span v-if="e.numero_compte && e.numero_compte !== '-'"
                           class="px-2 py-0.5 bg-blue-50 rounded font-mono text-xs font-semibold text-blue-900">
-                          {{ e.numero_compte }}
+                          {{ getCompteFromItem(e) }}
                         </span>
                         <span v-if="e.gravite === 'CRITIQUE'" class="text-xs font-bold text-red-600 uppercase">⚠️
                           CRITIQUE</span>
@@ -2936,11 +3261,11 @@ function formatAmount(value) {
                       <div class="flex items-center">
                         <div
                           class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                          <span class="text-xs font-bold text-white">{{ e.numero_compte.charAt(0) }}</span>
+                          <span class="text-xs font-bold text-white">{{ getClasseFromItem(e) }}</span>
                         </div>
                         <div
                           class="text-sm font-mono font-bold text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
-                          {{ e.numero_compte }}</div>
+                          {{ getCompteFromItem(e) }}</div>
                       </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right">
@@ -3024,7 +3349,7 @@ function formatAmount(value) {
             </div>
             <div v-else-if="intangibiliteReport && !intangibiliteReport.comptes"
               class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
-              <table class="min-w-full divide-y divide-gray-200">
+              <table class="min-w-full table-hide-compte divide-y divide-gray-200">
                 <thead class="bg-linear-to-r from-indigo-600 via-blue-600 to-cyan-600">
                   <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
@@ -3155,7 +3480,7 @@ function formatAmount(value) {
             <!-- Tableau de classement -->
             <div v-if="classementBilanReport.classement && classementBilanReport.classement.length"
               class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
-              <table class="min-w-full divide-y divide-gray-200">
+              <table class="min-w-full table-hide-compte divide-y divide-gray-200">
                 <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
                   <tr>
                     <th
@@ -3248,11 +3573,11 @@ function formatAmount(value) {
                         <div class="flex items-center">
                           <div
                             class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                            <span class="text-xs font-bold text-white">{{ item.compte.charAt(0) }}</span>
+                            <span class="text-xs font-bold text-white">{{ getClasseFromItem(item) }}</span>
                           </div>
                           <div
                             class="text-sm font-mono font-bold text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
-                            {{ item.compte }}</div>
+                            {{ getCompteFromItem(item) }}</div>
                         </div>
                       </td>
                       <td class="px-6 py-4">
@@ -3343,7 +3668,7 @@ function formatAmount(value) {
 
                           <div v-if="item.comptes_detaille && item.comptes_detaille.length"
                             class="overflow-hidden rounded-lg border border-gray-200">
-                            <table class="min-w-full divide-y divide-gray-200">
+                            <table class="min-w-full table-hide-compte divide-y divide-gray-200">
                               <thead class="bg-gray-50">
                                 <tr>
                                   <th
@@ -3507,7 +3832,8 @@ function formatAmount(value) {
               <!-- Calcul du seuil de signification -->
               <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
                 <h4 class="text-base font-semibold text-gray-800 mb-3">Calcul du seuil</h4>
-                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <!-- Grille responsive avec colonnes plus larges pour éviter le chevauchement -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                   <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">Choisir benchmark</label>
                     <select v-model="selectedBench"
@@ -3546,6 +3872,24 @@ function formatAmount(value) {
                   </div>
 
                   <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Performance Materiality (%)</label>
+                    <input
+                      v-model="bench.performance_factor"
+                      @input="updateSelectBenchmark"
+                      class="w-full px-3 py-2 border-2 border-blue-500 rounded-md focus:outline-none focus:border-blue-600"
+                      type="number" step="0.1" placeholder="Entre 50 et 80 %">
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Clearly Trivial (%)</label>
+                    <input
+                      v-model="bench.trivial_factor"
+                      @input="updateSelectBenchmark"
+                      class="w-full px-3 py-2 border-2 border-blue-500 rounded-md focus:outline-none focus:border-blue-600"
+                      type="number" step="0.1" placeholder="Entre 1 et 5 %">
+                  </div>
+
+                  <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">Comment</label>
                     <input
                       v-model="bench.commentaire"
@@ -3566,8 +3910,9 @@ function formatAmount(value) {
               <!-- Liste des seuils de signification calculés -->
               <div class="bg-white border border-gray-200 rounded-lg p-4">
                 <h4 class="text-base font-semibold text-gray-800 mb-3">Liste des seuils de signification</h4>
+
                 <div class="overflow-auto">
-                  <table class="min-w-full table w-full border-collapse border border-gray-300">
+                  <table class="min-w-full table-hide-compte table w-full border-collapse border border-gray-300">
                     <thead class="font-bold text-left bg-blue-ycube text-white text-xs">
                       <tr>
                         <th class="w-[5%] border-2 border-gray-300 p-2">#</th>
@@ -3580,7 +3925,10 @@ function formatAmount(value) {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="(mat, index) in listMaterialities" :key="index" class="border-t h-12 text-sm"
+                      <tr
+                        v-for="(mat, index) in visibleMaterialities"
+                        :key="index"
+                        class="border-t h-12 text-sm"
                         :class="index % 2 === 0 ? 'bg-gray-50' : 'bg-white'">
                         <td class="border-2 border-gray-300 p-2 text-center">{{ index + 1 }}</td>
                         <td class="border-2 border-gray-300 p-2 font-semibold">
@@ -3607,13 +3955,15 @@ function formatAmount(value) {
             </div>
 
             <!-- Section: Application au grouping -->
-            <div v-if="listMaterialities.length > 0" class="bg-gray-100 border border-gray-200 rounded-lg p-4">
+            <div  class="bg-gray-100 border border-gray-200 rounded-lg p-4">
               <h3 class="text-lg font-semibold text-green-800 mb-4 flex items-center">
                 Application au grouping
               </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div v-for="mat in listMaterialities" :key="mat.benchmark"
-                  class="bg-white border border-green-200 rounded-lg p-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div
+                    v-for="mat in visibleMaterialities"
+                    :key="mat.benchmark"
+                    class="bg-white border border-green-200 rounded-lg p-4">
                   <div class="flex justify-between items-center mb-2">
                     <h4 class="font-semibold text-gray-800">{{ mat.benchmark }}</h4>
                     <button @click="applySeuil(mat.benchmark)" class="btn-success btn-small text-white">
@@ -3662,7 +4012,7 @@ function formatAmount(value) {
           </div>
 
           <div v-if="!analyseQuantitativeReport && !loading" class="text-sm text-gray-600">Aucune donnée.</div>
-          <div v-else-if="analyseQuantitativeReport?.message" class="text-sm text-red-700 mb-3">
+          <div v-else-if="analyseQuantitativeReport?.message && !analyseQuantitativeReport?.ok" class="text-sm text-red-700 mb-3">
             {{ analyseQuantitativeReport.message }}
           </div>
 
@@ -3670,7 +4020,9 @@ function formatAmount(value) {
             <!-- Informations générales -->
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 class="text-lg font-semibold text-blue-800 mb-2">Analyse quantitative des comptes</h3>
-              <p class="text-blue-700 text-sm mb-2">{{ analyseQuantitativeReport.message }}</p>
+              <p v-if="analyseQuantitativeReport?.message && !analyseQuantitativeReport?.ok" class="text-blue-700 text-sm mb-2">
+                {{ analyseQuantitativeReport.message }}
+              </p>
               <div v-if="analyseQuantitativeReport.statistics" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
                 <div class="bg-white p-3 rounded border">
                   <div class="text-xs text-gray-600">Seuil de matérialité</div>
@@ -3706,8 +4058,8 @@ function formatAmount(value) {
 
             <!-- Tableau d'analyse quantitative -->
             <div v-if="analyseQuantitativeReport.analyse && analyseQuantitativeReport.analyse.length"
-              class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
-              <table class="min-w-full divide-y divide-gray-200">
+              class="overflow-auto max-h-[60vh] rounded-xl shadow-xl bg-white border border-gray-100">
+              <table class="min-w-full table-hide-compte divide-y divide-gray-200">
                 <thead class="bg-linear-to-r from-blue-ycube to-blue-ycube-3">
                   <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
@@ -3733,11 +4085,11 @@ function formatAmount(value) {
                       <div class="flex items-center">
                         <div
                           class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                          <span class="text-xs font-bold text-white">{{ item.compte.charAt(0) }}</span>
+                          <span class="text-xs font-bold text-white">{{ getClasseFromItem(item) }}</span>
                         </div>
                         <div
                           class="text-sm font-mono font-bold text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
-                          {{ item.compte }}</div>
+                          {{ getCompteFromItem(item) }}</div>
                       </div>
                     </td>
                     <td class="px-6 py-4">
@@ -3785,13 +4137,15 @@ function formatAmount(value) {
                       </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                      <span
+                      <button
+                        type="button"
+                        @click="toggleQuantitativeStatus(item)"
                         class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
                         :class="item.is_significant ? 'bg-linear-to-r from-red-100 to-red-200 text-red-800 border border-red-300' : 'bg-linear-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'">
                         <span class="w-2 h-2 rounded-full mr-2"
                           :class="item.is_significant ? 'bg-red-500' : 'bg-emerald-500'"></span>
                         {{ item.status }}
-                      </span>
+                      </button>
                     </td>
                   </tr>
                 </tbody>
@@ -3892,8 +4246,8 @@ function formatAmount(value) {
 
             <!-- Tableau des questionnaires Q1-Q8 -->
             <div v-if="analyseQualitativeReport.analyse && analyseQualitativeReport.analyse.length"
-              class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
-              <table class="min-w-full divide-y divide-gray-200">
+              class="overflow-auto max-h-[60vh] rounded-xl shadow-xl bg-white border border-gray-100">
+              <table class="min-w-full table-hide-compte divide-y divide-gray-200">
                 <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
                   <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
@@ -3939,11 +4293,11 @@ function formatAmount(value) {
                       <div class="flex items-center">
                         <div
                           class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                          <span class="text-xs font-bold text-white">{{ item.compte.charAt(0) }}</span>
+                          <span class="text-xs font-bold text-white">{{ getClasseFromItem(item) }}</span>
                         </div>
                         <div
                           class="text-sm font-mono font-bold text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
-                          {{ item.compte }}</div>
+                          {{ getCompteFromItem(item) }}</div>
                       </div>
                     </td>
                     <td class="px-6 py-4">
@@ -3973,18 +4327,21 @@ function formatAmount(value) {
                       </div>
                     </td>
                     <td v-for="q in 8" :key="q" class="px-6 py-4 whitespace-nowrap text-center">
-                      <input type="checkbox" :checked="qualitativeResponses[item.compte]?.[`Q${q}`] || false"
-                        @change="(e) => handleQualitativeResponse(item.compte, `Q${q}`, e.target.checked)"
+                      <input type="checkbox"
+                        :checked="qualitativeResponses[getQualitativeKey(item, index)]?.[`Q${q}`] || false"
+                        @change="(e) => handleQualitativeResponse(item, getQualitativeKey(item, index), `Q${q}`, e.target.checked)"
                         class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 transform group-hover:scale-110 transition-all duration-200" />
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                      <span
+                      <button
+                        type="button"
+                        @click="toggleQualitativeStatus(item)"
                         class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
                         :class="item.is_qualitatively_significant ? 'bg-linear-to-r from-red-100 to-red-200 text-red-800 border border-red-300' : 'bg-linear-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'">
                         <span class="w-2 h-2 rounded-full mr-2"
                           :class="item.is_qualitatively_significant ? 'bg-red-500' : 'bg-emerald-500'"></span>
                         {{ item.status }}
-                      </span>
+                      </button>
                     </td>
                   </tr>
                 </tbody>
@@ -4076,7 +4433,7 @@ function formatAmount(value) {
             <div
               v-if="presentationComptesSignificatifsReport.presentation && presentationComptesSignificatifsReport.presentation.length"
               class="overflow-x-auto rounded-xl shadow-xl bg-white border border-gray-100">
-              <table class="min-w-full divide-y divide-gray-200 overflow-auto">
+              <table class="min-w-full table-hide-compte divide-y divide-gray-200 overflow-auto">
                 <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
                   <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
@@ -4104,11 +4461,11 @@ function formatAmount(value) {
                       <div class="flex items-center">
                         <div
                           class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                          <span class="text-xs font-bold text-white">{{ item.compte.charAt(0) }}</span>
+                          <span class="text-xs font-bold text-white">{{ getClasseFromItem(item) }}</span>
                         </div>
                         <div
                           class="text-sm font-mono font-bold text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
-                          {{ item.compte }}</div>
+                          {{ getCompteFromItem(item) }}</div>
                       </div>
                     </td>
                     <td class="px-6 py-4">
@@ -4139,7 +4496,8 @@ function formatAmount(value) {
                     </td> -->
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <span
-                        class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
+                        @click="togglePresentationQuantitative(item)"
+                        class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200 cursor-pointer select-none"
                         :class="item.is_quantitatively_significant ? 'bg-linear-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300' : 'bg-linear-to-r from-slate-100 to-slate-200 text-slate-800 border border-slate-300'">
                         <span class="w-2 h-2 rounded-full mr-2"
                           :class="item.is_quantitatively_significant ? 'bg-blue-500' : 'bg-slate-500'"></span>
@@ -4148,7 +4506,8 @@ function formatAmount(value) {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <span
-                        class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
+                        @click="togglePresentationQualitative(item)"
+                        class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200 cursor-pointer select-none"
                         :class="item.is_qualitatively_significant ? 'bg-linear-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300' : 'bg-linear-to-r from-slate-100 to-slate-200 text-slate-800 border border-slate-300'">
                         <span class="w-2 h-2 rounded-full mr-2"
                           :class="item.is_qualitatively_significant ? 'bg-blue-500' : 'bg-slate-500'"></span>
@@ -4157,7 +4516,8 @@ function formatAmount(value) {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <span
-                        class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
+                        @click="togglePresentationSignificativite(item)"
+                        class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200 cursor-pointer select-none"
                         :class="getSignificativiteClass(item.significativite_status)">
                         <span class="w-2 h-2 rounded-full mr-2"
                           :class="item.significativite_status === 'Significatif' ? 'bg-red-500' : 'bg-emerald-500'"></span>
@@ -4320,7 +4680,7 @@ function formatAmount(value) {
             <!-- Tableau de revue analytique -->
             <div v-if="revueAnalytiqueFinaleReport.revue && revueAnalytiqueFinaleReport.revue.length"
               class="overflow-x-auto rounded-xl shadow-xl bg-white border border-gray-100">
-              <table class="min-w-full divide-y divide-gray-200">
+              <table class="min-w-full table-hide-compte divide-y divide-gray-200">
                 <thead class="bg-linear-to-r from-indigo-600 via-blue-600 to-cyan-600">
                   <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
@@ -4354,11 +4714,11 @@ function formatAmount(value) {
                       <div class="flex items-center">
                         <div
                           class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                          <span class="text-xs font-bold text-white">{{ item.compte.charAt(0) }}</span>
+                          <span class="text-xs font-bold text-white">{{ getClasseFromItem(item) }}</span>
                         </div>
                         <div
                           class="text-sm font-mono font-bold text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
-                          {{ item.compte }}</div>
+                          {{ getCompteFromItem(item) }}</div>
                       </div>
                     </td>
                     <td class="px-6 py-4">
@@ -4503,3 +4863,10 @@ function formatAmount(value) {
   </div>
 </template>
 
+
+<style scoped>
+.table-hide-compte th:first-child,
+.table-hide-compte td:first-child {
+  display: none;
+}
+</style>

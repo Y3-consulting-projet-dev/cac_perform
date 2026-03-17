@@ -2,7 +2,6 @@
 import { computed, onMounted } from 'vue'
 
 const props = defineProps(['efiActif', 'annee_auditee'])
-const isSignificant = true
 
 // Refs qui sont des sous-totaux/totaux (s'affichent après leurs éléments)
 const GROUP_REFS = new Set([
@@ -54,9 +53,6 @@ function formatAmount(value) {
 }
 function getVariation(row)        { return (row.net_solde_n||0) - (row.net_solde_n1||0) }
 function getVariationPercent(row) { if (!row.net_solde_n1) return 0; return (getVariation(row)/Math.abs(row.net_solde_n1))*100 }
-function isMaterial(row)          { return Math.abs(getVariationPercent(row)) >= 10 }
-function isQualitative(row)       { return Math.abs(getVariationPercent(row)) >= 20 }
-function isMatSign(row)           { return isMaterial(row) && isQualitative(row) }
 
 onMounted(() => console.log('📊 ActifComponent - efiActif:', props.efiActif))
 </script>
@@ -87,9 +83,6 @@ onMounted(() => console.log('📊 ActifComponent - efiActif:', props.efiActif))
           <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">NET N-1</th>
           <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Variation</th>
           <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Variation %</th>
-          <th v-if="isSignificant" class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Quantitatif</th>
-          <th v-if="isSignificant" class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Qualitatif</th>
-          <th v-if="isSignificant" class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Significativité</th>
         </tr>
       </thead>
 
@@ -138,21 +131,6 @@ onMounted(() => console.log('📊 ActifComponent - efiActif:', props.efiActif))
           <td class="px-6 py-3 text-right font-mono text-sm"
               :class="getVariationPercent(data) >= 0 ? 'text-emerald-600' : 'text-red-500'">
             {{ getVariationPercent(data).toFixed(2) }} %
-          </td>
-          <td v-if="isSignificant" class="px-6 py-3 text-center text-sm">
-            <span v-if="!data._isGroup" :class="isMaterial(data) ? 'text-amber-600 font-semibold' : 'text-gray-400'">
-              {{ isMaterial(data) ? 'Oui' : 'Non' }}
-            </span>
-          </td>
-          <td v-if="isSignificant" class="px-6 py-3 text-center text-sm">
-            <span v-if="!data._isGroup" :class="isQualitative(data) ? 'text-amber-600 font-semibold' : 'text-gray-400'">
-              {{ isQualitative(data) ? 'Oui' : 'Non' }}
-            </span>
-          </td>
-          <td v-if="isSignificant" class="px-6 py-3 text-center text-sm font-semibold">
-            <span v-if="!data._isGroup" :class="isMatSign(data) ? 'text-red-600' : 'text-emerald-600'">
-              {{ isMatSign(data) ? 'Significatif' : 'Non significatif' }}
-            </span>
           </td>
         </tr>
       </tbody>

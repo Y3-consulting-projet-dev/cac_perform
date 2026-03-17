@@ -1860,7 +1860,7 @@ class Mission(Document):
             "ebitda": (3, 5),
             "expenses": (3, 5),
             "profit_before_tax": (5, 10),
-            "revenue": (0.8, 2),
+            "revenue": (0.8, 5),
             "total_assets": (1, 2),
             "total_equity_net_assets": (1.0, 3.0),
             "cash_flows_from_operations": (3.0, 5.0)
@@ -5696,68 +5696,83 @@ class Mission(Document):
 
             # Récupérer les données de grouping
             grouping = mission.get("grouping", [])
-            if not grouping:
-                return {"ok": False, "message": "Données de grouping manquantes", "presentation": []}
 
             # Récupérer les analyses quantitative et qualitative
             analyse_quantitative = mission.get("analyse_quantitative", {})
             analyse_qualitative = mission.get("analyse_qualitative", {})
+
+            quant_rows = analyse_quantitative.get("analyse", []) or []
+            if not quant_rows and not grouping:
+                return {"ok": False, "message": "Données de grouping manquantes", "presentation": []}
             
             # Les analyses quantitative/qualitative ne sont plus obligatoires
             # La presentation peut se baser sur les flags du grouping.
 
             
-            # Créer un index des analyses pour un accès rapide
+            # Index des analyses pour un accès rapide
             quant_index = {}
             if analyse_quantitative.get("analyse"):
                 for item in analyse_quantitative["analyse"]:
-                    quant_index[item["compte"]] = item
+                    quant_index[item.get("compte")] = item
             qual_index = {}
             if analyse_qualitative.get("analyse"):
                 for item in analyse_qualitative["analyse"]:
-                    qual_index[item["compte"]] = item
-            # Préparer les données de présentation
+                    qual_index[item.get("compte")] = item
+
+            grouping_index = {g.get("compte"): g for g in grouping} if grouping else {}
+            materiality_threshold_global = (analyse_quantitative.get("statistics") or {}).get(
+                "materiality_threshold", 0
+            )
+
+            # Préparer les données de présentation (base : analyse quantitative)
             presentation_data = []
-            for item in grouping:
-                compte = item.get('compte', '')
-                libelle = item.get('libelle', '')
-                solde_n = abs(item.get('solde_n', 0))
-                solde_n1 = abs(item.get('solde_n1', 0))
-                variation = solde_n - solde_n1
-                
-                # Récupérer les données quantitatives
-                quant_data = quant_index.get(compte, {})
-                is_quantitatively_significant = quant_data.get('is_significant', bool(item.get('materiality', False)))
-                materiality_threshold = quant_data.get('materiality_threshold', 0)
-                percentage_of_threshold = quant_data.get('percentage_of_threshold', 0)
-                
-                # Récupérer les données qualitatives
+            source_rows = quant_rows if quant_rows else grouping
+            for item in source_rows:
+                compte = item.get("compte", "")
+                grouping_row = grouping_index.get(compte, {}) if grouping_index else {}
+
+                libelle = item.get("libelle") or grouping_row.get("libelle", "")
+                solde_n = item.get("solde_n", grouping_row.get("solde_n", 0))
+                solde_n1 = item.get("solde_n1", grouping_row.get("solde_n1", 0))
+                variation = item.get("variation", (solde_n or 0) - (solde_n1 or 0))
+                variation_percent = item.get(
+                    "variation_percent",
+                    (variation / abs(solde_n1)) * 100 if solde_n1 else 0
+                )
+
+                # Données quantitatives (base)
+                is_quantitatively_significant = item.get(
+                    "is_significant",
+                    bool(item.get("materiality", False))
+                )
+                materiality_threshold = item.get("materiality_threshold", materiality_threshold_global)
+                percentage_of_threshold = item.get("percentage_of_threshold", 0)
+
+                # Données qualitatives
                 qual_data = qual_index.get(compte, {})
-                is_qualitatively_significant = qual_data.get('is_qualitatively_significant', bool(item.get('significant', False)))
-                qualitative_score = qual_data.get('qualitative_score', 100 if is_qualitatively_significant else 0)
-                positive_responses = qual_data.get('positive_responses', 0)
-                
-                # Calculer le pourcentage de variation
-                variation_percent = 0
-                if solde_n1 != 0:
-                    variation_percent = (variation / abs(solde_n1)) * 100
-                
-                # Déterminer le statut de significativité
+                is_qualitatively_significant = qual_data.get(
+                    "is_qualitatively_significant",
+                    bool(item.get("significant", False))
+                )
+                qualitative_score = qual_data.get(
+                    "qualitative_score",
+                    100 if is_qualitatively_significant else 0
+                )
+                positive_responses = qual_data.get("positive_responses", 0)
+
+                # Statut de significativité
                 if is_quantitatively_significant and is_qualitatively_significant:
-                    significativite_status = "Significatif (Quantitatif + Qualitatif)"
+                    significativite_status = "Significatif"
                     priorite = "Haute"
-                elif is_quantitatively_significant:
-                    significativite_status = "Significatif (Quantitatif)"
-                    priorite = "Moyenne"
-                elif is_qualitatively_significant:
-                    significativite_status = "Significatif (Qualitatif)"
+                elif is_quantitatively_significant or is_qualitatively_significant:
+                    significativite_status = "Significatif"
                     priorite = "Moyenne"
                 else:
                     significativite_status = "Non significatif"
                     priorite = "Faible"
-                
-                # Générer une recommandation d'audit
-                if significativite_status.startswith("Significatif"):
+
+                # Recommandation d'audit
+                if significativite_status == "Significatif":
                     if priorite == "Haute":
                         recommandation_audit = "Tests d'audit approfondis obligatoires"
                     else:
@@ -5804,7 +5819,7 @@ class Mission(Document):
                     "non_significant_accounts": non_significant_accounts,
                     "high_priority_accounts": high_priority_accounts,
                     "total_significant_amount": total_significant_amount,
-                    "materiality_threshold": materiality_threshold
+                    "materiality_threshold": materiality_threshold_global
                 }
             }
 
@@ -6046,16 +6061,25 @@ class Mission(Document):
         grouping = mission.get('grouping', [])
         materialities = mission.get('materiality', [])
 
+        # On récupère le benchmark choisi par l'utilisateur
         materiality = next((mat for mat in materialities if mat.get('choice')), None)
 
         if not materiality:
             return 0
 
-        seuil = int(materiality.get('materiality', 0))
+        # ⚙️ NOUVELLE RÈGLE :
+        # Étape 8 – Décision finale des comptes à tester basée sur la Performance Materiality
+        # On compare les soldes N (2024) au seuil de performance_materiality.
+        # Si solde_n >= performance_materiality → compte "matériel" (à tester)
+        # Sinon → compte non matériel (pas de test quantitatif).
+        seuil_performance = int(materiality.get('performance_materiality') or 0)
+        # Par sécurité, si la performance materiality n'est pas renseignée, on retombe sur la matérialité globale
+        if seuil_performance <= 0:
+            seuil_performance = int(materiality.get('materiality', 0) or 0)
 
         for item in grouping:
             solde = int(item.get('solde_n', 0))
-            item['materiality'] = solde >= seuil
+            item['materiality'] = solde >= seuil_performance
 
         result = local_db.Mission1.update_one(
             {"_id": ObjectId(id_mission)},
