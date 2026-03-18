@@ -96,6 +96,22 @@ def analyse_quantitative_route(id_mission):
     report = cls.analyse_quantitative(id_mission)
     return make_response(jsonify({"response": report}), 200)
 
+@mission.put('/quantitative_threshold_mode/<id_mission>')
+def save_quantitative_threshold_mode(id_mission):
+    req = request.get_json() or {}
+    mode = req.get("mode") or req.get("threshold_mode")
+    cls = Mission()
+    result = cls.save_quantitative_threshold_mode(id_mission, mode)
+    return make_response(jsonify({"response": result}), 200)
+
+@mission.put('/save_quantitative_threshold_mode/<id_mission>')
+def save_quantitative_threshold_mode_alias(id_mission):
+    req = request.get_json() or {}
+    mode = req.get("mode") or req.get("threshold_mode")
+    cls = Mission()
+    result = cls.save_quantitative_threshold_mode(id_mission, mode)
+    return make_response(jsonify({"response": result}), 200)
+
 @mission.get('/analyse_qualitative/<id_mission>')
 def analyse_qualitative_route(id_mission):
     cls = Mission()
@@ -392,15 +408,24 @@ def make_qualitative_analysis(id_mission):
         for compte in _list_unique_compte:
             data = {}
             data['compte'] = compte
-            # Récupérer toutes les réponses pour ce compte
-            _list = [{"question": item['question'], "significant": item['significant']}
-                     for item in listGrouping if item['compte'] == compte]
+            # Récupérer toutes les réponses pour ce compte (peut ne pas avoir "question" en mode simple)
+            _list = []
+            for item in listGrouping:
+                if item.get('compte') != compte:
+                    continue
+                _list.append({
+                    "question": item.get('question'),
+                    "significant": item.get('significant', False)
+                })
             data['data'] = _list
             _listGrouping.append(data)
 
         # Déterminer si le compte est significatif (au moins une réponse positive)
         for group in _listGrouping:
-            value_sign = any((item['significant'] for item in group['data']))
+            if any(item.get('significant') for item in group.get('data', [])):
+                value_sign = True
+            else:
+                value_sign = False
             group['significant'] = value_sign
             del group['data']
 
