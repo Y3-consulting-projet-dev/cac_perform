@@ -17,6 +17,7 @@ from src.schemas.user_schemas import (
     validate_user_registration,
     validate_user_login,
     validate_user_update,
+    validate_password,
     serialize_user,
     serialize_user_list,
     serialize_token_response
@@ -302,6 +303,34 @@ class UserService:
             raise RuntimeError(f"Erreur inattendue: {e}")
     
     @staticmethod
+    def get_authorized_users_directory() -> List[Dict[str, Any]]:
+        """Retourne la liste minimale des utilisateurs autorisÃ©s"""
+        try:
+            db = get_db()
+            users = list(
+                db.Manager.find(
+                    {"is_active": True, "directory_visible": True},
+                    {"firstname": 1, "lastname": 1, "email": 1, "grade": 1}
+                ).sort([("lastname", 1), ("firstname", 1)])
+            )
+
+            return [
+                {
+                    "label": f"{user.get('lastname', '')} {user.get('firstname', '')}".strip(),
+                    "firstname": user.get("firstname", ""),
+                    "lastname": user.get("lastname", ""),
+                    "email": user.get("email", ""),
+                    "grade": user.get("grade", "")
+                }
+                for user in users
+                if user.get("email")
+            ]
+        except PyMongoError as e:
+            raise RuntimeError(f"Erreur de base de donnÃ©es: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Erreur inattendue: {e}")
+
+    @staticmethod
     def deactivate_user(user_id: str) -> bool:
         """Désactive un utilisateur"""
         try:
@@ -370,6 +399,8 @@ class UserService:
                 # Fallback pour les anciens mots de passe
                 if stored_password != current_password:
                     raise ValueError("Mot de passe actuel incorrect")
+
+            validate_password(new_password)
             
             # Hacher le nouveau mot de passe
             new_hash = UserService.hash_password(new_password)

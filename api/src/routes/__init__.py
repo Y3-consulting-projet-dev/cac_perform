@@ -20,6 +20,7 @@ from src.resources.user_resources import (
     UserPasswordResource,
     UserStatsResource,
     UserMetadataResource,
+    UserDirectoryResource,
     UserLogoutResource,
     LegacyLoginResource
 )
@@ -191,6 +192,11 @@ def register_routes(app):
     def get_user_metadata():
         """GET /api/v1/users/metadata - Métadonnées (rôles, grades, etc.)"""
         return UserMetadataResource().get()
+
+    @user_bp.route('/directory', methods=['GET'])
+    def get_user_directory():
+        """GET /api/v1/users/directory - Répertoire public minimal des utilisateurs autorisés"""
+        return UserDirectoryResource().get()
     
     # Enregistrer le blueprint utilisateurs
     app.register_blueprint(user_bp)

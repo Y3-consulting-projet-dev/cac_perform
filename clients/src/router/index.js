@@ -4,7 +4,6 @@ import NewClient from '../views/NewClient.vue'
 import NewMission from '../views/NewMission.vue'
 import GroupingAnalyse from '../views/GroupingAnalyse.vue'
 import LoginView from '@/views/LoginView.vue'
-import RegisterView from '@/views/RegisterView.vue'
 import MissionsView from '@/views/MissionsView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import ClientsView from '@/views/ClientsView.vue'
@@ -16,14 +15,6 @@ const router = createRouter({
       path: '/connexion',
       name: 'login',
       component: LoginView,
-      meta: {
-        showHeader: false
-      }
-    },
-    {
-      path: '/inscription',
-      name: 'register',
-      component: RegisterView,
       meta: {
         showHeader: false
       }
@@ -100,10 +91,13 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const publicRoutes = ['login', 'register']
+  const publicRoutes = ['login']
   const isPublic = publicRoutes.includes(to.name)
   const token = sessionStorage.getItem('token')
   if (!isPublic && !token) {
+    return next({ name: 'login' })
+  }
+  if (to.path === '/inscription') {
     return next({ name: 'login' })
   }
   next()

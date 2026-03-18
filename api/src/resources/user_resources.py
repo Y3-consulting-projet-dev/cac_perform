@@ -7,6 +7,7 @@ from flask_restful import Resource
 from marshmallow import ValidationError
 from functools import wraps
 import jwt
+import os
 
 from src.services.user_services import UserService
 from src.schemas.user_schemas import ROLES, GRADES
@@ -56,6 +57,12 @@ class UserRegistrationResource(Resource):
     def post(self):
         """Inscrit un nouvel utilisateur"""
         try:
+            allow_registration = os.getenv('ALLOW_PUBLIC_REGISTRATION', 'false').lower() == 'true'
+            if not allow_registration:
+                return {
+                    "message": "L'inscription publique est désactivée. Veuillez contacter l'administrateur."
+                }, 403
+
             user_data = request.get_json()
             if not user_data:
                 return {"message": "Données utilisateur requises"}, 400
@@ -134,8 +141,9 @@ class UserProfileResource(Resource):
                 return {"message": "Données de mise à jour requises"}, 400
             
             # Les utilisateurs non-admin ne peuvent pas changer leur rôle
-            if current_user_role != 'Administrateur' and 'role' in update_data:
-                del update_data['role']
+            if current_user_role != 'Administrateur':
+                if 'role' in update_data:
+                    del update_data['role']
             
             updated_user = UserService.update_user_profile(user_id, update_data)
             if updated_user:
@@ -254,6 +262,18 @@ class UserMetadataResource(Resource):
             "roles": ROLES,
             "grades": GRADES
         }), 200
+
+class UserDirectoryResource(Resource):
+    """Ressource publique pour le rÃ©pertoire des utilisateurs autorisÃ©s"""
+
+    def get(self):
+        """RÃ©cupÃ¨re la liste minimale des utilisateurs autorisÃ©s"""
+        try:
+            return jsonify({
+                "users": UserService.get_authorized_users_directory()
+            }), 200
+        except RuntimeError as e:
+            return {"message": str(e)}, 500
 
 class UserLogoutResource(Resource):
     """Ressource pour la déconnexion"""
