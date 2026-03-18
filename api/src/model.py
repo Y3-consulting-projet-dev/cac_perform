@@ -1938,6 +1938,22 @@ class Mission(Document):
         result = db.Mission1.update_one({"_id": ObjectId(id_mission)}, {"$set": {"materiality": materialities}})
         return result.modified_count
 
+    def save_quantitative_threshold_mode(self, id_mission, mode):
+        db = get_db()
+        if mode is None:
+            return {"ok": False, "message": "Mode manquant"}
+        mode = str(mode).lower().strip()
+        if mode not in ("materiality", "performance"):
+            return {"ok": False, "message": "Mode invalide"}
+
+        result = db.Mission1.update_one(
+            {"_id": ObjectId(id_mission)},
+            {"$set": {"quantitative_threshold_mode": mode}}
+        )
+        if result.matched_count == 0:
+            return {"ok": False, "message": "Mission non trouvée"}
+        return {"ok": True, "mode": mode}
+
     def get_materiality(self, id_mission):
         db = get_db()  # Obtenir la connexion à la base de données
         materiality = db.Mission1.find_one({"_id": ObjectId(id_mission)}, {"_id": 0, "materiality": 1})
@@ -2226,14 +2242,40 @@ class Mission(Document):
         mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
         grouping = mission['grouping']
 
+        def _norm_key(value):
+            if value is None:
+                return ""
+            import unicodedata
+            text = str(value).strip().lower()
+            text = unicodedata.normalize("NFKD", text)
+            text = "".join(ch for ch in text if not unicodedata.combining(ch))
+            text = " ".join(text.split())
+            return text
+
+        qualitative_simple = {
+            _norm_key(elt.get('compte') or elt.get('libelle') or elt.get('ref')): bool(elt.get('significant'))
+            for elt in (significant or [])
+        }
+
         for item in grouping:
-            value = next((elt['significant'] for elt in significant if elt.get('compte') == item.get('compte')), None)
+            key = _norm_key(item.get('compte') or item.get('ref') or item.get('libelle'))
+            value = next(
+                (elt.get('significant') for elt in significant if _norm_key(elt.get('compte') or elt.get('libelle') or elt.get('ref')) == key),
+                None
+            )
             if value is None:
                 item['significant'] = False
             else:
                 item['significant'] = value
 
-        result = db.Mission1.update_one({"_id": ObjectId(id_mission)}, {"$set": {"grouping": grouping}})
+        result = db.Mission1.update_one(
+            {"_id": ObjectId(id_mission)},
+            {"$set": {"grouping": grouping, "qualitative_simple": qualitative_simple}}
+        )
+        try:
+            self.analyse_qualitative(id_mission)
+        except Exception:
+            pass
         return result.modified_count
 
     def make_final_sm(self, id_mission):
@@ -5358,20 +5400,32 @@ class Mission(Document):
             if not selected_materiality:
                 return {"ok": False, "message": "Aucune matérialité sélectionnée", "analyse": []}
 
+            threshold_mode = (mission.get("quantitative_threshold_mode") or "materiality").lower().strip()
+            if threshold_mode not in ("materiality", "performance"):
+                threshold_mode = "materiality"
+
             # Analyser chaque compte du grouping
             analyse_data = []
             for item in grouping:
                 solde_n = abs(item.get('solde_n', 0))
                 solde_n1 = abs(item.get('solde_n1', 0))
                 materiality_threshold = selected_materiality.get('materiality', 0)
+                performance_threshold = selected_materiality.get('performance_materiality', 0)
+                selected_threshold = materiality_threshold
+                if threshold_mode == "performance":
+                    selected_threshold = performance_threshold or materiality_threshold
                 
                 # Déterminer si le compte est significatif
-                is_significant = solde_n >= materiality_threshold
+                is_significant = solde_n >= (selected_threshold or 0)
                 
                 # Calculer le pourcentage par rapport au seuil
                 percentage_of_threshold = 0
                 if materiality_threshold > 0:
                     percentage_of_threshold = (solde_n / materiality_threshold) * 100
+
+                percentage_of_performance_threshold = 0
+                if performance_threshold > 0:
+                    percentage_of_performance_threshold = (solde_n / performance_threshold) * 100
 
                 analyse_data.append({
                     "compte": item.get('compte', ''),
@@ -5382,6 +5436,8 @@ class Mission(Document):
                     "materiality_threshold": materiality_threshold,
                     "is_significant": is_significant,
                     "percentage_of_threshold": percentage_of_threshold,
+                    "performance_threshold": performance_threshold,
+                    "percentage_of_performance_threshold": percentage_of_performance_threshold,
                     "status": "À tester" if is_significant else "Ne pas tester"
                 })
 
@@ -5402,7 +5458,10 @@ class Mission(Document):
                     "significant_accounts": significant_accounts,
                     "non_significant_accounts": total_accounts - significant_accounts,
                     "total_significant_amount": total_significant_amount,
-                    "materiality_threshold": selected_materiality.get('materiality', 0),
+                      "materiality_threshold": selected_materiality.get('materiality', 0),
+                      "performance_materiality_threshold": selected_materiality.get('performance_materiality', 0),
+                    "selected_threshold": selected_threshold,
+                    "threshold_mode": threshold_mode,
                     "materiality_benchmark": selected_materiality.get('benchmark', '')
                 }
             }
@@ -5425,6 +5484,71 @@ class Mission(Document):
             grouping = mission.get("grouping", [])
             if not grouping:
                 return {"ok": False, "message": "Données de grouping manquantes", "analyse": []}
+
+            # Mode simple : décisions Oui/Non persistées
+            def _norm_key(value):
+                if value is None:
+                    return ""
+                import unicodedata
+                text = str(value).strip().lower()
+                text = unicodedata.normalize("NFKD", text)
+                text = "".join(ch for ch in text if not unicodedata.combining(ch))
+                text = " ".join(text.split())
+                return text
+
+            qualitative_simple = mission.get("qualitative_simple")
+            if qualitative_simple:
+                if isinstance(qualitative_simple, list):
+                    qualitative_simple = {
+                        _norm_key(elt.get("compte") or elt.get("libelle") or elt.get("ref")): bool(elt.get("significant"))
+                        for elt in qualitative_simple
+                    }
+                elif not isinstance(qualitative_simple, dict):
+                    qualitative_simple = {}
+
+                analyse_data = []
+                for item in grouping:
+                    compte = item.get('compte') or item.get('ref') or item.get('libelle', '')
+                    libelle = item.get('libelle', '')
+                    solde_n = abs(item.get('solde_n', 0))
+                    solde_n1 = abs(item.get('solde_n1', 0))
+                    is_qualitatively_significant = bool(
+                        qualitative_simple.get(_norm_key(compte), False)
+                    )
+
+                    analyse_data.append({
+                        "compte": compte,
+                        "libelle": libelle,
+                        "solde_n": solde_n,
+                        "solde_n1": solde_n1,
+                        "variation": solde_n - solde_n1,
+                        "qualitative_score": 0,
+                        "positive_responses": 0,
+                        "total_questions": 0,
+                        "is_qualitatively_significant": is_qualitatively_significant,
+                        "responses_detail": [],
+                        "status": "À tester" if is_qualitatively_significant else "Ne pas tester"
+                    })
+
+                total_accounts = len(analyse_data)
+                significant_accounts = len([a for a in analyse_data if a['is_qualitatively_significant']])
+
+                report = {
+                    "ok": True,
+                    "message": "Analyse qualitative générée avec succès",
+                    "analyse": analyse_data,
+                    "questions": [],
+                    "statistics": {
+                        "total_accounts": total_accounts,
+                        "significant_accounts": significant_accounts,
+                        "non_significant_accounts": total_accounts - significant_accounts,
+                        "total_positive_responses": 0,
+                        "average_score": 0
+                    }
+                }
+
+                local_db.Mission1.update_one({"_id": ObjectId(id_mission)}, {"$set": {"analyse_qualitative": report}})
+                return report
 
             # Questions Q1-Q8 pour l'analyse qualitative
             questions = [
@@ -5710,16 +5834,28 @@ class Mission(Document):
 
             
             # Index des analyses pour un accès rapide
+            def _norm_key(value):
+                if value is None:
+                    return ""
+                import unicodedata
+                text = str(value).strip().lower()
+                text = unicodedata.normalize("NFKD", text)
+                text = "".join(ch for ch in text if not unicodedata.combining(ch))
+                text = " ".join(text.split())
+                return text
+
             quant_index = {}
             if analyse_quantitative.get("analyse"):
                 for item in analyse_quantitative["analyse"]:
-                    quant_index[item.get("compte")] = item
+                    quant_index[_norm_key(item.get("compte") or item.get("ref") or item.get("libelle"))] = item
             qual_index = {}
             if analyse_qualitative.get("analyse"):
                 for item in analyse_qualitative["analyse"]:
-                    qual_index[item.get("compte")] = item
+                    qual_index[_norm_key(item.get("compte") or item.get("ref") or item.get("libelle"))] = item
 
-            grouping_index = {g.get("compte"): g for g in grouping} if grouping else {}
+            grouping_index = {
+                _norm_key(g.get("compte") or g.get("ref") or g.get("libelle")): g for g in grouping
+            } if grouping else {}
             materiality_threshold_global = (analyse_quantitative.get("statistics") or {}).get(
                 "materiality_threshold", 0
             )
@@ -5728,8 +5864,9 @@ class Mission(Document):
             presentation_data = []
             source_rows = quant_rows if quant_rows else grouping
             for item in source_rows:
-                compte = item.get("compte", "")
-                grouping_row = grouping_index.get(compte, {}) if grouping_index else {}
+                compte = item.get("compte", "") or item.get("ref") or item.get("libelle", "")
+                item_key = _norm_key(compte)
+                grouping_row = grouping_index.get(item_key, {}) if grouping_index else {}
 
                 libelle = item.get("libelle") or grouping_row.get("libelle", "")
                 solde_n = item.get("solde_n", grouping_row.get("solde_n", 0))
@@ -5749,7 +5886,7 @@ class Mission(Document):
                 percentage_of_threshold = item.get("percentage_of_threshold", 0)
 
                 # Données qualitatives
-                qual_data = qual_index.get(compte, {})
+                qual_data = qual_index.get(item_key, {})
                 is_qualitatively_significant = qual_data.get(
                     "is_qualitatively_significant",
                     bool(item.get("significant", False))
@@ -6101,17 +6238,38 @@ class Mission(Document):
 
         grouping = mission.get('grouping', [])
 
+        def _norm_key(value):
+            if value is None:
+                return ""
+            import unicodedata
+            text = str(value).strip().lower()
+            text = unicodedata.normalize("NFKD", text)
+            text = "".join(ch for ch in text if not unicodedata.combining(ch))
+            text = " ".join(text.split())
+            return text
+
+        qualitative_simple = {
+            _norm_key(elt.get('compte') or elt.get('libelle') or elt.get('ref')): bool(elt.get('significant'))
+            for elt in (significant or [])
+        }
+
         for item in grouping:
+            key = _norm_key(item.get('compte') or item.get('ref') or item.get('libelle'))
             value = next(
-                (elt.get('significant') for elt in significant if elt.get('compte') == item.get('compte')),
+                (elt.get('significant') for elt in significant if _norm_key(elt.get('compte') or elt.get('libelle') or elt.get('ref')) == key),
                 False
             )
             item['significant'] = bool(value)
 
         result = local_db.Mission1.update_one(
             {"_id": ObjectId(id_mission)},
-            {"$set": {"grouping": grouping}}
+            {"$set": {"grouping": grouping, "qualitative_simple": qualitative_simple}}
         )
+
+        try:
+            self.analyse_qualitative(id_mission)
+        except Exception:
+            pass
 
         return result.modified_count
 

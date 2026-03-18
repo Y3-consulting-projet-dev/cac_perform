@@ -73,6 +73,11 @@ const classementBilanReport = ref(null);
 const etatsFinanciersReport = ref(null);
 const materialiteReport = ref(null);
 const analyseQuantitativeReport = ref(null);
+const quantitativeThresholdMode = ref('materiality'); // materiality | performance
+const qualitativeSaveTimer = ref(null);
+const quantitativeSection = ref('actif');
+const qualitativeSection = ref('actif');
+const presentationSection = ref('actif');
 
 // Variables pour la détermination du seuil de signification
 const listBenchmark = ref([
@@ -246,6 +251,87 @@ function updateQuantitativeStatistics() {
   analyseQuantitativeReport.value.statistics.total_significant_amount = totalSignificantAmount;
 }
 
+const quantitativeThresholdValue = computed(() => {
+  const stats = analyseQuantitativeReport.value?.statistics || {};
+  if (stats.selected_threshold !== undefined && stats.selected_threshold !== null) {
+    return Number(stats.selected_threshold || 0);
+  }
+  if (quantitativeThresholdMode.value === 'performance') {
+    return Number(stats.performance_materiality_threshold || 0);
+  }
+  return Number(stats.materiality_threshold || 0);
+});
+
+const quantitativeDerivedStats = computed(() => {
+  const list = analyseQuantitativeReport.value?.analyse || [];
+  const threshold = quantitativeThresholdValue.value;
+  let significant = 0;
+  let totalAmount = 0;
+  list.forEach(item => {
+    const solde = toNumberValue(item.solde_n);
+    const isSig = threshold > 0 ? solde >= threshold : false;
+    if (isSig) {
+      significant += 1;
+      totalAmount += solde;
+    }
+  });
+  const total = list.length;
+  return {
+    total_accounts: total,
+    significant_accounts: significant,
+    non_significant_accounts: Math.max(0, total - significant),
+    total_significant_amount: totalAmount,
+    threshold
+  };
+});
+
+function isQuantAboveThreshold(item) {
+  const threshold = quantitativeThresholdValue.value;
+  if (!threshold) return false;
+  return toNumberValue(item.solde_n) >= threshold;
+}
+
+function getQuantitativePercentage(item) {
+  if (quantitativeThresholdMode.value === 'performance') {
+    if (Number.isFinite(item.percentage_of_performance_threshold)) {
+      return item.percentage_of_performance_threshold;
+    }
+  } else if (Number.isFinite(item.percentage_of_threshold)) {
+    return item.percentage_of_threshold;
+  }
+  const threshold = quantitativeThresholdValue.value;
+  if (!threshold) return 0;
+  return (toNumberValue(item.solde_n) / threshold) * 100;
+}
+
+const qualitativeFiltered = computed(() => {
+  const list = analyseQualitativeReport.value?.analyse || [];
+  const threshold = quantitativeThresholdValue.value;
+  if (!threshold) return list;
+  return list.filter(item => toNumberValue(item.solde_n) < threshold);
+});
+
+function setQualitativeTest(item, checked) {
+  if (!item) return;
+  item.is_qualitatively_significant = !!checked;
+  item.status = checked ? "À tester" : "Ne pas tester";
+  updateQualitativeStatistics();
+
+  if (qualitativeSaveTimer.value) {
+    clearTimeout(qualitativeSaveTimer.value);
+  }
+  qualitativeSaveTimer.value = setTimeout(() => {
+    saveQualitativeResponses();
+  }, 500);
+}
+
+watch(
+  () => quantitativeThresholdValue.value,
+  () => {
+    updateQualitativeStatistics();
+  }
+);
+
 // Toggle statut (qualitatif)
 function toggleQualitativeStatus(item) {
   if (!item) return;
@@ -408,11 +494,73 @@ function getCompteFromItem(item) {
   return val != null ? String(val).trim() : '';
 }
 
+function toNumberValue(value) {
+  if (value === null || value === undefined) return 0;
+  const normalized = String(value).replace(/\s+/g, '').replace(',', '.');
+  const num = Number(normalized);
+  return Number.isNaN(num) ? 0 : num;
+}
+
 function getClasseFromItem(item) {
   const compte = getCompteFromItem(item);
   const digits = compte.replace(/\D/g, '');
   return digits ? digits.charAt(0) : '';
 }
+
+function getQualitativeKeyId(item) {
+  const raw = item?.compte || item?.ref || item?.libelle || getCompteFromItem(item) || '';
+  return String(raw).trim();
+}
+
+function normalizeSection(value) {
+  const v = (value || '').toString().toLowerCase();
+  if (v === 'resultat' || v === 'compte de résultat') return 'pnl';
+  return v;
+}
+
+const groupingIndexByKey = computed(() => {
+  const map = new Map();
+  const grouping = groupingData.value?.grouping || [];
+  grouping.forEach((g, idx) => {
+    const section = normalizeSection(g.section || g.nature);
+    const keys = [g.compte, g.ref, g.libelle].filter(k => k !== undefined && k !== null && String(k).trim() !== '');
+    keys.forEach(k => {
+      const key = String(k).trim();
+      if (!map.has(key)) {
+        map.set(key, { idx, section });
+      }
+    });
+  });
+  return map;
+});
+
+function filterAndSortBySection(list, sectionKey) {
+  const section = normalizeSection(sectionKey);
+  const map = groupingIndexByKey.value;
+  return (list || [])
+    .filter(item => {
+      if (!section) return true;
+      const meta = map.get(getQualitativeKeyId(item));
+      return meta?.section === section;
+    })
+    .sort((a, b) => {
+      const ia = map.get(getQualitativeKeyId(a))?.idx ?? Number.MAX_SAFE_INTEGER;
+      const ib = map.get(getQualitativeKeyId(b))?.idx ?? Number.MAX_SAFE_INTEGER;
+      return ia - ib;
+    });
+}
+
+const quantitativeBySection = computed(() =>
+  filterAndSortBySection(analyseQuantitativeReport.value?.analyse || [], quantitativeSection.value)
+);
+
+const qualitativeBySection = computed(() =>
+  filterAndSortBySection(qualitativeFiltered.value || [], qualitativeSection.value)
+);
+
+const presentationBySection = computed(() =>
+  filterAndSortBySection(presentationComptesSignificatifsReport.value?.presentation || [], presentationSection.value)
+);
 
 // Variables réactives pour les statistiques
 const qualitativeStats = ref({
@@ -1157,10 +1305,17 @@ async function applySeuil(benchmark) {
 async function loadQuantitatif() {
   loading.value = true; errorMsg.value = "";
   try {
+    if (!groupingData.value?.grouping) {
+      await loadGrouping();
+    }
     const { data } = await axios.get(`/mission/analyse_quantitative/${props.missionId}`);
     analyseQuantitativeReport.value = data.response ?? data ?? {};
     if (analyseQuantitativeReport.value?.analyse) {
       analyseQuantitativeReport.value.analyse = filterByBalanceRows(analyseQuantitativeReport.value.analyse);
+    }
+    const savedMode = analyseQuantitativeReport.value?.statistics?.threshold_mode || analyseQuantitativeReport.value?.threshold_mode;
+    if (savedMode === 'materiality' || savedMode === 'performance') {
+      quantitativeThresholdMode.value = savedMode;
     }
     console.log("loadQuantitatiffff:", analyseQuantitativeReport.value);
     
@@ -1172,36 +1327,61 @@ async function loadQuantitatif() {
   }
 }
 
+async function setQuantitativeThresholdMode(mode) {
+  if (!mode) return;
+  if (quantitativeThresholdMode.value === mode) return;
+  quantitativeThresholdMode.value = mode;
+  loading.value = true; errorMsg.value = "";
+  try {
+    const { data } = await axios.put(
+      `/mission/quantitative_threshold_mode/${props.missionId}`,
+      { mode }
+    );
+    if (data.response?.ok === false) {
+      errorMsg.value = data.response?.message || "Erreur lors de la sauvegarde du seuil";
+    }
+    await loadQuantitatif();
+    await loadQualitatif();
+    await loadPresentationComptesSignificatifs();
+    await loadRevueAnalytiqueFinale();
+  } catch (e) {
+    errorMsg.value = `Erreur lors de la sauvegarde du seuil: ${e.response?.data?.message || e.message}`;
+  } finally {
+    loading.value = false;
+  }
+}
+
 async function loadQualitatif() {
   loading.value = true; errorMsg.value = "";
   try {
+    if (!groupingData.value?.grouping) {
+      await loadGrouping();
+    }
+    if (!analyseQuantitativeReport.value?.statistics) {
+      await loadQuantitatif();
+    }
     const { data } = await axios.get(`/mission/analyse_qualitative/${props.missionId}`);
     analyseQualitativeReport.value = data.response ?? data ?? {};
     if (analyseQualitativeReport.value?.analyse) {
       analyseQualitativeReport.value.analyse = filterByBalanceRows(analyseQualitativeReport.value.analyse);
-    }
-    console.log("loadQualitatiiiiif:", analyseQualitativeReport.value);
-    // Initialiser les réponses (même si vides)
-    if (analyseQualitativeReport.value && analyseQualitativeReport.value.analyse) {
-      const responses = {};
-      analyseQualitativeReport.value.analyse.forEach((item, index) => {
-        const key = getQualitativeKey(item, index);
-        responses[key] = {};
-        // Initialiser toutes les questions Q1-Q8
-        for (let q = 1; q <= 8; q++) {
-          const questionId = `Q${q}`;
-          const detail = Array.isArray(item.responses_detail) ? item.responses_detail : [];
-          responses[key][questionId] = detail.find(r => r.question_id === questionId)?.response || false;
+      analyseQualitativeReport.value.analyse.forEach((item) => {
+        if (!item.compte) {
+          item.compte = item.ref || item.libelle || item.numero_compte || item.num_compte || item.code_compte || item.compte_num || item.account || item.numero || item.num || item.code || '';
         }
       });
-      qualitativeResponses.value = responses;
-
-      // Recalculer tous les statuts avec les réponses chargées
-      analyseQualitativeReport.value.analyse.forEach((item, index) => {
-        updateQualitativeStatus(item, getQualitativeKey(item, index));
+    }
+    console.log("loadQualitatiiiiif:", analyseQualitativeReport.value);
+    if (analyseQualitativeReport.value && analyseQualitativeReport.value.analyse) {
+      if (!analyseQuantitativeReport.value?.statistics) {
+        await loadQuantitatif();
+      }
+      analyseQualitativeReport.value.analyse.forEach((item) => {
+        if (item.is_qualitatively_significant === undefined) {
+          item.is_qualitatively_significant = false;
+        }
+        item.status = item.is_qualitatively_significant ? "À tester" : "Ne pas tester";
       });
 
-      // Initialiser les statistiques si elles n'existent pas
       if (!analyseQualitativeReport.value.statistics) {
         analyseQualitativeReport.value.statistics = {
           significant_accounts: 0,
@@ -1211,7 +1391,6 @@ async function loadQualitatif() {
         };
       }
 
-      // Recalculer les statistiques globales
       await updateQualitativeStatistics();
     }
 
@@ -1462,51 +1641,33 @@ async function updateQualitativeStatistics() {
     return;
   }
 
-  const analyse = analyseQualitativeReport.value.analyse;
+  const analyse = qualitativeFiltered.value;
   let significantAccounts = 0;
   let nonSignificantAccounts = 0;
-  let totalPositiveResponses = 0;
-  let totalScore = 0;
-  let totalAccounts = analyse.length;
 
   analyse.forEach(item => {
-    // Compter les comptes significatifs
     if (item.is_qualitatively_significant) {
       significantAccounts++;
     } else {
       nonSignificantAccounts++;
     }
-
-    // Compter les réponses positives
-    const responses = qualitativeResponses.value[item.compte] || {};
-    for (let q = 1; q <= 8; q++) {
-      if (responses[`Q${q}`]) {
-        totalPositiveResponses++;
-      }
-    }
-
-    // Ajouter au score total
-    totalScore += item.qualitative_score || 0;
   });
 
-  // Mettre à jour les variables réactives
   qualitativeStats.value = {
     significant_accounts: significantAccounts,
     non_significant_accounts: nonSignificantAccounts,
-    total_positive_responses: totalPositiveResponses,
-    average_score: totalAccounts > 0 ? totalScore / totalAccounts : 0
+    total_positive_responses: 0,
+    average_score: 0
   };
 
-  // Mettre à jour aussi l'objet original pour la compatibilité
   if (!analyseQualitativeReport.value.statistics) {
     analyseQualitativeReport.value.statistics = {};
   }
 
   analyseQualitativeReport.value.statistics.significant_accounts = significantAccounts;
   analyseQualitativeReport.value.statistics.non_significant_accounts = nonSignificantAccounts;
-  analyseQualitativeReport.value.statistics.total_positive_responses = totalPositiveResponses;
-  analyseQualitativeReport.value.statistics.average_score = qualitativeStats.value.average_score;
-
+  analyseQualitativeReport.value.statistics.total_positive_responses = 0;
+  analyseQualitativeReport.value.statistics.average_score = 0;
 }
 
 async function saveQualitativeResponses() {
@@ -1516,16 +1677,24 @@ async function saveQualitativeResponses() {
 
   try {
     // Utiliser directement l'endpoint qui fonctionne (qualitative_analysis)
-    const listGrouping = [];
-    for (const [compte, responses] of Object.entries(qualitativeResponses.value)) {
-      for (const [questionId, significant] of Object.entries(responses)) {
-        const questionNumber = parseInt(questionId.replace('Q', ''));
-        listGrouping.push({
-          compte: compte,
-          question: questionNumber,
-          significant: significant
-        });
-      }
+    const fullList = analyseQualitativeReport.value?.analyse || [];
+    const sourceList = fullList.length
+      ? fullList
+      : qualitativeFiltered.value;
+
+    const listGrouping = sourceList
+      .map(item => ({
+        compte: getQualitativeKeyId(item),
+        libelle: item.libelle || item.label || '',
+        ref: item.ref || item.compte || '',
+        significant: !!item.is_qualitatively_significant
+      }))
+      .filter(item => !!item.compte || !!item.libelle || !!item.ref);
+
+    if (!listGrouping.length) {
+      errorMsg.value = "Aucune donnée de comptes à sauvegarder.";
+      loading.value = false;
+      return;
     }
 
     const payload = { listGrouping };
@@ -1536,13 +1705,9 @@ async function saveQualitativeResponses() {
       // Recharger l'analyse après sauvegarde
       await loadAnalyseQualitative();
 
-      // Recharger aussi la présentation des comptes significatifs si elle existe
-      if (presentationComptesSignificatifsReport.value) {
-        // Recharger d'abord les données de variation (étape 3) car elles sont utilisées dans la présentation
-        await loadClassement();
-        // Puis recharger la présentation
-        await loadPresentationComptesSignificatifs();
-      }
+      // Recharger aussi la présentation des comptes significatifs
+      await loadClassement();
+      await loadPresentationComptesSignificatifs();
 
       errorMsg.value = "";
     } else {
@@ -1578,6 +1743,9 @@ async function initQualitativeResponses() {
 async function loadPresentationComptesSignificatifs() {
   loading.value = true; errorMsg.value = "";
   try {
+    if (!groupingData.value?.grouping) {
+      await loadGrouping();
+    }
     const { data } = await axios.get(`/mission/presentation_comptes_significatifs/${props.missionId}`);
     presentationComptesSignificatifsReport.value = data.response || {};
     if (presentationComptesSignificatifsReport.value?.presentation) {
@@ -4023,30 +4191,93 @@ function formatAmount(value) {
               <p v-if="analyseQuantitativeReport?.message && !analyseQuantitativeReport?.ok" class="text-blue-700 text-sm mb-2">
                 {{ analyseQuantitativeReport.message }}
               </p>
+              <div class="flex flex-wrap gap-2 mb-3">
+                <button
+                  type="button"
+                  @click="setQuantitativeThresholdMode('materiality')"
+                  :class="[
+                    'px-3 py-1 rounded-full text-xs font-semibold border transition',
+                    quantitativeThresholdMode === 'materiality'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-blue-700 border-blue-200'
+                  ]"
+                >
+                  Seuil de matérialité
+                </button>
+                <button
+                  type="button"
+                  @click="setQuantitativeThresholdMode('performance')"
+                  :class="[
+                    'px-3 py-1 rounded-full text-xs font-semibold border transition',
+                    quantitativeThresholdMode === 'performance'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-blue-700 border-blue-200'
+                  ]"
+                >
+                  Seuil de performance
+                </button>
+              </div>
               <div v-if="analyseQuantitativeReport.statistics" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
                 <div class="bg-white p-3 rounded border">
-                  <div class="text-xs text-gray-600">Seuil de matérialité</div>
+                  <div class="text-xs text-gray-600">
+                    {{ quantitativeThresholdMode === 'performance' ? 'Seuil de performance' : 'Seuil de matérialité' }}
+                  </div>
                   <div class="text-lg font-bold text-blue-600">{{
-                    analyseQuantitativeReport.statistics.materiality_threshold.toLocaleString() }} FCFA</div>
+                    quantitativeDerivedStats.threshold.toLocaleString() }} FCFA</div>
                 </div>
                 <div class="bg-white p-3 rounded border">
-                  <div class="text-xs text-gray-600">Comptes significatifs</div>
+                  <div class="text-xs text-gray-600">{{ quantitativeThresholdMode === 'performance' ? 'Comptes supérieurs au seuil de performance' : 'Comptes supérieurs à la matérialité' }}</div>
                   <div class="text-lg font-bold text-green-600">{{
-                    analyseQuantitativeReport.statistics.significant_accounts }}
+                    quantitativeDerivedStats.significant_accounts }}
                   </div>
                 </div>
                 <div class="bg-white p-3 rounded border">
-                  <div class="text-xs text-gray-600">Comptes non significatifs</div>
+                  <div class="text-xs text-gray-600">{{ quantitativeThresholdMode === 'performance' ? 'Comptes inférieurs au seuil de performance' : 'Comptes inférieurs à la matérialité' }}</div>
                   <div class="text-lg font-bold text-gray-600">{{
-                    analyseQuantitativeReport.statistics.non_significant_accounts
+                    quantitativeDerivedStats.non_significant_accounts
                   }}</div>
                 </div>
-                <div class="bg-white p-3 rounded border">
-                  <div class="text-xs text-gray-600">Total significatif</div>
-                  <div class="text-lg font-bold text-purple-600">{{
-                    analyseQuantitativeReport.statistics.total_significant_amount.toLocaleString() }} FCFA</div>
-                </div>
               </div>
+            </div>
+
+            <!-- Filtres de section -->
+            <div class="flex flex-wrap gap-2 mb-3">
+              <button
+                type="button"
+                @click="quantitativeSection = 'actif'"
+                :class="[
+                  'px-3 py-1 rounded-full text-xs font-semibold border transition',
+                  quantitativeSection === 'actif'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-blue-700 border-blue-200'
+                ]"
+              >
+                Actif
+              </button>
+              <button
+                type="button"
+                @click="quantitativeSection = 'passif'"
+                :class="[
+                  'px-3 py-1 rounded-full text-xs font-semibold border transition',
+                  quantitativeSection === 'passif'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-blue-700 border-blue-200'
+                ]"
+              >
+                Passif
+              </button>
+              <button
+                type="button"
+                @click="quantitativeSection = 'pnl'"
+                :class="[
+                  'px-3 py-1 rounded-full text-xs font-semibold border transition',
+                  quantitativeSection === 'pnl'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-blue-700 border-blue-200'
+                ]"
+              >
+                Compte de résultat
+              </button>
             </div>
 
             <!-- Bouton d'export -->
@@ -4057,7 +4288,7 @@ function formatAmount(value) {
             </button>
 
             <!-- Tableau d'analyse quantitative -->
-            <div v-if="analyseQuantitativeReport.analyse && analyseQuantitativeReport.analyse.length"
+            <div v-if="quantitativeBySection.length"
               class="overflow-auto max-h-[60vh] rounded-xl shadow-xl bg-white border border-gray-100">
               <table class="min-w-full table-hide-compte divide-y divide-gray-200">
                 <thead class="bg-linear-to-r from-blue-ycube to-blue-ycube-3">
@@ -4070,8 +4301,6 @@ function formatAmount(value) {
                     </th>
                     <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Solde N-1
                     </th>
-                    <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Variation
-                    </th>
                     <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">% du
                       Seuil</th>
                     <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Statut
@@ -4079,7 +4308,7 @@ function formatAmount(value) {
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="(item, index) in analyseQuantitativeReport.analyse" :key="index"
+                  <tr v-for="(item, index) in quantitativeBySection" :key="item.compte || item.ref || item.libelle || index"
                     class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
@@ -4109,26 +4338,14 @@ function formatAmount(value) {
                         {{
                           formatAmount(item.solde_n1) }}</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right">
-                      <div class="flex items-center justify-end">
-                        <div
-                          class="text-sm font-mono font-semibold transform group-hover:scale-105 transition-all duration-200"
-                          :class="item.variation >= 0 ? 'text-emerald-600' : 'text-red-600'">
-                          {{ formatAmount(item.variation) }}
-                        </div>
-                        <div class="ml-2 w-2 h-2 rounded-full"
-                          :class="item.variation >= 0 ? 'bg-emerald-500' : 'bg-red-500'">
-                        </div>
-                      </div>
-                    </td>
                     <td class=" px-6 py-4 whitespace-nowrap text-right">
                       <div class="flex items-center justify-end">
                         <div
                           class="text-sm font-mono font-semibold transform group-hover:scale-105 transition-all duration-200"
-                          :class="item.percentage_of_threshold >= 100 ? 'text-red-600' : item.percentage_of_threshold >= 50 ? 'text-orange-600' : 'text-emerald-600'">
-                          {{ item.percentage_of_threshold.toFixed(1) }}%
+                          :class="getQuantitativePercentage(item) >= 100 ? 'text-red-600' : getQuantitativePercentage(item) >= 50 ? 'text-orange-600' : 'text-emerald-600'">
+                          {{ getQuantitativePercentage(item).toFixed(1) }}%
                         </div>
-                        <svg v-if="item.percentage_of_threshold >= 100" class="w-4 h-4 ml-1 text-red-500 animate-pulse"
+                        <svg v-if="getQuantitativePercentage(item) >= 100" class="w-4 h-4 ml-1 text-red-500 animate-pulse"
                           fill="currentColor" viewBox="0 0 20 20">
                           <path fill-rule="evenodd"
                             d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
@@ -4137,15 +4354,21 @@ function formatAmount(value) {
                       </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                      <button
-                        type="button"
-                        @click="toggleQuantitativeStatus(item)"
-                        class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
-                        :class="item.is_significant ? 'bg-linear-to-r from-red-100 to-red-200 text-red-800 border border-red-300' : 'bg-linear-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'">
+                      <span
+                        class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm select-none cursor-default"
+                        :class="isQuantAboveThreshold(item) ? 'bg-linear-to-r from-red-100 to-red-200 text-red-800 border border-red-300' : 'bg-linear-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'">
                         <span class="w-2 h-2 rounded-full mr-2"
-                          :class="item.is_significant ? 'bg-red-500' : 'bg-emerald-500'"></span>
-                        {{ item.status }}
-                      </button>
+                          :class="isQuantAboveThreshold(item) ? 'bg-red-500' : 'bg-emerald-500'"></span>
+                        {{
+                          isQuantAboveThreshold(item)
+                            ? (quantitativeThresholdMode === 'performance'
+                              ? 'Comptes supérieurs au seuil de performance'
+                              : 'Comptes supérieurs à la matérialité')
+                            : (quantitativeThresholdMode === 'performance'
+                              ? 'Comptes inférieurs au seuil de performance'
+                              : 'Comptes inférieurs à la matérialité')
+                        }}
+                      </span>
                     </td>
                   </tr>
                 </tbody>
@@ -4157,20 +4380,32 @@ function formatAmount(value) {
               <h4 class="text-lg font-semibold text-gray-800 mb-3">Résumé de l'analyse quantitative</h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h5 class="font-semibold text-green-800 mb-2">✅ Comptes à tester ({{
-                    analyseQuantitativeReport.statistics.significant_accounts }})</h5>
+                  <h5 class="font-semibold text-green-800 mb-2">✅ {{
+                    quantitativeThresholdMode === 'performance'
+                      ? 'Comptes supérieurs au seuil de performance'
+                      : 'Comptes supérieurs à la matérialité'
+                  }} ({{
+                    quantitativeDerivedStats.significant_accounts }})</h5>
                   <p class="text-sm text-gray-700">
-                    Ces comptes dépassent le seuil de matérialité de {{
-                      analyseQuantitativeReport.statistics.materiality_threshold.toLocaleString() }} FCFA
+                    Ces comptes dépassent le seuil de {{
+                      quantitativeThresholdMode === 'performance' ? 'performance' : 'matérialité'
+                    }} de {{
+                      quantitativeDerivedStats.threshold.toLocaleString() }} FCFA
                     et représentent un montant total de {{
-                      analyseQuantitativeReport.statistics.total_significant_amount.toLocaleString() }} FCFA.
+                      quantitativeDerivedStats.total_significant_amount.toLocaleString() }} FCFA.
                   </p>
                 </div>
                 <div>
-                  <h5 class="font-semibold text-gray-800 mb-2">ℹ️ Comptes ne pas tester ({{
-                    analyseQuantitativeReport.statistics.non_significant_accounts }})</h5>
+                  <h5 class="font-semibold text-gray-800 mb-2">ℹ️ {{
+                    quantitativeThresholdMode === 'performance'
+                      ? 'Comptes inférieurs au seuil de performance'
+                      : 'Comptes inférieurs à la matérialité'
+                  }} ({{
+                    quantitativeDerivedStats.non_significant_accounts }})</h5>
                   <p class="text-sm text-gray-700">
-                    Ces comptes sont en dessous du seuil de matérialité et ne nécessitent pas de tests d'audit
+                    Ces comptes sont en dessous du seuil choisi {{
+                      quantitativeThresholdMode === 'performance' ? 'performance' : 'matérialité'
+                    }} et ne nécessitent pas de tests d'audit
                     approfondis.
                   </p>
                 </div>
@@ -4203,6 +4438,11 @@ function formatAmount(value) {
             <div class="bg-gray-100 border border-blue-200 rounded-lg p-4">
               <h3 class="text-lg font-semibold text-blue-ycube mb-2">Analyse qualitative des comptes</h3>
               <p class="text-blue-700 text-sm mb-2">{{ analyseQualitativeReport.message }}</p>
+              <div class="text-xs text-gray-600 mb-2">
+                Seuls les comptes inférieurs au seuil {{
+                  quantitativeThresholdMode === 'performance' ? 'de performance' : 'de matérialité'
+                }} sont affichés.
+              </div>
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
                 <div class="bg-white p-3 rounded border">
                   <div class="text-xs text-gray-600">Comptes significatifs</div>
@@ -4212,10 +4452,7 @@ function formatAmount(value) {
                   <div class="text-xs text-gray-600">Comptes non significatifs</div>
                   <div class="text-lg font-bold text-gray-600">{{ qualitativeStats.non_significant_accounts }}</div>
                 </div>
-                <div class="bg-white p-3 rounded border">
-                  <div class="text-xs text-gray-600">Réponses positives</div>
-                  <div class="text-lg font-bold text-purple-600">{{ qualitativeStats.total_positive_responses }}</div>
-                </div>
+                
                 <!--
                   <div class="bg-white p-3 rounded border">
                     <div class="text-xs text-gray-600">Score moyen</div>
@@ -4225,6 +4462,46 @@ function formatAmount(value) {
               </div>
             </div>
 
+            <!-- Filtres de section -->
+            <div class="flex flex-wrap gap-2 mb-3">
+              <button
+                type="button"
+                @click="qualitativeSection = 'actif'"
+                :class="[
+                  'px-3 py-1 rounded-full text-xs font-semibold border transition',
+                  qualitativeSection === 'actif'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-blue-700 border-blue-200'
+                ]"
+              >
+                Actif
+              </button>
+              <button
+                type="button"
+                @click="qualitativeSection = 'passif'"
+                :class="[
+                  'px-3 py-1 rounded-full text-xs font-semibold border transition',
+                  qualitativeSection === 'passif'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-blue-700 border-blue-200'
+                ]"
+              >
+                Passif
+              </button>
+              <button
+                type="button"
+                @click="qualitativeSection = 'pnl'"
+                :class="[
+                  'px-3 py-1 rounded-full text-xs font-semibold border transition',
+                  qualitativeSection === 'pnl'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-blue-700 border-blue-200'
+                ]"
+              >
+                Compte de résultat
+              </button>
+            </div>
+
             <!-- Boutons d'action -->
             <div class="flex gap-3 flex-wrap">
               <button v-if="analyseQualitativeReport.analyse && analyseQualitativeReport.analyse.length"
@@ -4232,20 +4509,10 @@ function formatAmount(value) {
                 class="px-4 py-2 bg-green-ycube-2 text-white rounded-md shadow-md hover:bg-green-700 transition-colors">
                 Télécharger (XLSX)
               </button>
-              <button @click="saveQualitativeResponses"
-                class="px-4 py-2 bg-blue-ycube-3 text-white rounded-md shadow-md hover:bg-blue-ycube transition-colors"
-                :disabled="loading">
-                Sauvegarder les réponses
-              </button>
-              <button @click="initQualitativeResponses"
-                class="px-4 py-2 bg-gray-ycube-1 text-white rounded-md shadow-md hover:bg-orange-700 transition-colors"
-                :disabled="loading">
-                Réinitialiser
-              </button>
             </div>
 
             <!-- Tableau des questionnaires Q1-Q8 -->
-            <div v-if="analyseQualitativeReport.analyse && analyseQualitativeReport.analyse.length"
+            <div v-if="qualitativeBySection.length"
               class="overflow-auto max-h-[60vh] rounded-xl shadow-xl bg-white border border-gray-100">
               <table class="min-w-full table-hide-compte divide-y divide-gray-200">
                 <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
@@ -4256,38 +4523,14 @@ function formatAmount(value) {
                     </th>
                     <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Solde N
                     </th>
-                    <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Score
+                    <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Section à tester (ISA 315)
                     </th>
-                    <th
-                      class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:bg-blue-700 transition-colors"
-                      @click="showQuestion(1, $event)" title="Cliquer pour voir la question complète">Q1</th>
-                    <th
-                      class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:bg-blue-700 transition-colors"
-                      @click="showQuestion(2, $event)" title="Cliquer pour voir la question complète">Q2</th>
-                    <th
-                      class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:bg-blue-700 transition-colors"
-                      @click="showQuestion(3, $event)" title="Cliquer pour voir la question complète">Q3</th>
-                    <th
-                      class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:bg-blue-700 transition-colors"
-                      @click="showQuestion(4, $event)" title="Cliquer pour voir la question complète">Q4</th>
-                    <th
-                      class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:bg-blue-700 transition-colors"
-                      @click="showQuestion(5, $event)" title="Cliquer pour voir la question complète">Q5</th>
-                    <th
-                      class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:bg-blue-700 transition-colors"
-                      @click="showQuestion(6, $event)" title="Cliquer pour voir la question complète">Q6</th>
-                    <th
-                      class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:bg-blue-700 transition-colors"
-                      @click="showQuestion(7, $event)" title="Cliquer pour voir la question complète">Q7</th>
-                    <th
-                      class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:bg-blue-700 transition-colors"
-                      @click="showQuestion(8, $event)" title="Cliquer pour voir la question complète">Q8</th>
                     <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Statut
                     </th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="(item, index) in analyseQualitativeReport.analyse" :key="index"
+                  <tr v-for="(item, index) in qualitativeBySection" :key="item.compte || item.ref || item.libelle || index"
                     class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
@@ -4311,37 +4554,25 @@ function formatAmount(value) {
                         {{
                           item.solde_n.toLocaleString() }}</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right">
-                      <div class="flex items-center justify-end">
-                        <div
-                          class="text-sm font-mono font-semibold transform group-hover:scale-105 transition-all duration-200"
-                          :class="item.qualitative_score >= 50 ? 'text-red-600' : item.qualitative_score >= 25 ? 'text-orange-600' : 'text-emerald-600'">
-                          {{ item.qualitative_score.toFixed(1) }}%
-                        </div>
-                        <svg v-if="item.qualitative_score >= 50" class="w-4 h-4 ml-1 text-red-500 animate-pulse"
-                          fill="currentColor" viewBox="0 0 20 20">
-                          <path fill-rule="evenodd"
-                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                            clip-rule="evenodd"></path>
-                        </svg>
-                      </div>
-                    </td>
-                    <td v-for="q in 8" :key="q" class="px-6 py-4 whitespace-nowrap text-center">
-                      <input type="checkbox"
-                        :checked="qualitativeResponses[getQualitativeKey(item, index)]?.[`Q${q}`] || false"
-                        @change="(e) => handleQualitativeResponse(item, getQualitativeKey(item, index), `Q${q}`, e.target.checked)"
-                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 transform group-hover:scale-110 transition-all duration-200" />
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                      <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          :checked="item.is_qualitatively_significant"
+                          @change="(e) => setQualitativeTest(item, e.target.checked)"
+                          class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span>{{ item.is_qualitatively_significant ? 'Oui' : 'Non' }}</span>
+                      </label>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                      <button
-                        type="button"
-                        @click="toggleQualitativeStatus(item)"
-                        class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm transform group-hover:scale-105 transition-all duration-200"
+                      <span
+                        class="inline-flex px-3 py-1 rounded-full text-xs font-medium shadow-sm select-none"
                         :class="item.is_qualitatively_significant ? 'bg-linear-to-r from-red-100 to-red-200 text-red-800 border border-red-300' : 'bg-linear-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'">
                         <span class="w-2 h-2 rounded-full mr-2"
                           :class="item.is_qualitatively_significant ? 'bg-red-500' : 'bg-emerald-500'"></span>
                         {{ item.status }}
-                      </button>
+                      </span>
                     </td>
                   </tr>
                 </tbody>
@@ -4421,6 +4652,46 @@ function formatAmount(value) {
               </div>
             </div>
 
+            <!-- Filtres de section -->
+            <div class="flex flex-wrap gap-2 mb-3">
+              <button
+                type="button"
+                @click="presentationSection = 'actif'"
+                :class="[
+                  'px-3 py-1 rounded-full text-xs font-semibold border transition',
+                  presentationSection === 'actif'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-blue-700 border-blue-200'
+                ]"
+              >
+                Actif
+              </button>
+              <button
+                type="button"
+                @click="presentationSection = 'passif'"
+                :class="[
+                  'px-3 py-1 rounded-full text-xs font-semibold border transition',
+                  presentationSection === 'passif'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-blue-700 border-blue-200'
+                ]"
+              >
+                Passif
+              </button>
+              <button
+                type="button"
+                @click="presentationSection = 'pnl'"
+                :class="[
+                  'px-3 py-1 rounded-full text-xs font-semibold border transition',
+                  presentationSection === 'pnl'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-blue-700 border-blue-200'
+                ]"
+              >
+                Compte de résultat
+              </button>
+            </div>
+
             <!-- Bouton d'export -->
             <button
               v-if="presentationComptesSignificatifsReport.presentation && presentationComptesSignificatifsReport.presentation.length"
@@ -4431,7 +4702,7 @@ function formatAmount(value) {
 
             <!-- Tableau de présentation -->
             <div
-              v-if="presentationComptesSignificatifsReport.presentation && presentationComptesSignificatifsReport.presentation.length"
+              v-if="presentationBySection.length"
               class="overflow-x-auto rounded-xl shadow-xl bg-white border border-gray-100">
               <table class="min-w-full table-hide-compte divide-y divide-gray-200 overflow-auto">
                 <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
@@ -4455,7 +4726,7 @@ function formatAmount(value) {
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="(item, index) in presentationComptesSignificatifsReport.presentation" :key="index"
+                  <tr v-for="(item, index) in presentationBySection" :key="item.compte || item.ref || item.libelle || index"
                     class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
