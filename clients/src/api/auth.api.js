@@ -27,18 +27,22 @@ export function getCurrentUser() {
 
 export function getUserProfile() {
   const user = getCurrentUser()
-  if (!user?._id) throw new Error('Utilisateur non authentifié')
+  if (!user?._id) throw new Error('Utilisateur non authentifie')
   return api.get(`/users/${user._id}/profile`)
 }
 
 export function updateUserProfile(payload) {
   const user = getCurrentUser()
-  if (!user?._id) throw new Error('Utilisateur non authentifié')
+  if (!user?._id) throw new Error('Utilisateur non authentifie')
   return api.put(`/users/${user._id}/profile`, payload)
 }
 
 export function changeUserPassword(payload) {
   const user = getCurrentUser()
-  if (!user?._id) throw new Error('Utilisateur non authentifié')
+  if (!user?._id) throw new Error('Utilisateur non authentifie')
   return api.put(`/users/${user._id}/password`, payload)
+}
+
+export function getAuthorizedUsersDirectory() {
+  return api.get('/users/directory')
 }
