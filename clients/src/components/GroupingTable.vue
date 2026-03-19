@@ -9,8 +9,12 @@ const props = defineProps({
     type: [String, Number],
     default: ''
   },
-  expandable: { type: Boolean, default: false }
+  expandable: { type: Boolean, default: false },
+  selectable: { type: Boolean, default: false },
+  selectedIds: { type: Array, default: () => [] }
 })
+
+const emit = defineEmits(['update:selectedIds'])
 
 const expandedRows = ref(new Set())
 
@@ -18,6 +22,26 @@ function toggleRow(index) {
   expandedRows.value.has(index)
     ? expandedRows.value.delete(index)
     : expandedRows.value.add(index)
+}
+
+
+function getRowId(row) {
+  const raw = row?.ref || row?.libelle || row?.compte || ''
+  return String(raw).trim()
+}
+
+function isSelected(row) {
+  const id = getRowId(row)
+  return id ? props.selectedIds.includes(id) : false
+}
+
+function toggleSelection(row, checked) {
+  const id = getRowId(row)
+  if (!id) return
+  const next = new Set(props.selectedIds)
+  if (checked) next.add(id)
+  else next.delete(id)
+  emit('update:selectedIds', Array.from(next))
 }
 
 function hasComptes(row) {
@@ -36,6 +60,8 @@ function hasComptes(row) {
       <!-- ================= THEAD ================= -->
       <thead class="bg-gradient-to-r from-blue-ycube via-blue-ycube-1 to-blue-ycube-3">
         <tr>
+          <th v-if="selectable" class="px-4 py-4 w-10"></th>
+
           <!-- Colonne expand -->
           <th v-if="expandable" class="px-4 py-4 w-12"></th>
 
@@ -66,6 +92,14 @@ function hasComptes(row) {
           <tr
             class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group"
           >
+            <td v-if="selectable" class="px-4 py-4 text-center">
+              <input
+                type="checkbox"
+                :checked="isSelected(row)"
+                @change="toggleSelection(row, $event.target.checked)"
+                class="w-4 h-4"
+              />
+            </td>
             <!-- Bouton expand -->
             <td v-if="expandable" class="px-4 py-4 text-center">
               <button

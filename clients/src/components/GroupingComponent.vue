@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, inject, shallowRef, watch } from 'vue'
+import { ref, onMounted, inject, shallowRef, watch, computed } from 'vue'
 import GroupingInitial from './GroupingInitial.vue'
 import GroupingActif from './GroupingActif.vue'
 import GroupingPassif from './GroupingPassif.vue'
@@ -27,6 +27,8 @@ const currentComponent = shallowRef(GroupingInitial)
 
 // ✅ SOURCE UNIQUE
 const grouping = ref([])
+const selectedGroupIds = ref([])
+const selectionMode = ref(false)
 
 // Recuperer l'id mission
 const id_mission = window.location.pathname.split('/')[2]
@@ -63,15 +65,43 @@ function showComp(type) {
   if (type === 'pnl') currentComponent.value = GroupingPnl
 }
 
+
+
+const selectableGroups = computed(() => {
+  return (grouping.value || [])
+    .filter((g) => Array.isArray(g?.comptes || g?.comptes_detaille) && (g.comptes || g.comptes_detaille).length > 0)
+    .map((g) => ({
+      id: String(g.ref || g.libelle || g.compte || '').trim(),
+      label: g.libelle || g.ref || g.compte || ''
+    }))
+    .filter((g) => g.id)
+})
+
+function selectAllGroups() {
+  selectedGroupIds.value = selectableGroups.value.map((g) => g.id)
+}
+
+function clearGroupSelection() {
+  selectedGroupIds.value = []
+}
+
 async function downloadGrouping() {
   if (!grouping.value.length) return
+
+  if (selectionMode.value && !selectedGroupIds.value.length) {
+    notif.trigger('Veuillez selectionner au moins un groupe.', 'warning')
+    return
+  }
 
   if (!grouping.value[0]?.mat_sign) {
     notif.trigger('Grouping incomplet: téléchargement forcé.', 'warning')
   }
 
+  const refsParam = selectedGroupIds.value.length
+    ? `?refs=${encodeURIComponent(selectedGroupIds.value.join(','))}`
+    : ''
   const response = await axios.get(
-    `/mission/download_grouping/${id_mission}`,
+    `/mission/download_grouping/${id_mission}${refsParam}`,
     { responseType: 'blob' }
   )
 
@@ -118,8 +148,20 @@ async function downloadGrouping() {
                 Compte de résultat
             </button>
 
-            <button class="w-full px-3 py-2 bg-blue-ycube text-white rounded-md shadow-md"
-                @click="downloadGrouping">Télécharger le grouping</button>
+            <button v-if="!selectionMode" class="w-full px-3 py-2 bg-blue-ycube text-white rounded-md shadow-md"
+                @click="selectionMode = true">Télécharger</button>
+
+            <template v-else>
+                <button class="w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-md shadow-md"
+                    @click="selectAllGroups">Tout sélectionner</button>
+
+                <button class="w-full px-3 py-2 bg-green-ycube text-white rounded-md shadow-md"
+                    :disabled="!selectedGroupIds.length"
+                    @click="downloadGrouping">Télécharger</button>
+
+                <button class="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded-md shadow-md"
+                    @click="selectionMode = false; clearGroupSelection()">Annuler</button>
+            </template>
         </div>
 
         <!--  -->
@@ -129,6 +171,9 @@ async function downloadGrouping() {
   :is="currentComponent"
   :grouping="grouping"
   :annee_auditee="annee_auditee"
+  :selection-enabled="selectionMode"
+  :selected-ids="selectedGroupIds"
+  @update:selected-ids="selectedGroupIds = $event"
 />
 
             </div>

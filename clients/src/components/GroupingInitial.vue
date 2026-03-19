@@ -10,8 +10,12 @@ const props = defineProps({
   annee_auditee: {
     type: [String, Number],
     required: true
-  }
+  },
+  selectionEnabled: { type: Boolean, default: false },
+  selectedIds: { type: Array, default: () => [] }
 })
+
+const emit = defineEmits(['update:selectedIds'])
 
 const axios = inject('axios')
 const groupings = ref([])
@@ -71,6 +75,9 @@ async function showSignificantGrouping() {
     :data="groupings"
     :columns="groupingInitialCols"
     :annee_auditee="annee_auditee"
+    :selectable="selectionEnabled"
+    :selected-ids="selectedIds"
+    @update:selected-ids="emit('update:selectedIds', $event)"
     expandable
   />
 </template>

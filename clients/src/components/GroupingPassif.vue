@@ -10,7 +10,9 @@ const props = defineProps({
   annee_auditee: {
     type: [String, Number],
     required: true
-  }
+  },
+  selectionEnabled: { type: Boolean, default: false },
+  selectedIds: { type: Array, default: () => [] }
 })
 
 /* 🔹 PASSIF : classe 1 */
@@ -33,6 +35,9 @@ const cols = computed(() => [
     :data="groupings"
     :columns="cols"
     :annee_auditee="annee_auditee"
+    :selectable="selectionEnabled"
+    :selected-ids="selectedIds"
+    @update:selected-ids="emit('update:selectedIds', $event)"
     expandable
   />
 </template> -->
@@ -49,7 +54,9 @@ const props = defineProps({
   annee_auditee: {
     type: [String, Number],
     required: true
-  }
+  },
+  selectionEnabled: { type: Boolean, default: false },
+  selectedIds: { type: Array, default: () => [] }
 })
 
 /* 🔹 PASSIF : classe 1 */
@@ -70,6 +77,9 @@ const cols = computed(() => [
     :data="groupings"
     :columns="cols"
     :annee_auditee="annee_auditee"
+    :selectable="selectionEnabled"
+    :selected-ids="selectedIds"
+    @update:selected-ids="emit('update:selectedIds', $event)"
     expandable
   />
 </template>

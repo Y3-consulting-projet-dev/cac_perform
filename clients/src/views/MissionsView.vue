@@ -55,10 +55,6 @@ function prevPage() {
   if (currentPage.value > 1) currentPage.value -= 1
 }
 
-function newMission() {
-  router.push('/newMission')
-}
-
 function getMandat(mission) {
   const start = mission.date_debut_mandat || mission.date_debut
   const end = mission.date_fin_mandat || mission.date_fin
@@ -140,14 +136,6 @@ watch(totalPages, (value) => {
         <h1 class="text-2xl font-bold text-gray-800">Missions d'audit</h1>
         <p class="text-sm text-gray-500">Liste complete des missions effectuees</p>
       </div>
-
-      <button
-        @click="newMission"
-        class="flex items-center gap-2 bg-blue-ycube text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
-      >
-        <i class="fa-solid fa-plus"></i>
-        Nouvelle mission
-      </button>
     </div>
 
     <div class="mb-6">

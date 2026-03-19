@@ -19,6 +19,56 @@ def revue_analytique_route(id_mission):
     result = cls.revue_analytique(id_mission)
     return make_response(jsonify({"response": result}), 200)
 
+@mission.get('/download_revue_analytique/<id_mission>')
+def download_revue_analytique(id_mission):
+    try:
+        from src.model import get_db as _get_db
+        _get_db()
+    except Exception as e:
+        return make_response(jsonify({"error": f"Base de données non connectée: {e}"}), 500)
+    cls = Mission()
+    refs = request.args.get('refs', '')
+    selected_refs = [r.strip() for r in refs.split(',') if r.strip()] if refs else None
+    excel_result = cls.extract_revue_analytique(id_mission, selected_refs=selected_refs)
+    return send_file(
+        excel_result,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name="revue_analytique.xlsx"
+    )
+
+@mission.get('/download_analyse_quantitative/<id_mission>')
+def download_analyse_quantitative(id_mission):
+    try:
+        from src.model import get_db as _get_db
+        _get_db()
+    except Exception as e:
+        return make_response(jsonify({"error": f"Base de données non connectée: {e}"}), 500)
+    cls = Mission()
+    excel_result = cls.extract_analyse_quantitative(id_mission)
+    return send_file(
+        excel_result,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name="analyse_quantitative.xlsx"
+    )
+
+@mission.get('/download_analyse_qualitative/<id_mission>')
+def download_analyse_qualitative(id_mission):
+    try:
+        from src.model import get_db as _get_db
+        _get_db()
+    except Exception as e:
+        return make_response(jsonify({"error": f"Base de données non connectée: {e}"}), 500)
+    cls = Mission()
+    excel_result = cls.extract_analyse_qualitative(id_mission)
+    return send_file(
+        excel_result,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name="analyse_qualitative.xlsx"
+    )
+
 @mission.put('/revue_analytique/<id_mission>/commentaire')
 def update_commentaire_route(id_mission):
     """
@@ -522,8 +572,10 @@ def download_grouping(id_mission):
         _get_db()
     except Exception as e:
         return make_response(jsonify({"error": f"Base de données non connectée: {e}"}), 500)
+    refs_param = request.args.get("refs", "") if request else ""
+    selected_refs = [r.strip() for r in refs_param.split(",") if r.strip()] if refs_param else None
     cls = Mission()
-    excel_result = cls.extract_grouping(id_mission)
+    excel_result = cls.extract_grouping(id_mission, selected_refs)
     return send_file(
         excel_result,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
