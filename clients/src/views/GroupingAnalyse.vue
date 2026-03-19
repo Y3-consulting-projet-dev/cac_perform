@@ -59,6 +59,8 @@ async function loadGrouping() {
 
 /* === Nouveaux états pour les 3 features === */
 const revueAnalytique = ref([]);
+const revueSelectionMode = ref(false);
+const selectedRevueIds = ref([]);
 const coherenceReport = ref(null);
 const selectedYearCoherence = ref(null);
 const selectedControlType = ref('arithmetique'); // 'arithmetique' ou 'vraisemblance'
@@ -208,48 +210,10 @@ const analyseQualitativeReport = ref(null);
 const presentationComptesSignificatifsReport = ref(null);
 const revueAnalytiqueFinaleReport = ref(null);
 const qualitativeResponses = ref({});
-const selectedEfiTab = ref('actif');
 const loading = ref(false);
 const errorMsg = ref("");
 const expandedRows = ref([]);
 const revueExpandedRows = ref(new Set());
-
-function getQualitativeKey(item, index) {
-  const base = item?.compte || item?.numero_compte || item?._id || "row";
-  return `${base}__${index}`;
-}
-
-// Toggle statut (quantitatif)
-function toggleQuantitativeStatus(item) {
-  if (!item) return;
-  item.is_significant = !item.is_significant;
-  item.status = item.is_significant ? "À tester" : "Ne pas tester";
-  updateQuantitativeStatistics();
-}
-
-function updateQuantitativeStatistics() {
-  if (!analyseQuantitativeReport.value || !analyseQuantitativeReport.value.analyse) return;
-  const analyse = analyseQuantitativeReport.value.analyse;
-  let significantAccounts = 0;
-  let nonSignificantAccounts = 0;
-  let totalSignificantAmount = 0;
-
-  analyse.forEach(item => {
-    if (item.is_significant) {
-      significantAccounts++;
-      totalSignificantAmount += Number(item.solde_n || 0);
-    } else {
-      nonSignificantAccounts++;
-    }
-  });
-
-  if (!analyseQuantitativeReport.value.statistics) {
-    analyseQuantitativeReport.value.statistics = {};
-  }
-  analyseQuantitativeReport.value.statistics.significant_accounts = significantAccounts;
-  analyseQuantitativeReport.value.statistics.non_significant_accounts = nonSignificantAccounts;
-  analyseQuantitativeReport.value.statistics.total_significant_amount = totalSignificantAmount;
-}
 
 const quantitativeThresholdValue = computed(() => {
   const stats = analyseQuantitativeReport.value?.statistics || {};
@@ -331,15 +295,6 @@ watch(
     updateQualitativeStatistics();
   }
 );
-
-// Toggle statut (qualitatif)
-function toggleQualitativeStatus(item) {
-  if (!item) return;
-  const isTest = item.status === "À tester";
-  item.status = isTest ? "Ne pas tester" : "À tester";
-  item.is_qualitatively_significant = !isTest;
-  updateQualitativeStatistics();
-}
 
 // Toggle statut (présentation - décision finale)
 function syncPresentationSignificativite(item) {
@@ -438,6 +393,27 @@ function toggleRevueRow(index) {
 function hasRevueComptes(row) {
   const comptes = row?.comptes_detaille || row?.comptes;
   return Array.isArray(comptes) && comptes.length > 0;
+}
+
+function getRevueGroupId(group) {
+  return String(group?.ref || group?.libelle || group?.compte || '').trim();
+}
+
+const revueSelectableGroups = computed(() => {
+  return (revueAnalytiqueGroups.value || [])
+    .map(group => ({
+      id: getRevueGroupId(group),
+      label: group?.libelle || group?.ref || group?.compte || ''
+    }))
+    .filter(item => item.id);
+});
+
+function selectAllRevueGroups() {
+  selectedRevueIds.value = revueSelectableGroups.value.map(item => item.id);
+}
+
+function clearRevueSelection() {
+  selectedRevueIds.value = [];
 }
 
 const revueAnalytiqueGroups = computed(() => {
@@ -601,9 +577,9 @@ const workflowPhases = ref([
       { id: 5, name: "Calcul des seuils", key: "materialite" },
       { id: 6, name: "Analyse quantitative", key: "quantitatif" },
       { id: 7, name: "Analyse qualitative", key: "qualitatif" },
-      { id: 6, name: "Grouping", key: "grouping" },
-      { id: 7, name: "États financiers préliminaires", key: "efi" },
-      { id: 8, name: "Décision finale des comptes à tester", key: "presentation" }
+      { id: 8, name: "Décision finale des comptes à tester", key: "presentation" },
+      { id: 9, name: "Préparation des leads", key: "grouping" },
+      { id: 10, name: "États financiers préliminaires", key: "efi" }
     ]
   },
   {
@@ -1906,10 +1882,144 @@ async function saveRevueAnalytique() {
 }
 
 
+
+async function downloadRevueAnalytique() {
+  if (!revueAnalytique.value.length) return;
+  if (revueSelectionMode.value && !selectedRevueIds.value.length) {
+    notyf.trigger('Veuillez selectionner au moins un groupe.', 'warning');
+    return;
+  }
+  const refsParam = selectedRevueIds.value.length
+    ? `?refs=${encodeURIComponent(selectedRevueIds.value.join(','))}`
+    : '';
+  const response = await axios.get(
+    `/mission/download_revue_analytique/${props.missionId}${refsParam}`,
+    { responseType: 'blob' }
+  );
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'revue_analytique.xlsx');
+  document.body.appendChild(link);
+  link.click();
+  window.URL.revokeObjectURL(url);
+}
+
+async function downloadAnalyseQuantitative() {
+  if (!analyseQuantitativeReport?.value?.analyse?.length) return;
+  const response = await axios.get(
+    `/mission/download_analyse_quantitative/${props.missionId}`,
+    { responseType: 'blob' }
+  );
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'analyse_quantitative.xlsx');
+  document.body.appendChild(link);
+  link.click();
+  window.URL.revokeObjectURL(url);
+}
+
+async function downloadAnalyseQualitative() {
+  if (!analyseQualitativeReport?.value?.analyse?.length) return;
+  const response = await axios.get(
+    `/mission/download_analyse_qualitative/${props.missionId}`,
+    { responseType: 'blob' }
+  );
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'analyse_qualitative.xlsx');
+  document.body.appendChild(link);
+  link.click();
+  window.URL.revokeObjectURL(url);
+}
+
 function exportToXlsx(data, filename) {
   // Construire un tableau (headers + rows) puis exporter en .xlsx
   let headers = [];
   let rows = [];
+  if (filename === 'analyse_quantitative') {
+    const workbook = XLSX.utils.book_new();
+    const headersQuant = ['N° COMPTE', 'LIBELLE', 'SOLDE N', 'SOLDE N-1', 'VARIATION', 'EN POURCENTAGE'];
+    const sections = [
+      { key: 'actif', label: 'Actifs' },
+      { key: 'passif', label: 'Passifs' },
+      { key: 'pnl', label: 'Comptes de resultat' }
+    ];
+
+    sections.forEach(section => {
+      const list = filterAndSortBySection(data || [], section.key);
+      const rowsQuant = list.map(row => {
+        const soldeN = Number(row.solde_n ?? 0);
+        const soldeN1 = Number(row.solde_n1 ?? 0);
+        const pct = getQuantitativePercentage(row);
+        return [
+          row.compte ?? row.numero_compte ?? row.ref ?? '',
+          row.libelle ?? '',
+          soldeN,
+          soldeN1,
+          soldeN - soldeN1,
+          Number.isFinite(pct) ? `${pct.toFixed(2)}%` : ''
+        ];
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet([headersQuant, ...rowsQuant]);
+      XLSX.utils.book_append_sheet(workbook, worksheet, section.label);
+    });
+
+    XLSX.writeFile(workbook, `${filename}.xlsx`);
+    return;
+  }
+  if (filename === 'analyse_qualitative') {
+    const workbook = XLSX.utils.book_new();
+    const headersQual = ['N° COMPTE', 'LIBELLE', 'SOLDE N', 'SOLDE N-1', 'VARIATION', 'STATUT'];
+    const sections = [
+      { key: 'actif', label: 'Actifs' },
+      { key: 'passif', label: 'Passifs' },
+      { key: 'pnl', label: 'Comptes de resultat' }
+    ];
+    const sourceList = (qualitativeFiltered.value && Array.isArray(qualitativeFiltered.value))
+      ? qualitativeFiltered.value
+      : (data || []);
+
+    sections.forEach(section => {
+      const list = filterAndSortBySection(sourceList, section.key);
+      const rowsQual = list.map(row => {
+        const soldeN = Number(row.solde_n ?? 0);
+        const soldeN1 = Number(row.solde_n1 ?? 0);
+        const variation = row.variation ?? (soldeN - soldeN1);
+        return [
+          row.compte ?? row.numero_compte ?? row.ref ?? '',
+          row.libelle ?? '',
+          soldeN,
+          soldeN1,
+          variation,
+          row.status ?? ''
+        ];
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet([headersQual, ...rowsQual]);
+      XLSX.utils.book_append_sheet(workbook, worksheet, section.label);
+    });
+
+    XLSX.writeFile(workbook, `${filename}.xlsx`);
+    return;
+  }
+  const expandGroupsFirst = (list) => {
+    if (!Array.isArray(list)) return [];
+    const out = [];
+    list.forEach((item) => {
+      const sub = item?.comptes_detaille || item?.comptes || item?.details || item?.sous_groupes;
+      if (Array.isArray(sub) && sub.length) {
+        sub.forEach((s) => out.push(s));
+        out.push(item);
+      } else {
+        out.push(item);
+      }
+    });
+    return out;
+  };
 
   if (filename === 'controle_coherence') {
     const years = Object.keys(data || {})
@@ -1942,27 +2052,28 @@ function exportToXlsx(data, filename) {
     headers = Array.from(headerSet);
     rows = flatRows.map(row => headers.map(h => row?.[h] ?? ''));
   } else if (filename === 'revue_analytique') {
-    headers = ['Compte', 'Libellé', 'N', 'N-1', 'Variation', 'Variation %', 'Commentaire Auto', 'Commentaire Perso'];
-    rows = data.map(row => [
-      row.numero_compte,
-      row.libelle,
-      row.solde_n,
-      row.solde_n1,
-      row.delta_abs,
-      (row.delta_pct * 100).toFixed(1) + '%',
+    headers = ['Compte', 'Libell?', 'N', 'N-1', 'Variation', 'Variation %', 'Commentaire Auto', 'Commentaire Perso'];
+    const source = revueAnalytiqueGroups.value?.length ? revueAnalytiqueGroups.value : data;
+    rows = expandGroupsFirst(source).map(row => [
+      row.numero_compte ?? row.compte ?? row.ref ?? '',
+      row.libelle ?? '',
+      row.solde_n ?? 0,
+      row.solde_n1 ?? 0,
+      row.delta_abs ?? (Number(row.solde_n ?? 0) - Number(row.solde_n1 ?? 0)),
+      ((row.delta_pct ?? 0) * 100).toFixed(1) + '%',
       row.commentaire_auto || '',
       row.commentaire_perso || ''
     ]);
   } else if (filename === 'classement_bilan') {
-    headers = ['Compte', 'Libellé', 'Nature', 'N', 'N-1', 'Variation', 'Variation %'];
-    rows = data.map(row => [
-      row.compte,
-      row.libelle,
-      row.nature,
-      row.solde_n,
-      row.solde_n1,
-      row.variation,
-      row.variation_percent.toFixed(1) + '%'
+    headers = ['Compte', 'Libell?', 'Nature', 'N', 'N-1', 'Variation', 'Variation %'];
+    rows = expandGroupsFirst(data).map(row => [
+      row.compte ?? row.numero_compte ?? row.ref ?? '',
+      row.libelle ?? '',
+      row.nature ?? row.section ?? '',
+      row.solde_n ?? 0,
+      row.solde_n1 ?? 0,
+      row.variation ?? (Number(row.solde_n ?? 0) - Number(row.solde_n1 ?? 0)),
+      ((row.variation_percent ?? 0)).toFixed(1) + '%'
     ]);
   } else if (filename.startsWith('etats_financiers_')) {
     const type = filename.split('_')[2]; // actif, passif, ou pnl
@@ -2040,19 +2151,19 @@ function exportToXlsx(data, filename) {
     ]);
   } else if (filename === 'revue_analytique_finale') {
     headers = ['Compte', 'Libellé', 'Solde N', 'Solde N-1', 'Variation', 'Variation %', 'Statut Final', 'Niveau de Risque', 'Statut Validation', 'Validé', 'Commentaire Auto', 'Commentaire Perso'];
-    rows = data.map(row => [
-      row.compte,
-      row.libelle,
-      row.solde_n,
-      row.solde_n1,
-      row.variation,
-      row.variation_percent.toFixed(1) + '%',
-      row.final_status,
-      row.risk_level,
-      row.validation_status,
+    rows = expandGroupsFirst(data).map(row => [
+      row.compte ?? row.numero_compte ?? row.ref ?? '',
+      row.libelle ?? '',
+      row.solde_n ?? 0,
+      row.solde_n1 ?? 0,
+      row.variation ?? (Number(row.solde_n ?? 0) - Number(row.solde_n1 ?? 0)),
+      (row.variation_percent ?? 0).toFixed(1) + '%',
+      row.final_status ?? row.significativite_status ?? '',
+      row.risk_level ?? '',
+      row.validation_status ?? '',
       row.is_validated ? 'Oui' : 'Non',
-      row.commentaire_auto,
-      row.commentaire_perso
+      row.commentaire_auto ?? '',
+      row.commentaire_perso ?? ''
     ]);
   } else {
     headers = Object.keys(data?.[0] || {});
@@ -2352,8 +2463,19 @@ function formatAmount(value) {
         <div v-if="componentKey === 'revue'">
           <h2 class="text-xl font-semibold mb-3">Revue analytique</h2>
           <div v-if="revueAnalytique.length === 0 && !loading" class="text-sm text-gray-600">Aucune donnée.</div>
-          <button v-if="revueAnalytique.length" @click="exportToXlsx(revueAnalytique, 'revue_analytique')"
-            class="mb-3 px-4 py-2 bg-green-ycube text-white rounded-md shadow-md">Télécharger (XLSX)</button>
+          <div v-if="revueAnalytique.length" class="mb-3 flex flex-wrap gap-2">
+            <button v-if="!revueSelectionMode" @click="revueSelectionMode = true"
+              class="px-4 py-2 bg-blue-ycube text-white rounded-md shadow-md">Télécharger</button>
+            <template v-else>
+              <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md shadow-md"
+                @click="selectAllRevueGroups">Tout sélectionner</button>
+              <button @click="downloadRevueAnalytique"
+                :disabled="!selectedRevueIds.length"
+                class="px-4 py-2 bg-green-ycube text-white rounded-md shadow-md">Télécharger</button>
+              <button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md shadow-md"
+                @click="revueSelectionMode = false; clearRevueSelection()">Annuler</button>
+            </template>
+          </div>
           <div
             v-if="revueAnalytique.length"
             class="overflow-x-auto rounded-xl shadow-xl bg-white border border-gray-100"
@@ -2374,23 +2496,31 @@ function formatAmount(value) {
                   <template v-for="(group, index) in revueAnalytiqueGroups" :key="index">
                     <tr class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group">
                       <td class="px-4 py-4 text-center">
-                        <button
-                          v-if="hasRevueComptes(group)"
-                          @click="toggleRevueRow(index)"
-                          class="p-1 rounded-md hover:bg-blue-100 transition-colors duration-200"
-                          :title="revueExpandedRows.has(index) ? 'Réduire' : 'Voir le détail'"
-                        >
-                          <svg
-                            class="w-5 h-5 text-blue-600 transition-transform duration-200"
-                            :class="{ 'rotate-90': revueExpandedRows.has(index) }"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                        <div class="flex items-center justify-center gap-2">
+                          <input v-if="revueSelectionMode"
+                            type="checkbox"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                            :value="getRevueGroupId(group)"
+                            v-model="selectedRevueIds"
+                          />
+                          <button
+                            v-if="hasRevueComptes(group)"
+                            @click="toggleRevueRow(index)"
+                            class="p-1 rounded-md hover:bg-blue-100 transition-colors duration-200"
+                            :title="revueExpandedRows.has(index) ? 'R?duire' : 'Voir le d?tail'"
                           >
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                        <span v-else class="w-5 h-5 inline-block"></span>
+                            <svg
+                              class="w-5 h-5 text-blue-600 transition-transform duration-200"
+                              :class="{ 'rotate-90': revueExpandedRows.has(index) }"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                          <span v-else class="w-5 h-5 inline-block"></span>
+                        </div>
                       </td>
                       <td class="px-6 py-4 text-sm font-semibold">{{ group.libelle }}</td>
                       <td class="px-6 py-4 text-right text-sm font-mono">{{ formatAmount(group.solde_n) }}</td>
@@ -3937,7 +4067,7 @@ function formatAmount(value) {
         <!-- Étape 4: Grouping -->
         <div v-if="componentKey === 'grouping'">
           <div class="flex justify-between items-center mb-3">
-            <h2 class="text-xl font-semibold">Grouping</h2>
+            <h2 class="text-xl font-semibold">Préparation des leads</h2>
           </div>
 
           <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -4282,7 +4412,7 @@ function formatAmount(value) {
 
             <!-- Bouton d'export -->
             <button v-if="analyseQuantitativeReport.analyse && analyseQuantitativeReport.analyse.length"
-              @click="exportToXlsx(analyseQuantitativeReport.analyse, 'analyse_quantitative')"
+              @click="downloadAnalyseQuantitative"
               class="mb-3 px-4 py-2 bg-green-ycube-2 text-white rounded-md shadow-md hover:bg-green-700 transition-colors">
               Télécharger (XLSX)
             </button>
@@ -4505,7 +4635,7 @@ function formatAmount(value) {
             <!-- Boutons d'action -->
             <div class="flex gap-3 flex-wrap">
               <button v-if="analyseQualitativeReport.analyse && analyseQualitativeReport.analyse.length"
-                @click="exportToXlsx(analyseQualitativeReport.analyse, 'analyse_qualitative')"
+                @click="downloadAnalyseQualitative"
                 class="px-4 py-2 bg-green-ycube-2 text-white rounded-md shadow-md hover:bg-green-700 transition-colors">
                 Télécharger (XLSX)
               </button>
@@ -4522,6 +4652,8 @@ function formatAmount(value) {
                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Libellé
                     </th>
                     <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Solde N
+                    </th>
+                    <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Solde N-1
                     </th>
                     <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Section à tester (ISA 315)
                     </th>
@@ -4553,6 +4685,12 @@ function formatAmount(value) {
                         class="text-sm font-mono text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
                         {{
                           item.solde_n.toLocaleString() }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                      <div
+                        class="text-sm font-mono text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
+                        {{
+                          item.solde_n1.toLocaleString() }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <label class="inline-flex items-center gap-2 text-sm text-gray-700">

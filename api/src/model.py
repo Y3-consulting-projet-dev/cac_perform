@@ -3050,87 +3050,573 @@ class Mission(Document):
         wb.save(namefile)
 
     # ---------- Extract grouping Excel ----------
-    def extract_grouping(self, id_mission):
-        db = get_db()  # Obtenir la connexion à la base de données
+    def extract_grouping(self, id_mission, selected_refs=None):
+        db = get_db()
         if db is None:
             from src.utils.database import ensure_connection
             ensure_connection()
             db = get_db()
         if db is None:
             raise RuntimeError("extract_grouping: base de données non connectée")
-        # Créer un fichier Excel pour l'export du grouping
+
         wb = openpyxl.Workbook()
         sheet = wb.active
+        sheet.title = "LEAD"
 
-        columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
-        headers = ['Numéro compte', 'Solde n', 'Solde n-1', 'Grouping', 'Variation', 'Variation %', 'Compte qualitatif', 'Compte quantitatif', 'Compte significatif']
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+        headers = [
+            "N° COMPTE",
+            "LIBELLE",
+            "SOLDE N",
+            "SOLDE N-1",
+            "VARIATION",
+            "EN POURCENTAGE",
+            "TESTE (Y ou N)",
+            "Si (N) commenter",
+            "CONTENU DU COMPTE"
+        ]
+
+        header_fill = PatternFill("solid", fgColor="002060")
+        title_fill = PatternFill("solid", fgColor="002060")
+        header_font = Font(color="FFFFFF", bold=True)
+        title_font = Font(color="FFFFFF", bold=True, size=12)
+        center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        thin = Side(border_style="thin", color="000000")
+        border = Border(top=thin, left=thin, right=thin, bottom=thin)
+        group_fill = PatternFill("solid", fgColor="D9D9D9")
+
+        sheet.merge_cells("A1:I1")
+        title_cell = sheet["A1"]
+        title_cell.value = "LEAD"
+        title_cell.fill = title_fill
+        title_cell.font = title_font
+        title_cell.alignment = center
+
+        for idx, header in enumerate(headers, start=1):
+            cell = sheet.cell(row=2, column=idx, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center
+            cell.border = border
+
+        sheet.column_dimensions['A'].width = 14
+        sheet.column_dimensions['B'].width = 35
+        sheet.column_dimensions['C'].width = 14
+        sheet.column_dimensions['D'].width = 14
+        sheet.column_dimensions['E'].width = 14
+        sheet.column_dimensions['F'].width = 14
+        sheet.column_dimensions['G'].width = 14
+        sheet.column_dimensions['H'].width = 20
+        sheet.column_dimensions['I'].width = 40
+        sheet.freeze_panes = "A3"
 
         mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
         if not mission:
             raise ValueError("Mission non trouvée")
 
-        balances = mission.get('balance_variation', []) or []
         grouping = mission.get('grouping', []) or []
+        if selected_refs:
+            selected_set = {str(r).strip() for r in selected_refs}
+            grouping = [g for g in grouping if str(g.get('ref') or g.get('libelle') or g.get('compte') or '').strip() in selected_set]
+        balances = mission.get('balance_variation', []) or []
         materiality_list = mission.get('materiality', []) or []
         materiality = next((item for item in materiality_list if item.get('choice') is True), {})
 
-        grouping_map = {item.get('compte'): item for item in grouping if item.get('compte')}
+        def to_num(val):
+            if val is None:
+                return 0
+            try:
+                if isinstance(val, str):
+                    cleaned = val.replace(' ', '').replace(' ', '').replace(',', '.')
+                    return float(cleaned)
+                return float(val)
+            except Exception:
+                return 0
 
-        for i in range(len(columns)):
-            sheet[columns[i] + '1'] = headers[i]
+        def build_row(item):
+            compte = item.get('numero_compte') or item.get('compte') or item.get('ref') or ''
+            libelle = item.get('libelle') or item.get('label') or ''
+            solde_n = to_num(item.get('solde_n'))
+            solde_n1 = to_num(item.get('solde_n1'))
+            variation = item.get('variation')
+            if variation is None:
+                variation = solde_n - solde_n1
+            variation_pct = item.get('variation_percent')
+            if variation_pct is None:
+                variation_pct = item.get('delta_pct')
+            if variation_pct is None:
+                variation_pct = (variation / solde_n1) if solde_n1 else 0
 
-        # Largeurs pour ?viter les ####### et format d'affichage lisible
-        sheet.column_dimensions['A'].width = 14
-        sheet.column_dimensions['B'].width = 16
-        sheet.column_dimensions['C'].width = 16
-        sheet.column_dimensions['D'].width = 10
-        sheet.column_dimensions['E'].width = 16
-        sheet.column_dimensions['F'].width = 12
-        sheet.column_dimensions['G'].width = 18
-        sheet.column_dimensions['H'].width = 18
-        sheet.column_dimensions['I'].width = 18
-
-        for iteration, data in enumerate(balances):
-            new_iteration = str(iteration + 2)
-            sheet["A" + new_iteration] = data.get("numero_compte")
-            sheet["B" + new_iteration] = data.get("solde_n")
-            sheet["C" + new_iteration] = data.get("solde_n1")
-
-            # Formats: pas de notation scientifique + s?parateurs d'espaces
-            sheet["A" + new_iteration].number_format = "@"
-            sheet["B" + new_iteration].number_format = "# ##0"
-            sheet["C" + new_iteration].number_format = "# ##0"
-
-            value_grouping = data.get("numero_compte")[0:2]
-            variation = data.get("solde_n") - data.get("solde_n1")
-
-            if variation == 0:
-                variation_percent = 0
-            elif data.get("solde_n1") == 0:
-                variation_percent = 100
+            test_val = item.get('significant')
+            if test_val is True:
+                test_str = 'Y'
+            elif test_val is False:
+                test_str = 'N'
             else:
-                variation_percent = (variation / data.get("solde_n1")) * 100
+                test_str = ''
 
-            sheet["D" + new_iteration] = value_grouping
-            sheet["E" + new_iteration] = variation
-            sheet["F" + new_iteration] = variation_percent
+            comment = item.get('commentaire') or item.get('commentaire_perso') or ''
+            contenu = item.get('contenu_compte') or item.get('contenu') or ''
 
-            sheet["E" + new_iteration].number_format = "# ##0"
-            sheet["F" + new_iteration].number_format = "0.00"
-            g_item = grouping_map.get(value_grouping, {})
-            sheet["G" + new_iteration] = g_item.get('significant')
-            sheet["H" + new_iteration] = g_item.get('materiality')
-            sheet["I" + new_iteration] = g_item.get('mat_sign')
+            return [
+                str(compte) if compte is not None else '',
+                str(libelle) if libelle is not None else '',
+                solde_n,
+                solde_n1,
+                variation,
+                variation_pct,
+                test_str,
+                comment,
+                contenu
+            ]
 
-        second_sheet = wb.create_sheet(title="Seuil de matérialité")
+        rows = []
+        if grouping:
+            for group in grouping:
+                sub = group.get('comptes_detaille') or group.get('comptes') or []
+                if isinstance(sub, list) and sub:
+                    for s in sub:
+                        rows.append((build_row(s), False))
+                    rows.append((build_row(group), True))
+                else:
+                    rows.append((build_row(group), True))
+        else:
+            for b in balances:
+                rows.append((build_row(b), False))
+
+        start_row = 3
+        for idx, (vals, is_group) in enumerate(rows):
+            r = start_row + idx
+            for c, val in enumerate(vals, start=1):
+                cell = sheet.cell(row=r, column=c, value=val)
+                cell.border = border
+                if c == 1:
+                    cell.number_format = "@"
+                elif c in (3, 4, 5):
+                    cell.number_format = "# ##0"
+                elif c == 6:
+                    cell.number_format = "0.00%"
+                cell.alignment = left if c in (2, 8, 9) else center
+                if is_group:
+                    cell.font = Font(bold=True)
+                    cell.fill = group_fill
+
+        second_sheet = wb.create_sheet(title="Seuil_materialite")
         second_headers = ['materiality', 'performance materiality', 'trivial misstatements']
         second_sheet["A1"] = second_headers[0]
         second_sheet["B1"] = second_headers[1]
         second_sheet["C1"] = second_headers[2]
-
         second_sheet["A2"] = materiality.get('materiality')
         second_sheet["B2"] = materiality.get('performance_materiality')
         second_sheet["C2"] = materiality.get('trivial_misstatements')
+
+        excel_io = BytesIO()
+        wb.save(excel_io)
+        excel_io.seek(0)
+        return excel_io
+
+    def extract_revue_analytique(self, id_mission, selected_refs=None):
+        db = get_db()
+        if db is None:
+            from src.utils.database import ensure_connection
+            ensure_connection()
+            db = get_db()
+        if db is None:
+            raise RuntimeError("extract_revue_analytique: base de données non connectée")
+
+        wb = openpyxl.Workbook()
+        sheet = wb.active
+        sheet.title = "Revue Analytique"
+
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+        headers = [
+            "N° COMPTE",
+            "LIBELLE",
+            "SOLDE N",
+            "SOLDE N-1",
+            "VARIATION",
+            "EN POURCENTAGE",
+            "TESTE (Y ou N)",
+            "Si (N) commenter",
+            "CONTENU DU COMPTE"
+        ]
+
+        header_fill = PatternFill("solid", fgColor="002060")
+        title_fill = PatternFill("solid", fgColor="002060")
+        header_font = Font(color="FFFFFF", bold=True)
+        title_font = Font(color="FFFFFF", bold=True, size=12)
+        center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        thin = Side(border_style="thin", color="000000")
+        border = Border(top=thin, left=thin, right=thin, bottom=thin)
+        group_fill = PatternFill("solid", fgColor="D9D9D9")
+
+        sheet.merge_cells("A1:I1")
+        title_cell = sheet["A1"]
+        title_cell.value = "Revue Analytique"
+        title_cell.fill = title_fill
+        title_cell.font = title_font
+        title_cell.alignment = center
+
+        for idx, header in enumerate(headers, start=1):
+            cell = sheet.cell(row=2, column=idx, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center
+            cell.border = border
+
+        sheet.column_dimensions['A'].width = 14
+        sheet.column_dimensions['B'].width = 35
+        sheet.column_dimensions['C'].width = 14
+        sheet.column_dimensions['D'].width = 14
+        sheet.column_dimensions['E'].width = 14
+        sheet.column_dimensions['F'].width = 14
+        sheet.column_dimensions['G'].width = 14
+        sheet.column_dimensions['H'].width = 20
+        sheet.column_dimensions['I'].width = 40
+        sheet.freeze_panes = "A3"
+
+        mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
+        if not mission:
+            raise ValueError("Mission non trouvée")
+
+        revue = mission.get("revue_analytique", []) or []
+        grouping = mission.get("grouping", []) or []
+
+        if selected_refs:
+            selected_set = {str(r).strip() for r in selected_refs}
+
+            def matches(group):
+                candidates = [
+                    group.get("ref"),
+                    group.get("libelle"),
+                    group.get("compte"),
+                    group.get("numero_compte")
+                ]
+                for val in candidates:
+                    if val is None:
+                        continue
+                    if str(val).strip() in selected_set:
+                        return True
+                return False
+
+            grouping = [g for g in grouping if matches(g)]
+
+        by_compte = {str(r.get("numero_compte") or ""): r for r in revue}
+
+        def to_num(val):
+            if val is None:
+                return 0
+            try:
+                if isinstance(val, str):
+                    cleaned = val.replace(' ', '').replace('\u00a0', '').replace(',', '.')
+                    return float(cleaned)
+                return float(val)
+            except Exception:
+                return 0
+
+        def build_row(item):
+            compte = item.get("numero_compte") or item.get("compte") or item.get("ref") or ""
+            libelle = item.get("libelle") or item.get("label") or ""
+            solde_n = to_num(item.get("solde_n"))
+            solde_n1 = to_num(item.get("solde_n1"))
+            variation = item.get("variation")
+            if variation is None:
+                variation = solde_n - solde_n1
+            variation_pct = item.get("variation_percent")
+            if variation_pct is None:
+                variation_pct = item.get("delta_pct")
+            if variation_pct is None:
+                variation_pct = (variation / solde_n1) if solde_n1 else 0
+
+            test_val = item.get("significant")
+            if test_val is True:
+                test_str = "Y"
+            elif test_val is False:
+                test_str = "N"
+            else:
+                test_str = ""
+
+            comment = item.get("commentaire_perso") or item.get("commentaire") or ""
+            contenu = item.get("contenu_compte") or item.get("contenu") or ""
+
+            return [
+                str(compte) if compte is not None else "",
+                str(libelle) if libelle is not None else "",
+                solde_n,
+                solde_n1,
+                variation,
+                variation_pct,
+                test_str,
+                comment,
+                contenu
+            ]
+
+        rows = []
+        if grouping:
+            for group in grouping:
+                sub = group.get("comptes_detaille") or group.get("comptes") or []
+                if isinstance(sub, list) and sub:
+                    for s in sub:
+                        numero = str(s.get("numero_compte") or s.get("compte") or "")
+                        r = by_compte.get(numero, {})
+                        row = {**s, **r}
+                        rows.append((build_row(row), False))
+                    group_row = {**group}
+                    rows.append((build_row(group_row), True))
+                else:
+                    rows.append((build_row(group), True))
+        else:
+            for r in revue:
+                rows.append((build_row(r), False))
+
+        start_row = 3
+        for idx, (vals, is_group) in enumerate(rows):
+            r = start_row + idx
+            for c, val in enumerate(vals, start=1):
+                cell = sheet.cell(row=r, column=c, value=val)
+                cell.border = border
+                if c == 1:
+                    cell.number_format = "@"
+                elif c in (3, 4, 5):
+                    cell.number_format = "# ##0"
+                elif c == 6:
+                    cell.number_format = "0.00%"
+                cell.alignment = left if c in (2, 8, 9) else center
+                if is_group:
+                    cell.font = Font(bold=True)
+                    cell.fill = group_fill
+
+        excel_io = BytesIO()
+        wb.save(excel_io)
+        excel_io.seek(0)
+        return excel_io
+
+    def _normalize_section_key(self, value):
+        if value is None:
+            return None
+        v = str(value).strip().lower()
+        if v in ("resultat", "compte de resultat", "compte de résultat", "pnl"):
+            return "pnl"
+        if v in ("actif", "passif"):
+            return v
+        return v
+
+    def _build_grouping_index(self, grouping):
+        index = {}
+        for idx, g in enumerate(grouping or []):
+            section = self._normalize_section_key(g.get("section") or g.get("nature"))
+            keys = [g.get("compte"), g.get("ref"), g.get("libelle")]
+            for key in keys:
+                if key is None:
+                    continue
+                k = str(key).strip()
+                if k and k not in index:
+                    index[k] = {"idx": idx, "section": section}
+        return index
+
+    def _get_item_key(self, item):
+        for key in ("compte", "ref", "libelle", "numero_compte", "num_compte", "code_compte"):
+            val = item.get(key) if isinstance(item, dict) else None
+            if val is not None and str(val).strip() != "":
+                return str(val).strip()
+        return ""
+
+    def _sort_by_grouping(self, rows, grouping_index):
+        return sorted(
+            rows,
+            key=lambda r: grouping_index.get(self._get_item_key(r), {}).get("idx", 10**9)
+        )
+
+    def extract_analyse_quantitative(self, id_mission):
+        db = get_db()
+        if db is None:
+            from src.utils.database import ensure_connection
+            ensure_connection()
+            db = get_db()
+        if db is None:
+            raise RuntimeError("extract_analyse_quantitative: base de données non connectée")
+
+        mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
+        if not mission:
+            raise ValueError("Mission non trouvée")
+
+        analyse = (mission.get("analyse_quantitative") or {}).get("analyse", []) or []
+        grouping = mission.get("grouping", []) or []
+        grouping_index = self._build_grouping_index(grouping)
+
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+
+        headers = ["LIBELLE", "SOLDE N", "SOLDE N-1", "VARIATION", "EN POURCENTAGE"]
+        header_fill = PatternFill("solid", fgColor="002060")
+        header_font = Font(color="FFFFFF", bold=True)
+        center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        thin = Side(border_style="thin", color="000000")
+        border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+        sections = [("actif", "Actifs"), ("passif", "Passifs"), ("pnl", "Comptes de resultat")]
+
+        for section_key, title in sections:
+            sheet = wb.create_sheet(title=title)
+            for idx, header in enumerate(headers, start=1):
+                cell = sheet.cell(row=1, column=idx, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = center
+                cell.border = border
+
+            sheet.column_dimensions["A"].width = 35
+            sheet.column_dimensions["B"].width = 14
+            sheet.column_dimensions["C"].width = 14
+            sheet.column_dimensions["D"].width = 14
+            sheet.column_dimensions["E"].width = 16
+
+            rows = []
+            for item in analyse:
+                key = self._get_item_key(item)
+                meta = grouping_index.get(key, {})
+                section = self._normalize_section_key(
+                    item.get("section") if isinstance(item, dict) else None
+                ) or meta.get("section")
+                if section != section_key:
+                    continue
+                rows.append(item)
+
+            rows = self._sort_by_grouping(rows, grouping_index)
+
+            for i, item in enumerate(rows, start=2):
+                solde_n = float(item.get("solde_n") or 0)
+                solde_n1 = float(item.get("solde_n1") or 0)
+                variation = solde_n - solde_n1
+                pct = item.get("percentage_of_performance_threshold")
+                if pct is None:
+                    pct = item.get("percentage_of_threshold")
+                if pct is None:
+                    threshold = float(item.get("materiality_threshold") or 0)
+                    pct = (solde_n / threshold * 100) if threshold else 0
+                values = [
+                    item.get("libelle") or "",
+                    solde_n,
+                    solde_n1,
+                    variation,
+                    float(pct)
+                ]
+                for col, val in enumerate(values, start=1):
+                    cell = sheet.cell(row=i, column=col, value=val)
+                    cell.border = border
+                    if col in (2, 3, 4):
+                        cell.number_format = "# ##0"
+                    elif col == 5:
+                        cell.number_format = "0.00%"
+                    cell.alignment = left if col == 1 else center
+
+        excel_io = BytesIO()
+        wb.save(excel_io)
+        excel_io.seek(0)
+        return excel_io
+
+    def extract_analyse_qualitative(self, id_mission):
+        db = get_db()
+        if db is None:
+            from src.utils.database import ensure_connection
+            ensure_connection()
+            db = get_db()
+        if db is None:
+            raise RuntimeError("extract_analyse_qualitative: base de données non connectée")
+
+        mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
+        if not mission:
+            raise ValueError("Mission non trouvée")
+
+        analyse = (mission.get("analyse_qualitative") or {}).get("analyse", []) or []
+        grouping = mission.get("grouping", []) or []
+        grouping_index = self._build_grouping_index(grouping)
+
+        quantitative = mission.get("analyse_quantitative") or {}
+        stats = quantitative.get("statistics") or {}
+        selected_threshold = stats.get("selected_threshold")
+        if selected_threshold is None:
+            if stats.get("threshold_mode") == "performance":
+                selected_threshold = stats.get("performance_materiality_threshold")
+            else:
+                selected_threshold = stats.get("materiality_threshold")
+        try:
+            threshold_value = float(selected_threshold or 0)
+        except Exception:
+            threshold_value = 0
+
+        if threshold_value:
+            analyse = [item for item in analyse if float(item.get("solde_n") or 0) < threshold_value]
+
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+
+        headers = ["N° COMPTE", "LIBELLE", "SOLDE N", "SOLDE N-1", "VARIATION", "STATUT"]
+        header_fill = PatternFill("solid", fgColor="002060")
+        header_font = Font(color="FFFFFF", bold=True)
+        center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        thin = Side(border_style="thin", color="000000")
+        border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+        sections = [("actif", "Actifs"), ("passif", "Passifs"), ("pnl", "Comptes de resultat")]
+
+        for section_key, title in sections:
+            sheet = wb.create_sheet(title=title)
+            for idx, header in enumerate(headers, start=1):
+                cell = sheet.cell(row=1, column=idx, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = center
+                cell.border = border
+
+            sheet.column_dimensions["A"].width = 14
+            sheet.column_dimensions["B"].width = 35
+            sheet.column_dimensions["C"].width = 14
+            sheet.column_dimensions["D"].width = 14
+            sheet.column_dimensions["E"].width = 14
+            sheet.column_dimensions["F"].width = 20
+
+            rows = []
+            for item in analyse:
+                key = self._get_item_key(item)
+                meta = grouping_index.get(key, {})
+                section = self._normalize_section_key(
+                    item.get("section") if isinstance(item, dict) else None
+                ) or meta.get("section")
+                if section != section_key:
+                    continue
+                rows.append(item)
+
+            rows = self._sort_by_grouping(rows, grouping_index)
+
+            for i, item in enumerate(rows, start=2):
+                solde_n = float(item.get("solde_n") or 0)
+                solde_n1 = float(item.get("solde_n1") or 0)
+                variation = float(item.get("variation") or (solde_n - solde_n1))
+                values = [
+                    item.get("compte") or item.get("numero_compte") or item.get("ref") or "",
+                    item.get("libelle") or "",
+                    solde_n,
+                    solde_n1,
+                    variation,
+                    item.get("status") or ""
+                ]
+                for col, val in enumerate(values, start=1):
+                    cell = sheet.cell(row=i, column=col, value=val)
+                    cell.border = border
+                    if col == 1:
+                        cell.number_format = "@"
+                    elif col in (3, 4, 5):
+                        cell.number_format = "# ##0"
+                    cell.alignment = left if col == 2 else center
 
         excel_io = BytesIO()
         wb.save(excel_io)
@@ -7245,8 +7731,7 @@ class Mission(Document):
 
 
     # ---------- Extract grouping Excel ----------
-
-    def extract_grouping(self, id_mission):
+    def extract_grouping(self, id_mission, selected_refs=None):
         db = get_db()
         if db is None:
             from src.utils.database import ensure_connection
@@ -7255,77 +7740,155 @@ class Mission(Document):
         if db is None:
             raise RuntimeError("extract_grouping: base de donn?es non connect?e")
 
-        # Cr?er un fichier Excel pour l'export du grouping
         wb = openpyxl.Workbook()
         sheet = wb.active
+        sheet.title = "LEAD"
 
-        columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
-        headers = ['Num?ro compte', 'Solde n', 'Solde n-1', 'Grouping', 'Variation', 'Variation %', 'Compte qualitatif', 'Compte quantitatif', 'Compte significatif']
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+        headers = [
+            "N? COMPTE",
+            "LIBELLE",
+            "SOLDE N",
+            "SOLDE N-1",
+            "VARIATION",
+            "EN POURCENTAGE",
+            "TESTE (Y ou N)",
+            "Si (N) commenter",
+            "CONTENU DU COMPTE"
+        ]
+
+        header_fill = PatternFill("solid", fgColor="002060")
+        title_fill = PatternFill("solid", fgColor="002060")
+        header_font = Font(color="FFFFFF", bold=True)
+        title_font = Font(color="FFFFFF", bold=True, size=12)
+        center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        thin = Side(border_style="thin", color="000000")
+        border = Border(top=thin, left=thin, right=thin, bottom=thin)
+        group_fill = PatternFill("solid", fgColor="D9D9D9")
+
+        sheet.merge_cells("A1:I1")
+        title_cell = sheet["A1"]
+        title_cell.value = "LEAD"
+        title_cell.fill = title_fill
+        title_cell.font = title_font
+        title_cell.alignment = center
+
+        for idx, header in enumerate(headers, start=1):
+            cell = sheet.cell(row=2, column=idx, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center
+            cell.border = border
+
+        sheet.column_dimensions['A'].width = 14
+        sheet.column_dimensions['B'].width = 35
+        sheet.column_dimensions['C'].width = 14
+        sheet.column_dimensions['D'].width = 14
+        sheet.column_dimensions['E'].width = 14
+        sheet.column_dimensions['F'].width = 14
+        sheet.column_dimensions['G'].width = 14
+        sheet.column_dimensions['H'].width = 20
+        sheet.column_dimensions['I'].width = 40
+        sheet.freeze_panes = "A3"
 
         mission = db.Mission1.find_one({"_id": ObjectId(id_mission)})
         if not mission:
             raise ValueError("Mission non trouv?e")
 
-        balances = mission.get('balance_variation', []) or []
         grouping = mission.get('grouping', []) or []
+        if selected_refs:
+            selected_set = {str(r).strip() for r in selected_refs}
+            grouping = [g for g in grouping if str(g.get('ref') or g.get('libelle') or g.get('compte') or '').strip() in selected_set]
+        balances = mission.get('balance_variation', []) or []
         materiality_list = mission.get('materiality', []) or []
         materiality = next((item for item in materiality_list if item.get('choice') is True), {})
 
-        grouping_map = {item.get('compte'): item for item in grouping if item.get('compte')}
+        def to_num(val):
+            if val is None:
+                return 0
+            try:
+                if isinstance(val, str):
+                    cleaned = val.replace(' ', '').replace(' ', '').replace(',', '.')
+                    return float(cleaned)
+                return float(val)
+            except Exception:
+                return 0
 
-        for i in range(len(columns)):
-            sheet[columns[i] + '1'] = headers[i]
+        def build_row(item):
+            compte = item.get('numero_compte') or item.get('compte') or item.get('ref') or ''
+            libelle = item.get('libelle') or item.get('label') or ''
+            solde_n = to_num(item.get('solde_n'))
+            solde_n1 = to_num(item.get('solde_n1'))
+            variation = item.get('variation')
+            if variation is None:
+                variation = solde_n - solde_n1
+            variation_pct = item.get('variation_percent')
+            if variation_pct is None:
+                variation_pct = item.get('delta_pct')
+            if variation_pct is None:
+                variation_pct = (variation / solde_n1) if solde_n1 else 0
 
-        # Largeurs pour ?viter les ####### et format d'affichage lisible
-        sheet.column_dimensions['A'].width = 14
-        sheet.column_dimensions['B'].width = 16
-        sheet.column_dimensions['C'].width = 16
-        sheet.column_dimensions['D'].width = 10
-        sheet.column_dimensions['E'].width = 16
-        sheet.column_dimensions['F'].width = 12
-        sheet.column_dimensions['G'].width = 18
-        sheet.column_dimensions['H'].width = 18
-        sheet.column_dimensions['I'].width = 18
-
-        for iteration, data in enumerate(balances):
-            new_iteration = str(iteration + 2)
-            sheet["A" + new_iteration] = data.get("numero_compte")
-            sheet["B" + new_iteration] = data.get("solde_n")
-            sheet["C" + new_iteration] = data.get("solde_n1")
-
-            # Formats: pas de notation scientifique + s?parateurs d'espaces
-            sheet["A" + new_iteration].number_format = "@"
-            sheet["B" + new_iteration].number_format = "# ##0"
-            sheet["C" + new_iteration].number_format = "# ##0"
-
-            value_grouping = data.get("numero_compte")[0:2]
-            variation = data.get("solde_n") - data.get("solde_n1")
-
-            if variation == 0:
-                variation_percent = 0
-            elif data.get("solde_n1") == 0:
-                variation_percent = 100
+            test_val = item.get('significant')
+            if test_val is True:
+                test_str = 'Y'
+            elif test_val is False:
+                test_str = 'N'
             else:
-                variation_percent = (variation / data.get("solde_n1")) * 100
+                test_str = ''
 
-            sheet["D" + new_iteration] = value_grouping
-            sheet["E" + new_iteration] = variation
-            sheet["F" + new_iteration] = variation_percent
+            comment = item.get('commentaire') or item.get('commentaire_perso') or ''
+            contenu = item.get('contenu_compte') or item.get('contenu') or ''
 
-            sheet["E" + new_iteration].number_format = "# ##0"
-            sheet["F" + new_iteration].number_format = "0.00"
-            g_item = grouping_map.get(value_grouping, {})
-            sheet["G" + new_iteration] = g_item.get('significant')
-            sheet["H" + new_iteration] = g_item.get('materiality')
-            sheet["I" + new_iteration] = g_item.get('mat_sign')
+            return [
+                str(compte) if compte is not None else '',
+                str(libelle) if libelle is not None else '',
+                solde_n,
+                solde_n1,
+                variation,
+                variation_pct,
+                test_str,
+                comment,
+                contenu
+            ]
 
-        # Nom de feuille Excel sûr (éviter caractères interdits comme '?')
+        rows = []
+        if grouping:
+            for group in grouping:
+                sub = group.get('comptes_detaille') or group.get('comptes') or []
+                if isinstance(sub, list) and sub:
+                    for s in sub:
+                        rows.append((build_row(s), False))
+                    rows.append((build_row(group), True))
+                else:
+                    rows.append((build_row(group), True))
+        else:
+            for b in balances:
+                rows.append((build_row(b), False))
+
+        start_row = 3
+        for idx, (vals, is_group) in enumerate(rows):
+            r = start_row + idx
+            for c, val in enumerate(vals, start=1):
+                cell = sheet.cell(row=r, column=c, value=val)
+                cell.border = border
+                if c == 1:
+                    cell.number_format = "@"
+                elif c in (3, 4, 5):
+                    cell.number_format = "# ##0"
+                elif c == 6:
+                    cell.number_format = "0.00%"
+                cell.alignment = left if c in (2, 8, 9) else center
+                if is_group:
+                    cell.font = Font(bold=True)
+                    cell.fill = group_fill
+
         second_sheet = wb.create_sheet(title="Seuil_materialite")
         second_headers = ['materiality', 'performance materiality', 'trivial misstatements']
         second_sheet["A1"] = second_headers[0]
         second_sheet["B1"] = second_headers[1]
         second_sheet["C1"] = second_headers[2]
-
         second_sheet["A2"] = materiality.get('materiality')
         second_sheet["B2"] = materiality.get('performance_materiality')
         second_sheet["C2"] = materiality.get('trivial_misstatements')

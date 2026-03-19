@@ -7,6 +7,7 @@ import LoginView from '@/views/LoginView.vue'
 import MissionsView from '@/views/MissionsView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import ClientsView from '@/views/ClientsView.vue'
+import HelpView from '@/views/HelpView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -86,6 +87,14 @@ const router = createRouter({
         showHeader: true
       },
       props: true
+    },
+    {
+      path: '/aide',
+      name: 'help',
+      component: HelpView,
+      meta: {
+        showHeader: true
+      }
     }
   ]
 })

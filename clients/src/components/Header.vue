@@ -67,6 +67,11 @@ function profile() {
   router.push('/profile')
 }
 
+function help() {
+  showProfileMenu.value = false
+  router.push('/aide')
+}
+
 function markAsRead(notificationId) {
   const notification = notifications.value.find(n => n.id === notificationId)
   if (notification) {
@@ -175,14 +180,14 @@ function markAllAsRead() {
                 <i class="fa-solid fa-user text-gray-500"></i>
                 Mon profil
               </button>
-              <button
+              <!-- <button
                 @click="showProfileMenu = false"
                 class="w-full text-left text-sm text-gray-700 hover:bg-gray-100 px-3 py-2 rounded transition flex items-center gap-2">
                 <i class="fa-solid fa-cog text-gray-500"></i>
                 Paramètres
-              </button>
+              </button> -->
               <button
-                @click="showProfileMenu = false"
+                @click="help"
                 class="w-full text-left text-sm text-gray-700 hover:bg-gray-100 px-3 py-2 rounded transition flex items-center gap-2">
                 <i class="fa-solid fa-question-circle text-gray-500"></i>
                 Aide
