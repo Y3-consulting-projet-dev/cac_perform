@@ -68,7 +68,7 @@
             :disabled="currentPage === 1"
             @click="prevPage"
           >
-            Precedenteeee
+            Précédente
           </button>
           <button
             class="px-3 py-1 border rounded disabled:opacity-50"
