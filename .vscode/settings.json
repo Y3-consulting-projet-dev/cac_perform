@@ -1,0 +1,17 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/api/virtualenv/Scripts/python.exe",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.typeCheckingMode": "basic",
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": true
+  },
+  "editor.suggestOnTriggerCharacters": true,
+  "editor.tabCompletion": "on",
+  "javascript.suggest.autoImports": true,
+  "typescript.suggest.autoImports": true,
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact"
+  }
+}
