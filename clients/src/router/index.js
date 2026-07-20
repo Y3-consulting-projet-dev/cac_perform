@@ -13,6 +13,14 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/bienvenue',
+      name: 'landing',
+      component: () => import('@/views/LandingView.vue'),
+      meta: {
+        showHeader: false
+      }
+    },
+    {
       path: '/connexion',
       name: 'login',
       component: LoginView,
@@ -100,7 +108,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const publicRoutes = ['login']
+  const publicRoutes = ['login', 'landing']
   const isPublic = publicRoutes.includes(to.name)
   const token = sessionStorage.getItem('token')
   if (!isPublic && !token) {
