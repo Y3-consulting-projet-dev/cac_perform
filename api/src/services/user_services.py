@@ -90,7 +90,7 @@ class UserService:
             validated_data = validate_user_registration(user_data)
             
             # Vérifier si l'email existe déjà
-            existing_user = db.Manager.find_one({"email": validated_data['email']})
+            existing_user = db.Personnel.find_one({"email": validated_data['email']})
             if existing_user:
                 raise ValueError("Un utilisateur avec cet email existe déjà")
             
@@ -110,10 +110,10 @@ class UserService:
             })
             
             # Insérer en base
-            result = db.Manager.insert_one(validated_data)
+            result = db.Personnel.insert_one(validated_data)
             
             # Récupérer l'utilisateur créé
-            new_user = db.Manager.find_one({"_id": result.inserted_id})
+            new_user = db.Personnel.find_one({"_id": result.inserted_id})
             return serialize_user(new_user)
             
         except ValidationError as e:
@@ -135,18 +135,13 @@ class UserService:
             validated_data = validate_user_login(login_data)
             
             # Rechercher l'utilisateur
-            user = db.Manager.find_one({"email": validated_data['email']})
+            user = db.Personnel.find_one({"email": validated_data['email']})
             if not user:
                 raise ValueError("Email introuvable")
             
             # Vérifier si le compte est actif
             if not user.get('is_active', True):
                 raise ValueError("Compte désactivé")
-            
-            # Vérifier si le compte est verrouillé
-            locked_until = user.get('locked_until')
-            if locked_until and datetime.now() < locked_until:
-                raise ValueError("Compte temporairement verrouillé")
             
             # Vérifier le mot de passe
             stored_password = user.get('mot_de_passe', '')
@@ -160,33 +155,18 @@ class UserService:
                 password_valid = True
                 # Mettre à jour avec un hash bcrypt
                 new_hash = UserService.hash_password(validated_data['password'])
-                db.Manager.update_one(
+                db.Personnel.update_one(
                     {"_id": user['_id']},
                     {"$set": {"mot_de_passe": new_hash}}
                 )
             
             if not password_valid:
-                # Incrémenter les tentatives de connexion
-                attempts = user.get('login_attempts', 0) + 1
-                update_data = {"login_attempts": attempts}
-                
-                # Verrouiller après 5 tentatives
-                if attempts >= 5:
-                    update_data['locked_until'] = datetime.now() + timedelta(minutes=30)
-                
-                db.Manager.update_one({"_id": user['_id']}, {"$set": update_data})
                 raise ValueError("Mot de passe incorrect")
-            
+
             # Connexion réussie - mettre à jour les informations
-            db.Manager.update_one(
+            db.Personnel.update_one(
                 {"_id": user['_id']},
-                {
-                    "$set": {
-                        "last_login": datetime.now(),
-                        "login_attempts": 0
-                    },
-                    "$unset": {"locked_until": ""}
-                }
+                {"$set": {"last_login": datetime.now()}}
             )
             
             # Générer le token JWT
@@ -215,7 +195,7 @@ class UserService:
             if not ObjectId.is_valid(user_id):
                 raise ValueError("ID utilisateur invalide")
             
-            user = db.Manager.find_one({"_id": ObjectId(user_id)})
+            user = db.Personnel.find_one({"_id": ObjectId(user_id)})
             if user:
                 return serialize_user(user)
             return None
@@ -241,7 +221,7 @@ class UserService:
             
             # Vérifier si l'email est déjà utilisé par un autre utilisateur
             if 'email' in validated_data:
-                existing = db.Manager.find_one({
+                existing = db.Personnel.find_one({
                     "email": validated_data['email'],
                     "_id": {"$ne": ObjectId(user_id)}
                 })
@@ -249,13 +229,13 @@ class UserService:
                     raise ValueError("Cet email est déjà utilisé par un autre utilisateur")
             
             # Mettre à jour
-            result = db.Manager.update_one(
+            result = db.Personnel.update_one(
                 {"_id": ObjectId(user_id)},
                 {"$set": validated_data}
             )
             
             if result.modified_count > 0:
-                updated_user = db.Manager.find_one({"_id": ObjectId(user_id)})
+                updated_user = db.Personnel.find_one({"_id": ObjectId(user_id)})
                 return serialize_user(updated_user)
             return None
             
@@ -277,11 +257,11 @@ class UserService:
             skip = (page - 1) * per_page
             
             # Compter le total
-            total = db.Manager.count_documents({})
+            total = db.Personnel.count_documents({})
             
             # Récupérer les utilisateurs
             users = list(
-                db.Manager.find({})
+                db.Personnel.find({})
                 .sort("created_at", -1)
                 .skip(skip)
                 .limit(per_page)
@@ -308,7 +288,7 @@ class UserService:
         try:
             db = get_db()
             users = list(
-                db.Manager.find(
+                db.Personnel.find(
                     {"is_active": True, "directory_visible": True},
                     {"firstname": 1, "lastname": 1, "email": 1, "grade": 1}
                 ).sort([("lastname", 1), ("firstname", 1)])
@@ -339,7 +319,7 @@ class UserService:
             if not ObjectId.is_valid(user_id):
                 raise ValueError("ID utilisateur invalide")
             
-            result = db.Manager.update_one(
+            result = db.Personnel.update_one(
                 {"_id": ObjectId(user_id)},
                 {"$set": {"is_active": False}}
             )
@@ -362,7 +342,7 @@ class UserService:
             if not ObjectId.is_valid(user_id):
                 raise ValueError("ID utilisateur invalide")
             
-            result = db.Manager.update_one(
+            result = db.Personnel.update_one(
                 {"_id": ObjectId(user_id)},
                 {
                     "$set": {"is_active": True},
@@ -389,7 +369,7 @@ class UserService:
                 raise ValueError("ID utilisateur invalide")
             
             # Récupérer l'utilisateur
-            user = db.Manager.find_one({"_id": ObjectId(user_id)})
+            user = db.Personnel.find_one({"_id": ObjectId(user_id)})
             if not user:
                 raise ValueError("Utilisateur non trouvé")
             
@@ -406,7 +386,7 @@ class UserService:
             new_hash = UserService.hash_password(new_password)
             
             # Mettre à jour
-            result = db.Manager.update_one(
+            result = db.Personnel.update_one(
                 {"_id": ObjectId(user_id)},
                 {"$set": {"mot_de_passe": new_hash}}
             )
@@ -433,13 +413,13 @@ class UserService:
             ]
             
             # Utilisateurs actifs/inactifs
-            total_users = db.Manager.count_documents({})
-            active_users = db.Manager.count_documents({"is_active": True})
+            total_users = db.Personnel.count_documents({})
+            active_users = db.Personnel.count_documents({"is_active": True})
             inactive_users = total_users - active_users
             
             # Dernières connexions
             recent_logins = list(
-                db.Manager.find(
+                db.Personnel.find(
                     {"last_login": {"$ne": None}},
                     {"email": 1, "firstname": 1, "lastname": 1, "last_login": 1}
                 ).sort("last_login", -1).limit(10)
@@ -449,7 +429,7 @@ class UserService:
                 "total_users": total_users,
                 "active_users": active_users,
                 "inactive_users": inactive_users,
-                "by_role": list(db.Manager.aggregate(pipeline_role)),
+                "by_role": list(db.Personnel.aggregate(pipeline_role)),
                 "recent_logins": serialize_user_list(recent_logins)
             }
             

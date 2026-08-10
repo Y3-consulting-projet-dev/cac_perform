@@ -23,7 +23,7 @@ def migrate_users():
         db = get_db()
         
         # Récupérer tous les utilisateurs existants
-        existing_users = list(db.Manager.find({}))
+        existing_users = list(db.Personnel.find({}))
         
         if not existing_users:
             print("ℹ️  Aucun utilisateur existant trouvé.")
@@ -93,7 +93,7 @@ def migrate_users():
                 
                 # Appliquer les mises à jour
                 if update_data:
-                    result = db.Manager.update_one(
+                    result = db.Personnel.update_one(
                         {"_id": user['_id']},
                         {"$set": update_data}
                     )
@@ -137,9 +137,9 @@ def verify_migration():
         db = get_db()
         
         # Compter les utilisateurs
-        total_users = db.Manager.count_documents({})
-        users_with_user_id = db.Manager.count_documents({"user_id": {"$exists": True}})
-        users_with_names = db.Manager.count_documents({
+        total_users = db.Personnel.count_documents({})
+        users_with_user_id = db.Personnel.count_documents({"user_id": {"$exists": True}})
+        users_with_names = db.Personnel.count_documents({
             "firstname": {"$exists": True},
             "lastname": {"$exists": True}
         })
@@ -150,7 +150,7 @@ def verify_migration():
         print(f"   Avec prénom/nom: {users_with_names}")
         
         # Afficher quelques exemples
-        sample_users = list(db.Manager.find({}).limit(3))
+        sample_users = list(db.Personnel.find({}).limit(3))
         
         print(f"\n📋 Exemples d'utilisateurs migrés:")
         for user in sample_users:

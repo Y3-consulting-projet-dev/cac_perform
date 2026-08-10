@@ -8,7 +8,7 @@ client = pymongo.MongoClient("mongodb://localhost:27017")
 db = client["cac_perform"]
 
 hashed = bcrypt.hashpw(PASSWORD, bcrypt.gensalt()).decode()
-res = db.Manager.update_one(
+res = db.Personnel.update_one(
     {"email": EMAIL},
     {"$set": {"email": EMAIL, "mot_de_passe": hashed}},
     upsert=True,

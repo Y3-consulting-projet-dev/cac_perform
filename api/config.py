@@ -199,7 +199,7 @@ class DatabaseManager:
                 'Client': 'docs/client_test.json',
                 'Mission1': 'docs/mission_test.json',
                 'Balance': 'docs/balance_test.json',
-                'Manager': None,
+                'Personnel': None,
                 'Collaborateur': None
             }
             

@@ -178,7 +178,7 @@ def import_users(
     for row in rows:
         validated = build_payload(row, default_password, default_role, default_grade)
         email = validated["email"]
-        existing_user = db.Manager.find_one({"email": email})
+        existing_user = db.Personnel.find_one({"email": email})
 
         document = {
             "firstname": validated["firstname"],
@@ -195,14 +195,14 @@ def import_users(
         if existing_user:
             if reset_passwords:
                 document["mot_de_passe"] = UserService.hash_password(default_password)
-            db.Manager.update_one({"_id": existing_user["_id"]}, {"$set": document})
+            db.Personnel.update_one({"_id": existing_user["_id"]}, {"$set": document})
             updated += 1
         else:
             document["mot_de_passe"] = UserService.hash_password(default_password)
             document["user_id"] = UserService.generate_user_id()
             document["created_at"] = datetime.now()
             document["last_login"] = None
-            db.Manager.insert_one(document)
+            db.Personnel.insert_one(document)
             created += 1
 
     return created, updated

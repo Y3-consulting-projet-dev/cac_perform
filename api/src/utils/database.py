@@ -118,8 +118,8 @@ def get_balance_collection():
 
 
 def get_manager_collection():
-    """Retourne la collection Manager"""
-    return get_mongo_collection('Manager')
+    """Retourne la collection Personnel"""
+    return get_mongo_collection('Personnel')
 
 
 def get_collaborateur_collection():
