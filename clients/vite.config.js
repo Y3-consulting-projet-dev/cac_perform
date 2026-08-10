@@ -6,6 +6,7 @@ import vue from '@vitejs/plugin-vue'
  
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: process.env.GH_PAGES ? '/cac_perform/' : '/',
   server: {
     watch: {
       usePolling: true,   // force Vite à surveiller les fichiers par polling (utile sur WSL/Windows)
