@@ -1,8 +1,21 @@
 <script setup>
 import { ref, computed, onMounted, inject, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import router from '@/router'
+import Header from '@/components/Header.vue'
 
 const axios = inject('axios')
+const route = useRoute()
+
+function isActive(path) {
+  return route.path === path
+}
+
+function logout() {
+  sessionStorage.removeItem('token')
+  sessionStorage.removeItem('user')
+  router.push('/connexion')
+}
 
 function goToMission(mission) {
   router.push({
@@ -130,7 +143,77 @@ watch(totalPages, (value) => {
 </script>
 
 <template>
-  <div class="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-10">
+  <div class="flex w-full h-screen overflow-hidden">
+
+    <!-- SIDEBAR GAUCHE (pleine hauteur) -->
+    <aside class="w-60 shrink-0 bg-blue-ycube text-white flex flex-col px-6 py-8">
+
+      <!-- Logo -->
+      <div class="flex items-center justify-start -mt-4 mb-10">
+        <img src="../assets/logo.png" alt="Logo" class="h-24" />
+      </div>
+
+      <!-- Menu -->
+      <nav class="flex flex-col gap-4 text-white">
+
+        <!-- Tableau de bord -->
+        <button @click="router.push('/')" :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg transition',
+          isActive('/')
+            ? 'bg-white text-blue-ycube font-semibold shadow-md'
+            : 'hover:bg-blue-700'
+        ]">
+          <i :class="[
+            'fa-solid fa-chart-pie text-lg',
+            isActive('/') ? 'text-blue-ycube' : 'text-white'
+          ]"></i>
+          Tableau de bord
+        </button>
+
+        <!-- Clients -->
+        <button @click="router.push('/clients')" :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg transition',
+          isActive('/clients')
+            ? 'bg-white text-blue-ycube font-semibold shadow-md'
+            : 'hover:bg-green-ycube-2'
+        ]">
+          <i :class="[
+            'fa-solid fa-users text-lg',
+            isActive('/clients') ? 'text-blue-ycube' : 'text-white'
+          ]"></i>
+          Clients
+        </button>
+
+        <!-- Missions -->
+        <button @click="router.push('/missions')" :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg transition',
+          isActive('/missions')
+            ? 'bg-white text-blue-ycube font-semibold shadow-md'
+            : 'hover:bg-green-ycube-2'
+        ]">
+          <i :class="[
+            'fa-solid fa-clipboard-check text-lg',
+            isActive('/missions') ? 'text-blue-ycube' : 'text-white'
+          ]"></i>
+          Missions d’audit
+        </button>
+
+      </nav>
+
+      <!-- Déconnexion -->
+      <button @click="logout" class="mt-auto flex items-center gap-2 text-gray-200 hover:text-red-300 transition">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        Déconnexion
+      </button>
+
+    </aside>
+
+    <!-- COLONNE DROITE : HEADER + CONTENU -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+
+      <Header class="shrink-0" :show-logo="false" />
+
+      <main class="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-10">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">Missions d'audit</h1>
@@ -232,6 +315,9 @@ watch(totalPages, (value) => {
           </button>
         </div>
       </div>
+    </div>
+      </main>
+
     </div>
   </div>
 </template>

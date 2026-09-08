@@ -42,7 +42,7 @@ const router = createRouter({
       name: 'home',
       component: HomeView,
       meta: {
-        showHeader: true
+        showHeader: false
       }
     },
     {
@@ -76,7 +76,7 @@ const router = createRouter({
       name: 'missions',
       component: MissionsView,
       meta: {
-        showHeader: true
+        showHeader: false
       }
     },
     {

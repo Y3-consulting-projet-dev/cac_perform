@@ -2,6 +2,13 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import router from '@/router';
 
+const props = defineProps({
+  showLogo: {
+    type: Boolean,
+    default: true
+  }
+})
+
 const userProfile = ref({
   nom: '',
   email: '',
@@ -87,12 +94,12 @@ function markAllAsRead() {
 <template>
   <header class="flex justify-between items-center bg-blanc3 px-6 py-4 rounded-lg shadow-sm">
     <!-- Logo -->
-     <button @click="router.push('/')">
+     <button v-if="showLogo" @click="router.push('/')">
        <img src="../assets/logo_y3.png" alt="Logo" class="h-14" />
      </button>
 
     <!-- Profil et Notifications -->
-    <div class="profil flex items-center gap-6">
+    <div class="profil flex items-center gap-6 ml-auto">
 
       <!-- Notifications -->
       <!-- <div class="relative">

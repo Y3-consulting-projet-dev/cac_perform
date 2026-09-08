@@ -2,6 +2,7 @@
 import { ref, inject, onMounted } from 'vue';
 import router from '@/router';
 import { useRoute } from 'vue-router';
+import Header from '@/components/Header.vue';
 
 const axios = inject('axios');
 // DATA
@@ -16,25 +17,10 @@ const clientToDelete = ref(null)
 const isDeleting = ref(false)
 const route = useRoute()
 
-const userProfile = ref({
-  nom: '',
-  role: ''
-})
-
 onMounted(async () => {
-  const storedUser = sessionStorage.getItem('user')
-
-  if (storedUser) {
-    const user = JSON.parse(storedUser)
-
-    userProfile.value.nom = `${user.firstname} ${user.lastname}`
-    userProfile.value.role = user.role
-  }
-
   await loadClients()
   await loadMissions()
 })
-const unreadNotifications = ref(3)
 
 
 async function loadClients() {
@@ -105,15 +91,14 @@ function newClient() {
   router.push(`/newClient`)
 }
 
+function isActive(path) {
+  return route.path === path
+}
+
 function logout() {
   sessionStorage.removeItem('token')
   sessionStorage.removeItem('user')
   router.push('/connexion')
-}
-
-
-function isActive(path) {
-  return route.path === path
 }
 
 // Suppression
@@ -156,16 +141,14 @@ async function deleteClient() {
 </script>
 
 <template>
-  <div class="flex w-full overflow-hidden">
+  <div class="flex w-full h-screen overflow-hidden">
 
-    <!-- SIDEBAR GAUCHE -->
-    <!-- SIDEBAR GAUCHE -->
-    <aside class="w-72 shrink-0 bg-blue-ycube text-white flex flex-col px-6 py-8">
+    <!-- SIDEBAR GAUCHE (pleine hauteur) -->
+    <aside class="w-60 shrink-0 bg-blue-ycube text-white flex flex-col px-6 py-8">
 
       <!-- Logo -->
-      <div class="flex items-center gap-3 mb-10">
-        <img src="../assets/logo.png" alt="Logo" class="h-12" />
-        <h2 class="text-lg font-bold tracking-wide">CAC PERFORM</h2>
+      <div class="flex items-center justify-start -mt-4 mb-10">
+        <img src="../assets/logo.png" alt="Logo" class="h-24" />
       </div>
 
       <!-- Menu -->
@@ -215,41 +198,21 @@ async function deleteClient() {
 
       </nav>
 
-      <!-- Profil / Notifications -->
-      <div class="mt-auto flex flex-col gap-6 pt-10 border-t border-white/30">
-
-        <!-- Notifications 
-        <div class="flex items-center gap-4 cursor-pointer hover:text-gray-200 transition">
-          <i class="fa-solid fa-bell text-orange-400 text-xl"></i>
-          <span class="text-sm">Notifications ({{ unreadNotifications }})</span>
-        </div> -->
-
-        <!-- Profil utilisateur -->
-        <div class="flex items-center gap-3">
-          <div
-            class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white text-lg font-semibold">
-            {{ userProfile.nom.charAt(0) }}
-          </div>
-          <div>
-            <p class="font-semibold">{{ userProfile.nom }}</p>
-            <p class="text-xs text-gray-200">{{ userProfile.role }}</p>
-          </div>
-        </div>
-
-        <!-- Déconnexion -->
-        <button @click="logout" class="flex items-center gap-2 text-gray-200 hover:text-red-300 transition">
-          <i class="fa-solid fa-right-from-bracket"></i>
-          Déconnexion
-        </button>
-
-      </div>
+      <!-- Déconnexion -->
+      <button @click="logout" class="mt-auto flex items-center gap-2 text-gray-200 hover:text-red-300 transition">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        Déconnexion
+      </button>
 
     </aside>
 
+    <!-- COLONNE DROITE : HEADER + CONTENU -->
+    <div class="flex-1 flex flex-col overflow-hidden">
 
+      <Header class="shrink-0" :show-logo="false" />
 
-    <!-- CONTENU DASHBOARD -->
-    <main class="flex-1 overflow-y-auto p-6 lg:p-10 flex flex-col gap-10">
+      <!-- CONTENU DASHBOARD -->
+      <main class="flex-1 overflow-y-auto p-6 lg:p-10 flex flex-col gap-10">
 
       <!-- BARRE DE RECHERCHE -->
       <div class="flex justify-end">
@@ -361,8 +324,9 @@ async function deleteClient() {
         </table>
       </div>
 
-    </main>
+      </main>
 
+    </div>
 
     <!-- MODAL SUPPRESSION -->
     <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
