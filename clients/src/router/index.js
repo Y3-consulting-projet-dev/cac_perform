@@ -97,6 +97,15 @@ const router = createRouter({
       props: true
     },
     {
+      path: '/grouping-analyse/:missionId/fichiers-complementaires',
+      name: 'fichiersComplementaires',
+      component: () => import('@/views/FichiersComplementairesView.vue'),
+      meta: {
+        showHeader: true
+      },
+      props: true
+    },
+    {
       path: '/aide',
       name: 'help',
       component: HelpView,

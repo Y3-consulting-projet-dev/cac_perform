@@ -70,3 +70,18 @@ export async function importerImmobilisations(missionId, fichier, idClient, anne
   if (data?.success) return data.data
   throw new Error(data?.error || "Erreur lors de l'import du fichier des immobilisations")
 }
+
+// --- Consultation des fichiers complémentaires (lecture seule) ---
+// Écran de données, pas une étape d'audit : aucun rapprochement IPE ici.
+
+export async function listerFichiersComplementaires(missionId) {
+  const { data } = await api.get(`/missions/${missionId}/fichiers-complementaires`)
+  if (data?.success) return data.data
+  throw new Error(data?.error || 'Erreur lors de la récupération des fichiers complémentaires')
+}
+
+export async function detailFichierComplementaire(missionId, fichierId) {
+  const { data } = await api.get(`/missions/${missionId}/fichiers-complementaires/${fichierId}`)
+  if (data?.success) return data.data
+  throw new Error(data?.error || 'Erreur lors de la récupération du détail du fichier')
+}

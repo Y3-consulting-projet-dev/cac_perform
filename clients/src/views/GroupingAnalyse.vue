@@ -2365,6 +2365,14 @@ function formatAmount(value) {
     <i class="fa-solid fa-arrow-left"></i> Retour
   </button>
 
+  <!-- Écran de données (pas une étape d'audit) : volontairement hors de la
+       barre de progression ci-dessous. Voir docs/PLAN_import_refonte.md. -->
+  <button
+    class="mb-4 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm flex items-center gap-2 transition"
+    @click="router.push(`/grouping-analyse/${props.missionId}/fichiers-complementaires`)">
+    <i class="fa-solid fa-folder-open"></i> Fichiers complémentaires
+  </button>
+
   <!-- Progression globale -->
   <div class="mb-6 bg-blue-ycube-1 rounded-xl p-4 shadow-inner">
     <h3 class="text-sm font-bold mb-3">Progression de l’audit</h3>

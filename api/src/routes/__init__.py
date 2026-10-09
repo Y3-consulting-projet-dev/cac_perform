@@ -127,6 +127,16 @@ def register_routes(app):
         """POST /api/v1/missions/<id>/immobilisations - Importe le fichier des immobilisations"""
         return ImportResource.importer_immobilisations(mission_id)
 
+    @mission_bp.route('/<mission_id>/fichiers-complementaires', methods=['GET'])
+    def lister_fichiers_complementaires(mission_id):
+        """GET /api/v1/missions/<id>/fichiers-complementaires - Liste les fichiers complémentaires (lecture seule)"""
+        return ImportResource.lister_fichiers_complementaires(mission_id)
+
+    @mission_bp.route('/<mission_id>/fichiers-complementaires/<fichier_id>', methods=['GET'])
+    def detail_fichier_complementaire(mission_id, fichier_id):
+        """GET /api/v1/missions/<id>/fichiers-complementaires/<fichier_id> - Détail d'un fichier complémentaire"""
+        return ImportResource.detail_fichier_complementaire(mission_id, fichier_id)
+
     # Enregistrer le blueprint mission
     app.register_blueprint(mission_bp)
     
