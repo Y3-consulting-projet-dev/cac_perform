@@ -25,6 +25,7 @@ from src.resources.user_resources import (
     LegacyLoginResource
 )
 from src.resources.mission_resources import MissionResource
+from src.resources.import_resources import ImportResource
 from src.mission import mission
 
 def register_routes(app):
@@ -112,7 +113,20 @@ def register_routes(app):
     def get_client_missions(client_id):
         """GET /api/v1/missions/client/<client_id> - Liste toutes les missions d'un client"""
         return MissionResource.get_client_missions(client_id)
-    
+
+    # --- Refonte import V2 (docs/PLAN_import_refonte.md) : plomberie des
+    # fichiers complémentaires, rattachée à une mission existante. N'altère
+    # aucune route mission existante ci-dessus. ---
+    @mission_bp.route('/<mission_id>/balances-auxiliaires', methods=['POST'])
+    def importer_balance_auxiliaire(mission_id):
+        """POST /api/v1/missions/<id>/balances-auxiliaires - Importe une balance auxiliaire (clients/fournisseurs)"""
+        return ImportResource.importer_balance_auxiliaire(mission_id)
+
+    @mission_bp.route('/<mission_id>/immobilisations', methods=['POST'])
+    def importer_immobilisations(mission_id):
+        """POST /api/v1/missions/<id>/immobilisations - Importe le fichier des immobilisations"""
+        return ImportResource.importer_immobilisations(mission_id)
+
     # Enregistrer le blueprint mission
     app.register_blueprint(mission_bp)
     
@@ -296,8 +310,38 @@ def register_routes(app):
     
     # Enregistrer le blueprint de compatibilité auth
     app.register_blueprint(auth_compat_bp)
-    
-    
+
+
+    # ========================================
+    # Refonte de l'import (V2) — docs/PLAN_import_refonte.md
+    # ========================================
+
+    imports_bp = Blueprint('imports_api', __name__, url_prefix='/api/v1/imports')
+
+    @imports_bp.route('/apercu', methods=['POST'])
+    def apercu_mapping():
+        """POST /api/v1/imports/apercu - Aperçu du mapping proposé pour un fichier"""
+        return ImportResource.apercu_mapping()
+
+    @imports_bp.route('/mapping', methods=['POST'])
+    def enregistrer_mapping():
+        """POST /api/v1/imports/mapping - Mémorise un mapping (client + logiciel comptable)"""
+        return ImportResource.enregistrer_mapping()
+
+    @imports_bp.route('/mapping', methods=['GET'])
+    def recuperer_mapping():
+        """GET /api/v1/imports/mapping - Relit le dernier mapping mémorisé"""
+        return ImportResource.recuperer_mapping()
+
+    @imports_bp.route('/controles-preliminaires', methods=['POST'])
+    def controles_preliminaires():
+        """POST /api/v1/imports/controles-preliminaires - Contrôles préliminaires sur un fichier"""
+        return ImportResource.controles_preliminaires()
+
+    # Enregistrer le blueprint imports
+    app.register_blueprint(imports_bp)
+
+
     # ========================================
     # Routes système et monitoring
     # ========================================
@@ -361,5 +405,6 @@ def register_routes(app):
     print("   📁 Clients frontend: /client/")
     print("   📋 Missions compatibilité: /cors/mission/")
     print("   🔐 Auth compatibilité: /cors/manager/")
+    print("   📥 Import V2: /api/v1/imports/")
     print("   🏥 Santé: /health")
     print("   ℹ️  Info: /api/info")
