@@ -248,7 +248,7 @@ function back() {
 </script>
 
 <template>
-  <div class="min-h-screen w-full bg-[#f5f7fa] p-6">
+  <div class="h-full w-full overflow-y-auto bg-[#f5f7fa] p-6">
     <div class="flex items-center justify-between mb-6">
       <button class="px-4 py-2 rounded-lg bg-white shadow font-semibold flex items-center gap-2" @click="back">
         <i class="fa-solid fa-arrow-left"></i> Retour
