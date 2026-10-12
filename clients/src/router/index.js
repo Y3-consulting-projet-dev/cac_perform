@@ -84,7 +84,7 @@ const router = createRouter({
       name: 'clients',
       component: ClientsView,
       meta: {
-        showHeader: true
+        showHeader: false
       }
     },
     {
