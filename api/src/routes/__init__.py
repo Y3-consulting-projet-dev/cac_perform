@@ -26,7 +26,12 @@ from src.resources.user_resources import (
 )
 from src.resources.mission_resources import MissionResource
 from src.resources.import_resources import ImportResource
+from src.resources.ipe_resources import IpeResource
 from src.mission import mission
+from src.services.verrou_ipe_service import (
+    verifier_verrou_ipe,
+    capturer_verrou_apres_creation_mission,
+)
 
 def register_routes(app):
     """
@@ -136,6 +141,24 @@ def register_routes(app):
     def detail_fichier_complementaire(mission_id, fichier_id):
         """GET /api/v1/missions/<id>/fichiers-complementaires/<fichier_id> - Détail d'un fichier complémentaire"""
         return ImportResource.detail_fichier_complementaire(mission_id, fichier_id)
+
+    # --- Verrou IPE (Module 1, CAC-IPE-01) — docs/PLAN_verrou_IPE.md ---
+    # Écran de diagnostic, pas une étape du workflow : même logique que
+    # fichiers-complementaires ci-dessus.
+    @mission_bp.route('/<mission_id>/ipe', methods=['GET'])
+    def obtenir_etat_ipe(mission_id):
+        """GET /api/v1/missions/<id>/ipe - État IPE courant de la mission"""
+        return IpeResource.obtenir_etat(mission_id)
+
+    @mission_bp.route('/<mission_id>/ipe/evaluer', methods=['POST'])
+    def evaluer_ipe(mission_id):
+        """POST /api/v1/missions/<id>/ipe/evaluer - Lance le rapprochement IPE-1/2/3"""
+        return IpeResource.evaluer(mission_id)
+
+    @mission_bp.route('/<mission_id>/ipe/validation', methods=['POST'])
+    def valider_ipe(mission_id):
+        """POST /api/v1/missions/<id>/ipe/validation - Validation manager de la fiabilité IPE"""
+        return IpeResource.valider(mission_id)
 
     # Enregistrer le blueprint mission
     app.register_blueprint(mission_bp)
@@ -301,7 +324,14 @@ def register_routes(app):
     # ========================================
     # Routes Mission
     # ========================================
-    
+
+    # Verrou IPE (Module 1, CAC-IPE-01) : avant_requête/après_requête
+    # enregistrés depuis CE module (jamais depuis api/src/mission/), avant
+    # l'enregistrement du blueprint sur l'app — docs/PLAN_verrou_IPE.md §3 et
+    # §2 bis. No-op tant que IPE_VERROU_ACTIF est désactivé (défaut).
+    mission.before_request(verifier_verrou_ipe)
+    mission.after_request(capturer_verrou_apres_creation_mission)
+
     # Enregistrer le blueprint mission existant
     app.register_blueprint(mission)
     

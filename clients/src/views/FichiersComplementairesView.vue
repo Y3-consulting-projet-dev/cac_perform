@@ -17,6 +17,11 @@ import {
   importerBalanceAuxiliaire,
   importerImmobilisations,
 } from '@/api/imports.api'
+import {
+  obtenirEtatIpe,
+  evaluerIpe,
+  validerFiabiliteIpe,
+} from '@/api/ipe.api'
 
 const props = defineProps(['missionId'])
 const notyf = useNotyf()
@@ -28,16 +33,66 @@ const LIBELLES_TYPE = {
   immobilisations: 'Fichier des immobilisations',
 }
 
+const LIBELLES_MODULE = {
+  ipe_1_clients: 'IPE-1 — Clients (compte 411)',
+  ipe_2_fournisseurs: 'IPE-2 — Fournisseurs (comptes 40x)',
+  ipe_3_immobilisations: 'IPE-3 — Immobilisations (comptes 2xxx)',
+}
+
+const IPE_STATUT_LABELS = {
+  anterieure_au_verrou: 'Antérieure au verrou',
+  non_commence: 'Non commencé',
+  en_cours: 'En cours',
+  valide: 'Validé',
+}
+
 const infoMission = ref(null)
 const fichiers = ref({ auxiliaire_client: [], auxiliaire_fournisseur: [], immobilisations: [] })
 const detailOuvert = ref(null)
 const loading = ref(false)
 const importingType = ref(null)
 
+const ipeEtat = ref(null)
+const ipeEvaluationEnCours = ref(false)
+const ipeValidationEnCours = ref(false)
+
 onMounted(async () => {
   await chargerInfoMission()
   await chargerFichiers()
+  await chargerEtatIpe()
 })
+
+async function chargerEtatIpe() {
+  try {
+    ipeEtat.value = await obtenirEtatIpe(props.missionId)
+  } catch (e) {
+    notyf.trigger(e.message || "Erreur lors du chargement de l'état IPE", 'error')
+  }
+}
+
+async function lancerEvaluationIpe() {
+  ipeEvaluationEnCours.value = true
+  try {
+    ipeEtat.value = await evaluerIpe(props.missionId)
+    notyf.trigger('Rapprochement IPE effectué', 'success')
+  } catch (e) {
+    notyf.trigger(e.message || 'Erreur lors du rapprochement IPE', 'error')
+  } finally {
+    ipeEvaluationEnCours.value = false
+  }
+}
+
+async function validerFiabilite(validee) {
+  ipeValidationEnCours.value = true
+  try {
+    ipeEtat.value = await validerFiabiliteIpe(props.missionId, validee)
+    notyf.trigger(validee ? 'Fiabilité IPE validée' : 'Fiabilité IPE invalidée', 'success')
+  } catch (e) {
+    notyf.trigger(e.message || 'Erreur lors de la validation', 'error')
+  } finally {
+    ipeValidationEnCours.value = false
+  }
+}
 
 async function chargerInfoMission() {
   try {
@@ -114,10 +169,100 @@ function back() {
       <div></div>
     </div>
 
-    <div class="bg-yellow-50 border border-yellow-300 text-yellow-800 text-sm rounded-lg p-4 mb-6">
-      <i class="fa-solid fa-lock mr-2"></i>
-      <strong>Rapprochement IPE — à venir.</strong>
-      Cet écran permet seulement de consulter et gérer les fichiers importés. Aucun rapprochement avec la balance générale (comptes 411, 40x, 2xxx) n'est calculé ici.
+    <!-- Rapprochement IPE (Module 1, CAC-IPE-01) — docs/PLAN_verrou_IPE.md §4/§5.
+         Écran de diagnostic, pas une étape d'audit : volontairement hors des
+         11 étapes de GroupingAnalyse.vue (voir l'indicateur "Fiabilité IPE"
+         dans sa barre latérale, qui renvoie ici pour le détail). -->
+    <div class="bg-white rounded-xl shadow p-4 mb-6 flex flex-col gap-3" v-if="ipeEtat">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <h2 class="font-bold text-sm uppercase text-blue-ycube">Rapprochement IPE</h2>
+        <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+          {{ IPE_STATUT_LABELS[ipeEtat.statut_affiche] || 'Non commencé' }}
+        </span>
+      </div>
+
+      <p v-if="!ipeEtat.verrou_applicable" class="text-xs text-gray-500 italic">
+        Mission antérieure à l'activation du verrou IPE : jamais bloquée, ce rapprochement reste informatif.
+      </p>
+
+      <div class="flex flex-wrap gap-2">
+        <button
+          class="text-xs px-3 py-2 rounded-lg bg-blue-ycube text-white hover:opacity-90 transition disabled:opacity-50"
+          :disabled="ipeEvaluationEnCours"
+          @click="lancerEvaluationIpe"
+        >
+          {{ ipeEvaluationEnCours ? 'Rapprochement en cours...' : 'Lancer le rapprochement IPE-1/2/3' }}
+        </button>
+        <button
+          class="text-xs px-3 py-2 rounded-lg bg-green-ycube text-white hover:opacity-90 transition disabled:opacity-50"
+          :disabled="ipeValidationEnCours"
+          @click="validerFiabilite(true)"
+        >
+          Valider la fiabilité IPE
+        </button>
+        <button
+          class="text-xs px-3 py-2 rounded-lg bg-red-500 text-white hover:opacity-90 transition disabled:opacity-50"
+          :disabled="ipeValidationEnCours"
+          @click="validerFiabilite(false)"
+        >
+          Invalider
+        </button>
+      </div>
+      <!-- Validation enregistrée sans contrôle de rôle : aucun système
+           d'authentification/droits n'existe sur les missions aujourd'hui
+           (CLAUDE.md, point de sécurité connu). -->
+
+      <div v-if="ipeEtat.modules && Object.keys(ipeEtat.modules).length" class="flex flex-col gap-3 mt-2">
+        <div v-for="(module, cle) in ipeEtat.modules" :key="cle" class="border rounded-lg p-3 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold">{{ LIBELLES_MODULE[cle] || cle }}</span>
+            <span :class="module.statut === 'ok' ? 'text-green-ycube' : (module.statut === 'ecart' ? 'text-red-500' : 'text-gray-500')">
+              {{ module.statut === 'ok' ? 'OK' : (module.statut === 'ecart' ? 'Écart' : 'À traiter') }}
+            </span>
+          </div>
+
+          <div v-if="module.derniere_evaluation" class="mt-2 flex flex-col gap-2 text-gray-600">
+            <p>Écart global : {{ module.derniere_evaluation.ecart_global ?? 'non calculable' }}</p>
+
+            <table v-if="module.derniere_evaluation.detail_collectifs?.length" class="text-left">
+              <thead>
+                <tr class="text-gray-500">
+                  <th class="pr-3">Compte collectif</th>
+                  <th class="pr-3">Solde balance générale</th>
+                  <th class="pr-3">Solde auxiliaire</th>
+                  <th class="pr-3">Tiers rattachés</th>
+                  <th>Écart</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="c in module.derniere_evaluation.detail_collectifs" :key="c.numero_compte" :class="c.ok ? '' : 'text-red-500'">
+                  <td class="pr-3">{{ c.numero_compte }}</td>
+                  <td class="pr-3">{{ c.solde_balance_generale }}</td>
+                  <td class="pr-3">{{ c.solde_auxiliaire }}</td>
+                  <td class="pr-3">{{ c.nb_tiers_rattaches }}</td>
+                  <td>{{ c.ecart }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-else class="italic">Aucun compte collectif trouvé dans la balance générale pour ce module.</p>
+
+            <p v-if="module.derniere_evaluation.tiers_orphelins?.balance_generale_seulement?.length" class="text-red-500">
+              Comptes collectifs sans tiers rattaché dans l'auxiliaire :
+              {{ module.derniere_evaluation.tiers_orphelins.balance_generale_seulement.join(', ') }}
+            </p>
+            <p v-if="module.derniere_evaluation.tiers_orphelins?.auxiliaire_seulement?.length" class="text-red-500">
+              Tiers de l'auxiliaire sans compte collectif correspondant :
+              {{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.join(', ') }}
+            </p>
+            <p v-if="module.derniere_evaluation.lignes_non_calculables?.length" class="text-orange-500">
+              {{ module.derniere_evaluation.lignes_non_calculables.length }} ligne(s) auxiliaire(s) sans montant exploitable (mapping incomplet).
+            </p>
+          </div>
+        </div>
+      </div>
+      <p v-else class="text-xs text-gray-500 italic">
+        Aucune évaluation IPE encore lancée pour cette mission.
+      </p>
     </div>
 
     <div v-if="loading" class="text-gray-500">Chargement...</div>

@@ -26,6 +26,7 @@ from src.services import mapping_apercu_service as apercu_service
 from src.services import mapping_memorise_service
 from src.services import fichiers_complementaires_service as fc_service
 from src.services import controle_preliminaire_service as cp_service
+from src.services import verrou_ipe_service
 
 CLES_IDENTIFIANTES_POSSIBLES = ("numero_compte", "numero")
 
@@ -121,8 +122,14 @@ def importer_immobilisations(
             "bouclage_ligne": bouclage_ligne,
         },
     })
+
+    nouveau_fichier_id = str(result.inserted_id)
+    # Invalidation automatique si ce type de fichier avait servi à une
+    # validation IPE positive (docs/PLAN_verrou_IPE.md) — no-op sinon.
+    verrou_ipe_service.invalider_si_fichier_remplace(mission_id, "immobilisations", nouveau_fichier_id)
+
     return {
-        "_id": str(result.inserted_id),
+        "_id": nouveau_fichier_id,
         "type": "immobilisations",
         "version": version,
         "nb_lignes": len(lignes_stockees),

@@ -58,3 +58,14 @@ Aujourd'hui, **aucune authentification ni cloisonnement par mission** ne s'appli
 
 - **`Mission1.balances` n'est pas restructuré** dans ce lot : on garde la liste actuelle de `_id` de balances générales, compatible avec `api/src/model.py`. Les fichiers complémentaires (auxiliaires, immobilisations) sont tracés séparément dans `Balance.mission_id` + `Balance.type`, pas dans `Mission1.balances`.
 - **Collection `MappingImport`** : conçue librement côté développement, avec deux contraintes imposées — un mapping est identifié par `(id_client, logiciel_comptable)`, et chaque sauvegarde crée une nouvelle version horodatée (`version`, `created_at`) plutôt que d'écraser la précédente.
+
+## Décisions prises durant le développement (verrou IPE) — provisoires, à documenter/réviser avec CAC-IPE-01
+
+Voir `docs/PLAN_verrou_IPE.md` pour le détail technique. Décisions tranchées pour pouvoir coder, explicitement provisoires :
+
+- **`verrou_applicable`** : chaque mission fige, à sa création, l'état du flag global `IPE_VERROU_ACTIF` dans `Mission1.ipe.verrou_applicable` (jamais recalculé ensuite). Mission avec `verrou_applicable=true` et `ipe_fiabilite_validee` inconnu (absent/`null`) → **bloquée** (prudence par défaut). Mission avec `verrou_applicable=false` → **« antérieure au verrou »**, jamais bloquée, signalée comme telle à l'écran.
+- **Validation sans contrôle de rôle** : en l'absence de tout système d'authentification/droits sur les missions (point de sécurité connu, ci-dessus), la validation manager de `ipe_fiabilite_validee` est enregistrée sans vérifier qui valide ; `utilisateur_id` à `null` est accepté dans l'historique pour cette ossature.
+- **⚠️ Ne jamais activer `IPE_VERROU_ACTIF` en production tant que les droits (qui valide ?) et la spec CAC-IPE-01 (rattachement tiers↔collectif, tolérance, orphelins, conditions de `TRUE`) ne sont pas intégrés.** Le flag reste à `false` par défaut précisément pour ça.
+- **R4 croisé** : confirmé hors périmètre, non développé (inchangé).
+- **Liste des endpoints verrouillables** : un paramètre unique (`ENDPOINTS_VERROUILLABLES` dans `api/src/services/verrou_ipe_service.py`), pas des conditions dispersées — son contenu exact reste une **décision métier à confirmer**, déduite du séquencement ci-dessus, pas une règle actée par CAC-IPE-01.
+- **Rattachement tiers ↔ compte collectif, tolérance d'écart, périmètre exact IPE-3, traitement des orphelins, conditions de passage à `TRUE`** : `TODO(spec: CAC-IPE-01 §2)`, non tranchés — voir le code pour les hypothèses de travail explicitement marquées comme telles.

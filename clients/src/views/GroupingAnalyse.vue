@@ -6,6 +6,7 @@ import EfiComponent from '@/components/EfiComponent.vue';
 import router from "@/router";
 import { useNotyf } from '@/composables/useNotyf';
 import * as XLSX from 'xlsx';
+import { obtenirEtatIpe } from '@/api/ipe.api';
 
 
 const axios = inject('axios');
@@ -615,11 +616,59 @@ function toggleStep(step) {
 // Navigation uniquement pour phase 2
 function handleStepClick(step) {
   if (step.static) return;
+  if (etapeEstVerrouillee(step)) {
+    notyf.trigger('Cycle verrouillé : fiabilité IPE non validée (voir « Fiabilité IPE » dans la barre latérale).', 'warning');
+    return;
+  }
   showComponent(step.key);
 }
 
 function isActiveStep(step) {
   return componentKey.value === step.key;
+}
+
+/* ================================
+   VERROU IPE (Module 1, CAC-IPE-01)
+   docs/PLAN_verrou_IPE.md §3 et §6 — indicateur de la barre latérale, HORS
+   des 11 étapes (workflowPhases n'est jamais modifié ici), + verrouillage
+   d'affichage des étapes concernées quand applicable.
+================================ */
+
+// Même liste que ENDPOINTS_VERROUILLABLES côté backend
+// (api/src/services/verrou_ipe_service.py), exprimée ici par clé d'étape
+// frontend. Décision métier à confirmer (docs/PLAN_verrou_IPE.md §3).
+const ETAPES_VERROUILLABLES = new Set([
+  'materialite', 'quantitatif', 'qualitatif', 'presentation', 'grouping', 'efi', 'revue',
+]);
+
+const IPE_STATUT_LABELS = {
+  anterieure_au_verrou: 'Antérieure au verrou',
+  non_commence: 'Non commencé',
+  en_cours: 'En cours',
+  valide: 'Validé',
+};
+
+const ipeEtat = ref(null); // null tant que non chargé (affichage neutre)
+
+async function chargerEtatIpe() {
+  try {
+    ipeEtat.value = await obtenirEtatIpe(props.missionId);
+  } catch (e) {
+    console.error('Erreur chargement état IPE', e);
+  }
+}
+
+const ipeVerrouApplicable = computed(() => ipeEtat.value?.verrou_applicable === true);
+const ipeFiabiliteValidee = computed(() => ipeEtat.value?.ipe_fiabilite_validee === true);
+const ipeStatutAffiche = computed(() => ipeEtat.value?.statut_affiche || 'non_commence');
+const ipeStatutLabel = computed(() => IPE_STATUT_LABELS[ipeStatutAffiche.value] || 'Non commencé');
+
+function etapeEstVerrouillee(step) {
+  return ipeVerrouApplicable.value && !ipeFiabiliteValidee.value && ETAPES_VERROUILLABLES.has(step.key);
+}
+
+function allerVersFiabiliteIpe() {
+  router.push(`/grouping-analyse/${props.missionId}/fichiers-complementaires`);
 }
 
 // Calcul progression
@@ -654,6 +703,8 @@ onMounted(async () => {
     ? route.query.step
     : DEFAULT_STEP_KEY;
   showComponent(initialStep);
+
+  chargerEtatIpe();
 });
 
 watch(
@@ -2392,64 +2443,86 @@ function formatAmount(value) {
   <!-- PHASES -->
   <div class="flex flex-col gap-4 overflow-y-auto pr-1">
 
-    <div
-      v-for="phase in workflowPhases"
-      :key="phase.id"
-      class="rounded-xl bg-white/10"
-    >
+    <template v-for="(phase, idx) in workflowPhases" :key="phase.id">
+      <div class="rounded-xl bg-white/10">
 
-      <!-- HEADER PHASE -->
-      <button
-        class="w-full flex items-center justify-between px-4 py-3 text-sm font-bold hover:bg-white/20 transition rounded-t-xl"
-        @click="togglePhase(phase)"
-      >
-        <span>{{ phase.label }}</span>
-        <i
-          class="fa-solid transition-transform duration-300"
-          :class="phase.open ? 'fa-chevron-up' : 'fa-chevron-down'"
-        ></i>
-      </button>
-
-      <!-- ÉTAPES -->
-      <div v-if="phase.open" class="flex flex-col gap-2 px-3 pb-3">
-
-        <div
-          v-for="step in phase.steps"
-          :key="step.id"
-          :class="[
-            'rounded-lg px-3 py-2 flex items-start gap-3 transition',
-            step.static ? 'bg-blue-ycube-1' : 'bg-white/10 hover:bg-white/20 cursor-pointer',
-            isActiveStep(step) ? '!bg-white' : ''
-          ]"
-          @click="handleStepClick(step)"
+        <!-- HEADER PHASE -->
+        <button
+          class="w-full flex items-center justify-between px-4 py-3 text-sm font-bold hover:bg-white/20 transition rounded-t-xl"
+          @click="togglePhase(phase)"
         >
+          <span>{{ phase.label }}</span>
+          <i
+            class="fa-solid transition-transform duration-300"
+            :class="phase.open ? 'fa-chevron-up' : 'fa-chevron-down'"
+          ></i>
+        </button>
 
-          <!-- CHECKBOX (Phase 1 & 3) -->
-          <input
-            v-if="step.static"
-            type="checkbox"
-            class="mt-1 accent-green-500 cursor-pointer"
-            v-model="step.checked"
-            @click.stop
-          />
+        <!-- ÉTAPES -->
+        <div v-if="phase.open" class="flex flex-col gap-2 px-3 pb-3">
 
-          <!-- DOT (Phase 2) -->
-          <span v-else class="text-white/60 mt-1">•</span>
+          <div
+            v-for="step in phase.steps"
+            :key="step.id"
+            :class="[
+              'rounded-lg px-3 py-2 flex items-start gap-3 transition',
+              step.static ? 'bg-blue-ycube-1' : 'bg-white/10 hover:bg-white/20 cursor-pointer',
+              isActiveStep(step) ? '!bg-white' : '',
+              etapeEstVerrouillee(step) ? 'opacity-60' : ''
+            ]"
+            @click="handleStepClick(step)"
+          >
 
-          <!-- TEXTE -->
-          <div class="flex flex-col">
-            <span :class="isActiveStep(step) ? 'font-semibold text-sm text-blue-ycube' : 'font-semibold text-sm'">
-              {{ step.name }}
-            </span>
-            <span :class="isActiveStep(step) ? 'text-xs text-blue-ycube/70' : 'text-xs text-white/60'">
-              Étape {{ step.id }}
-            </span>
+            <!-- CHECKBOX (Phase 1 & 3) -->
+            <input
+              v-if="step.static"
+              type="checkbox"
+              class="mt-1 accent-green-500 cursor-pointer"
+              v-model="step.checked"
+              @click.stop
+            />
+
+            <!-- CADENAS (étape verrouillée par IPE-GLOBAL-01) -->
+            <i v-else-if="etapeEstVerrouillee(step)" class="fa-solid fa-lock text-white/60 mt-1"></i>
+
+            <!-- DOT (Phase 2) -->
+            <span v-else class="text-white/60 mt-1">•</span>
+
+            <!-- TEXTE -->
+            <div class="flex flex-col">
+              <span :class="isActiveStep(step) ? 'font-semibold text-sm text-blue-ycube' : 'font-semibold text-sm'">
+                {{ step.name }}
+              </span>
+              <span :class="isActiveStep(step) ? 'text-xs text-blue-ycube/70' : 'text-xs text-white/60'">
+                <template v-if="etapeEstVerrouillee(step)">Cycle verrouillé : fiabilité IPE non validée</template>
+                <template v-else>Étape {{ step.id }}</template>
+              </span>
+            </div>
+
           </div>
 
         </div>
-
       </div>
-    </div>
+
+      <!-- Point de contrôle "Fiabilité IPE" : entre Phase 1 et Phase 2
+           (docs/PLAN_verrou_IPE.md §6). HORS de workflowPhases : n'entre
+           jamais dans le décompte des 11 étapes ni dans la progression. -->
+      <div v-if="idx === 0" class="rounded-xl bg-white/10 px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 min-w-0">
+          <i class="fa-solid fa-shield-halved text-white/70"></i>
+          <div class="flex flex-col min-w-0">
+            <span class="font-semibold text-sm">Fiabilité IPE</span>
+            <span class="text-xs text-white/60 truncate">{{ ipeStatutLabel }}</span>
+          </div>
+        </div>
+        <button
+          class="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition"
+          @click="allerVersFiabiliteIpe"
+        >
+          Détail
+        </button>
+      </div>
+    </template>
 
   </div>
 </div>

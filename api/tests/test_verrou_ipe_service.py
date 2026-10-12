@@ -1,0 +1,77 @@
+"""
+Tests de verrou_ipe_service.py : décision de blocage IPE-GLOBAL-01 et statut
+affiché pour l'indicateur « Fiabilité IPE » de la barre latérale.
+Voir docs/PLAN_verrou_IPE.md §3, §6, §7.
+
+Fonctions pures testées directement, sans contexte Flask/DB (verifier_verrou_ipe
+et capturer_verrou_applicable_a_la_creation, qui ont besoin de Flask/Mongo, ne
+sont pas testés ici).
+"""
+from src.services import verrou_ipe_service as service
+
+
+def test_verrou_desactive_est_un_noop():
+    """IPE_VERROU_ACTIF désactivé : verrou_actif() est False par défaut (pas de variable d'env positionnée)."""
+    assert service.verrou_actif() is False
+
+
+def test_mission_anterieure_au_verrou_jamais_bloquee():
+    etat = {"verrou_applicable": False, "ipe_fiabilite_validee": False}
+    assert service.mission_est_bloquee(etat) is False
+
+
+def test_mission_anterieure_au_verrou_jamais_bloquee_meme_sans_sous_document():
+    """Sous-document Mission1.ipe absent (ancienne mission) -> jamais bloquée."""
+    etat = service._etat_par_defaut()
+    assert service.mission_est_bloquee(etat) is False
+
+
+def test_mission_verrou_applicable_etat_inconnu_est_bloquante():
+    """verrou_applicable=True et ipe_fiabilite_validee jamais évalué (None) -> bloquée (prudence par défaut)."""
+    etat = {"verrou_applicable": True, "ipe_fiabilite_validee": None}
+    assert service.mission_est_bloquee(etat) is True
+
+
+def test_mission_verrou_applicable_fausse_est_bloquante():
+    etat = {"verrou_applicable": True, "ipe_fiabilite_validee": False}
+    assert service.mission_est_bloquee(etat) is True
+
+
+def test_mission_verrou_applicable_validee_nest_pas_bloquante():
+    etat = {"verrou_applicable": True, "ipe_fiabilite_validee": True}
+    assert service.mission_est_bloquee(etat) is False
+
+
+def test_endpoint_hors_liste_nest_jamais_verrouillable():
+    assert service.endpoint_est_verrouillable("mission.controle_coherence_route") is False
+    assert service.endpoint_est_verrouillable("mission.new_assign") is False
+    assert service.endpoint_est_verrouillable(None) is False
+
+
+def test_endpoint_de_la_liste_est_verrouillable():
+    assert service.endpoint_est_verrouillable("mission.materialite_route") is True
+    assert service.endpoint_est_verrouillable("mission.revue_analytique_finale_route") is True
+
+
+def test_statut_affiche_anterieure_au_verrou():
+    etat = service._etat_par_defaut()
+    assert service.statut_affiche(etat) == "anterieure_au_verrou"
+
+
+def test_statut_affiche_non_commence():
+    etat = {"verrou_applicable": True, "ipe_fiabilite_validee": None, "modules": {}}
+    assert service.statut_affiche(etat) == "non_commence"
+
+
+def test_statut_affiche_en_cours():
+    etat = {
+        "verrou_applicable": True,
+        "ipe_fiabilite_validee": None,
+        "modules": {"ipe_1_clients": {"statut": "ecart"}},
+    }
+    assert service.statut_affiche(etat) == "en_cours"
+
+
+def test_statut_affiche_valide():
+    etat = {"verrou_applicable": True, "ipe_fiabilite_validee": True, "modules": {}}
+    assert service.statut_affiche(etat) == "valide"
