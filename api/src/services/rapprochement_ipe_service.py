@@ -200,11 +200,14 @@ def choisir_balance_generale(balances_candidates: List[Dict[str, Any]], annee_n:
     return candidats[0]
 
 
-def _resoudre_balance_generale(mission_id: str) -> Dict[str, Any]:
+def resoudre_balance_generale(mission_id: str) -> Dict[str, Any]:
     """
     Résout le document Balance générale de l'exercice audité en allant lire
     Mongo (Mission1.annee_auditee + Mission1.balances), puis délègue le choix
-    à choisir_balance_generale (fonction pure, testée séparément).
+    à choisir_balance_generale (fonction pure, testée séparément). Publique
+    (plus de `_`) : réutilisée par verrou_ipe_service.verifier_coherence_fichiers
+    pour détecter un remplacement de la balance générale par le flux V1
+    (api/src/model.py), qui ne déclenche aucune invalidation à l'écriture.
     """
     try:
         mission_object_id = ObjectId(mission_id)
@@ -239,7 +242,7 @@ def _resoudre_balance_generale(mission_id: str) -> Dict[str, Any]:
 
 
 def _lire_balance_generale(mission_id: str) -> List[Dict[str, Any]]:
-    return _resoudre_balance_generale(mission_id).get("balance", []) or []
+    return resoudre_balance_generale(mission_id).get("balance", []) or []
 
 
 def _lire_auxiliaire_actif(mission_id: str, type_auxiliaire: str) -> List[Dict[str, Any]]:
@@ -331,10 +334,10 @@ def _fichiers_references_actuels(mission_id: str) -> Dict[str, Any]:
     complémentaire actif présent. Sert à détecter, lors d'un futur import,
     si le fichier qui a servi à la validation a été remplacé (invalidation
     automatique, voir verrou_ipe_service.invalider_si_fichier_remplace).
-    Propage l'échec de _resoudre_balance_generale : on ne valide jamais avec
+    Propage l'échec de resoudre_balance_generale : on ne valide jamais avec
     une référence de balance générale introuvable/ambiguë.
     """
-    balance_generale = _resoudre_balance_generale(mission_id)
+    balance_generale = resoudre_balance_generale(mission_id)
     references: Dict[str, Any] = {
         "balance_generale": {
             "_id": str(balance_generale["_id"]),

@@ -75,3 +75,51 @@ def test_statut_affiche_en_cours():
 def test_statut_affiche_valide():
     etat = {"verrou_applicable": True, "ipe_fiabilite_validee": True, "modules": {}}
     assert service.statut_affiche(etat) == "valide"
+
+
+# ---------------------------------------------------------------------------
+# detecter_fichiers_modifies — vérification à la lecture : détecte un
+# remplacement de fichier (notamment la balance générale, importée par le
+# flux V1 / model.py, qui ne déclenche aucune invalidation à l'écriture).
+# ---------------------------------------------------------------------------
+
+def test_detecter_fichiers_modifies_aucun_changement():
+    references = {
+        "balance_generale": {"_id": "bal_n", "annee_balance": 2025},
+        "auxiliaire_fournisseur": {"_id": "aux_v1", "version": 1},
+    }
+    actuelles = {"balance_generale": "bal_n", "auxiliaire_fournisseur": "aux_v1"}
+    assert service.detecter_fichiers_modifies(references, actuelles) == []
+
+
+def test_detecter_fichiers_modifies_balance_generale_remplacee_hors_hook():
+    """
+    La balance générale (flux V1, api/src/model.py) n'a pas de hook
+    d'invalidation à l'écriture : c'est bien ce cas que la vérification à la
+    lecture doit détecter, via un _id qui a changé.
+    """
+    references = {"balance_generale": {"_id": "bal_n_ancienne", "annee_balance": 2025}}
+    actuelles = {"balance_generale": "bal_n_nouvelle"}
+
+    changements = service.detecter_fichiers_modifies(references, actuelles)
+
+    assert len(changements) == 1
+    assert changements[0]["type_fichier"] == "balance_generale"
+    assert changements[0]["id_reference"] == "bal_n_ancienne"
+    assert changements[0]["id_actuel"] == "bal_n_nouvelle"
+
+
+def test_detecter_fichiers_modifies_fichier_devenu_introuvable():
+    """Un fichier référencé qui n'est plus résolvable (None) est bien un changement, jamais ignoré."""
+    references = {"immobilisations": {"_id": "immo_v1", "version": 1}}
+    actuelles = {"immobilisations": None}
+    changements = service.detecter_fichiers_modifies(references, actuelles)
+    assert len(changements) == 1
+    assert changements[0]["id_actuel"] is None
+
+
+def test_detecter_fichiers_modifies_ignore_les_types_non_references():
+    """Un type présent dans les références actuelles mais jamais figé par la validation n'est jamais signalé."""
+    references = {"balance_generale": {"_id": "bal_n", "annee_balance": 2025}}
+    actuelles = {"balance_generale": "bal_n", "auxiliaire_client": "aux_v1"}
+    assert service.detecter_fichiers_modifies(references, actuelles) == []

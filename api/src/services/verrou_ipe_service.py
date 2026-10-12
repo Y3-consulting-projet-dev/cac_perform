@@ -14,13 +14,14 @@ orphelins, conditions de TRUE) soient intégrés (voir CLAUDE.md).
 """
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
 from bson.errors import InvalidId
 from flask import jsonify, make_response, request
 
 from src.utils.database import get_database
+from src.services import fichiers_complementaires_service as fc_service
 
 COLLECTION_MISSION = "Mission1"
 
@@ -182,7 +183,10 @@ def verifier_verrou_ipe():
         # rattacher à une mission précise.
         return None
 
-    etat = lire_etat_ipe(mission_id)
+    # verifier_coherence_fichiers (pas lire_etat_ipe) : détecte, à la lecture,
+    # un remplacement de fichier survenu sans invalidation à l'écriture
+    # (notamment la balance générale, importée par le flux V1 — voir plus bas).
+    etat = verifier_coherence_fichiers(mission_id)
     if mission_est_bloquee(etat):
         return make_response(jsonify({
             "success": False,
@@ -293,3 +297,104 @@ def invalider_si_fichier_remplace(mission_id: str, type_fichier: str, nouveau_fi
             "$push": {"ipe.historique": historique_entree},
         },
     )
+
+
+def _references_actuelles(mission_id: str) -> Dict[str, Optional[str]]:
+    """
+    Recalcule les références (_id) actuellement résolvables pour chaque type
+    de fichier utilisé par le rapprochement IPE. None quand un type n'est
+    plus résolvable (balance générale introuvable/ambiguë après un
+    remplacement, ou plus aucun fichier actif pour un type complémentaire) —
+    un None est bien un changement si une référence existait auparavant.
+
+    Import différé de rapprochement_ipe_service : évite le cycle (ce module
+    importe verrou_ipe_service pour lire_etat_ipe).
+    """
+    from src.services import rapprochement_ipe_service
+
+    actuelles: Dict[str, Optional[str]] = {}
+
+    try:
+        balance_generale = rapprochement_ipe_service.resoudre_balance_generale(mission_id)
+        actuelles["balance_generale"] = str(balance_generale["_id"])
+    except ValueError:
+        actuelles["balance_generale"] = None
+
+    fichiers = fc_service.lister_fichiers_complementaires(mission_id)
+    for type_fichier, docs in fichiers.items():
+        actuelles[type_fichier] = docs[0]["_id"] if docs else None
+
+    return actuelles
+
+
+def detecter_fichiers_modifies(
+    fichiers_references: Dict[str, Any],
+    references_actuelles: Dict[str, Optional[str]],
+) -> List[Dict[str, Any]]:
+    """
+    Fonction pure : compare les références figées à la dernière validation
+    positive (Mission1.ipe.fichiers_references) aux références actuellement
+    résolvables. Renvoie la liste des types dont le fichier a changé (ou a
+    disparu) depuis — [] si tout est inchangé.
+    """
+    changements = []
+    for type_fichier, reference in (fichiers_references or {}).items():
+        id_reference = reference.get("_id") if isinstance(reference, dict) else None
+        id_actuel = references_actuelles.get(type_fichier)
+        if id_actuel != id_reference:
+            changements.append({
+                "type_fichier": type_fichier,
+                "id_reference": id_reference,
+                "id_actuel": id_actuel,
+            })
+    return changements
+
+
+def verifier_coherence_fichiers(mission_id: str) -> Dict[str, Any]:
+    """
+    « Lecture avec vérification » de l'état IPE (docs/PLAN_verrou_IPE.md) :
+    si la dernière validation positive référence des fichiers et que l'un
+    d'eux a changé depuis — notamment la balance générale, importée par le
+    flux V1 (api/src/model.py) qui ne déclenche AUCUNE invalidation à
+    l'écriture (voir invalider_si_fichier_remplace, limité aux fichiers
+    complémentaires) — la fiabilité est considérée comme non validée et
+    l'incohérence est journalisée (jamais une invalidation silencieuse).
+
+    Appelée partout où l'état IPE sert à une décision ou à un affichage
+    (hook de blocage verifier_verrou_ipe, GET /ipe) — jamais lors d'une
+    évaluation/validation elle-même, qui travaille sur lire_etat_ipe (lecture
+    brute, sans effet de bord caché derrière une simple lecture).
+    """
+    etat = lire_etat_ipe(mission_id)
+    if etat.get("ipe_fiabilite_validee") is not True or not etat.get("fichiers_references"):
+        return etat  # rien à vérifier : jamais validé, ou sans référence figée
+
+    references_actuelles = _references_actuelles(mission_id)
+    changements = detecter_fichiers_modifies(etat["fichiers_references"], references_actuelles)
+    if not changements:
+        return etat
+
+    horodatage = datetime.now(timezone.utc).isoformat()
+    historique_entree = {
+        "horodatage": horodatage,
+        "utilisateur_id": None,
+        "action": "invalidation_detectee_a_la_lecture",
+        "resultat": {"changements": changements},
+        "commentaire": (
+            "Fiabilité IPE invalidée : un ou plusieurs fichiers référencés "
+            "ont changé depuis la dernière validation (détecté à la lecture, "
+            "ex. balance générale remplacée via le flux V1)."
+        ),
+    }
+
+    _collection().update_one(
+        {"_id": ObjectId(mission_id)},
+        {
+            "$set": {"ipe.ipe_fiabilite_validee": False},
+            "$push": {"ipe.historique": historique_entree},
+        },
+    )
+
+    etat["ipe_fiabilite_validee"] = False
+    etat["historique"] = etat.get("historique", []) + [historique_entree]
+    return etat

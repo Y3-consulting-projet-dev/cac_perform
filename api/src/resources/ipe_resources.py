@@ -16,9 +16,15 @@ class IpeResource:
 
     @staticmethod
     def obtenir_etat(mission_id: str):
-        """GET /api/v1/missions/<id>/ipe — état IPE courant (+ statut affiché pour la barre latérale)."""
+        """
+        GET /api/v1/missions/<id>/ipe — état IPE courant (+ statut affiché
+        pour la barre latérale). Passe par verifier_coherence_fichiers : si un
+        fichier référencé par la dernière validation a changé depuis (ex. la
+        balance générale, remplacée via le flux V1 sans invalidation à
+        l'écriture), l'état renvoyé reflète l'invalidation détectée.
+        """
         try:
-            etat = verrou_ipe_service.lire_etat_ipe(mission_id)
+            etat = verrou_ipe_service.verifier_coherence_fichiers(mission_id)
             etat["statut_affiche"] = verrou_ipe_service.statut_affiche(etat)
             return make_response(jsonify({"success": True, "data": etat}), 200)
         except Exception as e:
