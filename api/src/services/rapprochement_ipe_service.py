@@ -87,6 +87,21 @@ def _cle_identifiante(lignes: List[Dict[str, Any]]) -> Optional[str]:
     return None
 
 
+def normaliser_compte_collectif(numero: str) -> str:
+    """
+    Retire les zéros de fin d'un numéro de compte COLLECTIF de la balance
+    générale (observé en pratique : comptes complétés à 8 chiffres par des
+    zéros, ex. "40110000" / "41110000") avant le rattachement des tiers —
+    sans quoi aucun tiers de l'auxiliaire (ex. "4011TO", jamais complété de
+    la même façon) ne peut matcher par préfixe. Hypothèse de travail,
+    TODO(spec: CAC-IPE-01 §2) : ne s'applique qu'aux comptes collectifs de la
+    balance générale, jamais aux numéros de tiers de l'auxiliaire.
+    """
+    numero = numero.strip()
+    normalise = numero.rstrip("0")
+    return normalise or numero  # jamais une chaîne vide (cas limite "00000000")
+
+
 def rapprocher_famille(
     lignes_balance_generale: List[Dict[str, Any]],
     lignes_auxiliaire: List[Dict[str, Any]],
@@ -96,15 +111,19 @@ def rapprocher_famille(
 ) -> Dict[str, Any]:
     """
     Rapprochement compte collectif par compte collectif (voir docstring du
-    module). Rattachement d'un tiers à un collectif : préfixe le plus long
-    qui correspond — hypothèse de travail, TODO(spec: CAC-IPE-01 §2).
+    module). Les comptes collectifs de la balance générale sont normalisés
+    (zéros de fin retirés, normaliser_compte_collectif) avant tout
+    regroupement/rattachement. Rattachement d'un tiers à un collectif
+    normalisé : préfixe le plus long qui correspond — hypothèse de travail,
+    TODO(spec: CAC-IPE-01 §2).
     """
+    lignes_bg_famille = [
+        l for l in lignes_balance_generale
+        if str(l.get("numero_compte") or "").strip().startswith(racine_collectif)
+    ]
+
     collectifs = sorted(
-        {
-            str(l.get("numero_compte") or "").strip()
-            for l in lignes_balance_generale
-            if str(l.get("numero_compte") or "").strip().startswith(racine_collectif)
-        },
+        {normaliser_compte_collectif(str(l.get("numero_compte") or "").strip()) for l in lignes_bg_famille},
         key=len,
         reverse=True,
     )
@@ -134,8 +153,8 @@ def rapprocher_famille(
     resultats_collectifs = []
     for collectif in collectifs:
         lignes_bg_collectif = [
-            l for l in lignes_balance_generale
-            if str(l.get("numero_compte") or "").strip() == collectif
+            l for l in lignes_bg_famille
+            if normaliser_compte_collectif(str(l.get("numero_compte") or "").strip()) == collectif
         ]
         solde_balance_generale = sum((_solde_ligne_balance_generale(l) or 0) for l in lignes_bg_collectif)
         tiers = tiers_par_collectif[collectif]
@@ -256,6 +275,24 @@ def _lire_auxiliaire_actif(mission_id: str, type_auxiliaire: str) -> List[Dict[s
     return doc.get("balance", []) or []
 
 
+def determiner_statut_module(resultat: Dict[str, Any], fichier_auxiliaire_absent: bool) -> Dict[str, Optional[str]]:
+    """
+    Fonction pure : détermine le statut d'un module IPE à partir du résultat
+    de rapprocher_famille et de la présence (ou non) d'un fichier
+    complémentaire actif. Ne renvoie JAMAIS "ecart" quand il n'y a rien de
+    réel à comparer : "non_evaluable" avec un motif explicite si le fichier
+    complémentaire actif est absent, ou si aucun compte collectif n'a été
+    trouvé dans la balance générale pour cette famille.
+    """
+    if fichier_auxiliaire_absent:
+        return {"statut": "non_evaluable", "motif_non_evaluable": "fichier_complementaire_absent"}
+    if not resultat["collectifs"]:
+        return {"statut": "non_evaluable", "motif_non_evaluable": "aucun_compte_collectif_trouve"}
+    if resultat["ok"]:
+        return {"statut": "ok", "motif_non_evaluable": None}
+    return {"statut": "ecart", "motif_non_evaluable": None}
+
+
 def evaluer_ipe(mission_id: str) -> Dict[str, Any]:
     """
     Lance le rapprochement des 3 familles IPE pour une mission et enregistre
@@ -271,18 +308,15 @@ def evaluer_ipe(mission_id: str) -> Dict[str, Any]:
 
     for module, config in FAMILLES_IPE.items():
         lignes_auxiliaire = _lire_auxiliaire_actif(mission_id, config["type_auxiliaire"])
+        fichier_absent = not lignes_auxiliaire
         cle_identifiante = _cle_identifiante(lignes_auxiliaire)
         resultat = rapprocher_famille(
             lignes_balance_generale, lignes_auxiliaire,
             config["racine_collectif"], cle_identifiante,
         )
 
-        if resultat["ok"]:
-            statut = "ok"
-        elif resultat["collectifs"]:
-            statut = "ecart"
-        else:
-            statut = "a_traiter"
+        decision_statut = determiner_statut_module(resultat, fichier_absent)
+        statut = decision_statut["statut"]
 
         ecart_global = sum(c["ecart"] for c in resultat["collectifs"]) if resultat["collectifs"] else None
 
@@ -291,6 +325,7 @@ def evaluer_ipe(mission_id: str) -> Dict[str, Any]:
             "derniere_evaluation": {
                 "date_evaluation": horodatage,
                 "ecart_global": ecart_global,
+                "motif_non_evaluable": decision_statut["motif_non_evaluable"],
                 "tiers_orphelins": {
                     "balance_generale_seulement": resultat["orphelins_balance_generale"],
                     "auxiliaire_seulement": [o["numero"] for o in resultat["orphelins_auxiliaire"]],

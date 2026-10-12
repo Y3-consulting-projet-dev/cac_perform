@@ -217,3 +217,133 @@ def test_invalidation_ne_declenche_rien_si_meme_fichier():
 
     etat = {"fichiers_references": {"immobilisations": {"_id": "immo_v1", "version": 1}}}
     assert verrou_ipe_service.decider_invalidation(etat, "immobilisations", "immo_v1") is None
+
+
+# ---------------------------------------------------------------------------
+# normaliser_compte_collectif / rattachement par préfixe après normalisation
+# — comptes de la balance générale complétés à 8 chiffres par des zéros de
+# fin (ex. 40110000), jamais rattachables aux tiers (ex. 4011TO) sans retirer
+# ces zéros au préalable.
+# ---------------------------------------------------------------------------
+
+def test_normaliser_compte_collectif_retire_les_zeros_de_fin():
+    assert service.normaliser_compte_collectif("40110000") == "4011"
+    assert service.normaliser_compte_collectif("41110000") == "4111"
+
+
+def test_normaliser_compte_collectif_ne_touche_pas_un_numero_sans_zero_de_fin():
+    assert service.normaliser_compte_collectif("4011TO") == "4011TO"
+    assert service.normaliser_compte_collectif("401") == "401"
+
+
+def test_normaliser_compte_collectif_cas_limite_que_des_zeros():
+    """Ne renvoie jamais une chaîne vide, même pour un numéro entièrement composé de zéros."""
+    assert service.normaliser_compte_collectif("00000000") == "00000000"
+
+
+def test_rattachement_apres_normalisation_comptes_8_chiffres():
+    """
+    Reproduit le cas réel rencontré sur la mission de test : balance générale
+    sur 8 chiffres (40110000), tiers de l'auxiliaire au format court
+    (4011TO). Sans normalisation, aucun tiers n'est jamais rattaché.
+    """
+    lignes_bg = [{"numero_compte": "40110000", "solde_reel": -1000.0}]
+    lignes_aux = [
+        {"numero_compte": "4011TO", "solde_final_debit": 0.0, "solde_final_credit": 1000.0},
+    ]
+
+    resultat = service.rapprocher_famille(lignes_bg, lignes_aux, "40", "numero_compte")
+
+    assert resultat["collectifs"][0]["numero_compte"] == "4011"
+    assert resultat["collectifs"][0]["nb_tiers_rattaches"] == 1
+    assert resultat["collectifs"][0]["ecart"] == 0.0
+    assert resultat["ok"] is True
+    assert resultat["orphelins_balance_generale"] == []
+
+
+def test_rattachement_apres_normalisation_plusieurs_collectifs_8_chiffres():
+    """Deux comptes collectifs sur 8 chiffres, chacun avec son propre tiers rattaché après normalisation."""
+    lignes_bg = [
+        {"numero_compte": "40110000", "solde_reel": -500.0},
+        {"numero_compte": "40120000", "solde_reel": -300.0},
+    ]
+    lignes_aux = [
+        {"numero_compte": "4011TO", "solde_final_debit": 0.0, "solde_final_credit": 500.0},
+        {"numero_compte": "4012AB", "solde_final_debit": 0.0, "solde_final_credit": 300.0},
+    ]
+
+    resultat = service.rapprocher_famille(lignes_bg, lignes_aux, "40", "numero_compte")
+    par_collectif = {c["numero_compte"]: c for c in resultat["collectifs"]}
+
+    assert set(par_collectif.keys()) == {"4011", "4012"}
+    assert all(c["ok"] for c in resultat["collectifs"])
+    assert resultat["ok"] is True
+
+
+# ---------------------------------------------------------------------------
+# determiner_statut_module — fichier complémentaire absent ou aucun compte
+# collectif trouvé -> "non_evaluable", jamais "ecart".
+# ---------------------------------------------------------------------------
+
+def test_statut_non_evaluable_si_fichier_complementaire_absent():
+    """
+    Avant la correction, un fichier auxiliaire absent (balance générale avec
+    des collectifs, aucun tiers côté auxiliaire) produisait un "écart" — ce
+    n'est pas un écart réel, juste l'absence de données à comparer.
+    """
+    lignes_bg = [{"numero_compte": "401", "solde_reel": -1000.0}]
+    resultat = service.rapprocher_famille(lignes_bg, [], "40", None)
+
+    decision = service.determiner_statut_module(resultat, fichier_auxiliaire_absent=True)
+
+    assert decision["statut"] == "non_evaluable"
+    assert decision["motif_non_evaluable"] == "fichier_complementaire_absent"
+
+
+def test_statut_non_evaluable_si_aucun_collectif_trouve():
+    resultat = service.rapprocher_famille([], [], "411", "numero_compte")
+    decision = service.determiner_statut_module(resultat, fichier_auxiliaire_absent=False)
+    assert decision["statut"] == "non_evaluable"
+    assert decision["motif_non_evaluable"] == "aucun_compte_collectif_trouve"
+
+
+def test_statut_ecart_reel_reste_ecart():
+    lignes_bg = [{"numero_compte": "401", "solde_reel": -1000.0}]
+    lignes_aux = [{"numero_compte": "4011AAA", "solde_final_debit": 0.0, "solde_final_credit": 800.0}]
+    resultat = service.rapprocher_famille(lignes_bg, lignes_aux, "40", "numero_compte")
+
+    decision = service.determiner_statut_module(resultat, fichier_auxiliaire_absent=False)
+
+    assert decision["statut"] == "ecart"
+    assert decision["motif_non_evaluable"] is None
+
+
+def test_statut_ok_reste_ok():
+    lignes_bg = [{"numero_compte": "401", "solde_reel": -1000.0}]
+    lignes_aux = [{"numero_compte": "4011AAA", "solde_final_debit": 0.0, "solde_final_credit": 1000.0}]
+    resultat = service.rapprocher_famille(lignes_bg, lignes_aux, "40", "numero_compte")
+
+    decision = service.determiner_statut_module(resultat, fichier_auxiliaire_absent=False)
+
+    assert decision["statut"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# Convention de signe (débit - crédit) harmonisée entre balance générale et
+# auxiliaire, des deux côtés — vérification explicite demandée.
+# ---------------------------------------------------------------------------
+
+def test_convention_de_signe_coherente_cote_debiteur():
+    """Compte collectif débiteur net (ex. 411 clients) et tiers débiteur équivalent -> écart nul."""
+    lignes_bg = [{"numero_compte": "411", "solde_reel": 500.0}]
+    lignes_aux = [{"numero_compte": "4111AAA", "solde_final_debit": 500.0, "solde_final_credit": 0.0}]
+    resultat = service.rapprocher_famille(lignes_bg, lignes_aux, "411", "numero_compte")
+    assert resultat["collectifs"][0]["ecart"] == 0.0
+
+
+def test_convention_de_signe_coherente_cote_crediteur():
+    """Compte collectif créditeur net (ex. 401 fournisseurs) et tiers créditeur équivalent -> écart nul."""
+    lignes_bg = [{"numero_compte": "401", "solde_reel": -500.0}]
+    lignes_aux = [{"numero_compte": "4011AAA", "solde_final_debit": 0.0, "solde_final_credit": 500.0}]
+    resultat = service.rapprocher_famille(lignes_bg, lignes_aux, "401", "numero_compte")
+    assert resultat["collectifs"][0]["ecart"] == 0.0
