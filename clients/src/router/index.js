@@ -106,13 +106,14 @@ const router = createRouter({
       props: true
     },
     {
+      // Fiabilité IPE s'affiche dans GroupingAnalyse, sous la barre latérale
+      // bleue : l'ancienne adresse y redirige pour garder la barre visible.
       path: '/grouping-analyse/:missionId/fiabilite-ipe',
       name: 'fiabiliteIpe',
-      component: () => import('@/views/FiabiliteIpeView.vue'),
-      meta: {
-        showHeader: true
-      },
-      props: true
+      redirect: (to) => ({
+        path: `/grouping-analyse/${to.params.missionId}`,
+        query: { step: 'fiabilite_ipe' },
+      }),
     },
     {
       path: '/aide',

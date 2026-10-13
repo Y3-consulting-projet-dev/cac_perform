@@ -203,7 +203,7 @@ async function confirmerRetrait() {
 }
 
 function allerVersFiabiliteIpe() {
-  router.push(`/grouping-analyse/${props.missionId}/fiabilite-ipe`)
+  router.push({ path: `/grouping-analyse/${props.missionId}`, query: { step: 'fiabilite_ipe' } })
 }
 
 function back() {

@@ -22,7 +22,12 @@ import {
   justifierNonEvaluableIpe,
 } from '@/api/ipe.api'
 
-const props = defineProps(['missionId'])
+// `integre` : écran affiché dans la zone principale de GroupingAnalyse.vue,
+// sous la barre latérale bleue (qui porte déjà le « Retour »).
+const props = defineProps({ missionId: String, integre: Boolean })
+// Chaque nouvel état IPE est remonté pour mettre à jour la barre latérale
+// (statut, cadenas des étapes) sans recharger la page.
+const emit = defineEmits(['etat-ipe'])
 const notyf = useNotyf()
 
 const LIBELLES_MODULE = {
@@ -139,6 +144,7 @@ function utilisateurConnecte() {
 }
 
 const ipeEtat = ref(null)
+watch(ipeEtat, (etat) => { if (etat) emit('etat-ipe', etat) })
 const ipeEvaluationEnCours = ref(false)
 const ipeValidationEnCours = ref(false)
 
@@ -608,9 +614,10 @@ function back() {
   <div class="h-full w-full overflow-y-auto bg-[#f5f7fa]">
     <!-- En-tête de page — même recette que ClientSpace.vue (charte d'interface, CLAUDE.md) -->
     <div class="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
-      <button class="text-blue-ycube font-semibold hover:underline flex items-center gap-2" @click="back">
+      <button v-if="!integre" class="text-blue-ycube font-semibold hover:underline flex items-center gap-2" @click="back">
         <i class="fa-solid fa-arrow-left"></i> Retour
       </button>
+      <div v-else class="w-20"></div>
       <div class="text-center">
         <h1 class="text-xl font-bold text-blue-ycube">Fiabilité IPE</h1>
         <p class="text-sm text-gray-500">Rapprochement IPE-1/2/3, qualification, validation et historique</p>

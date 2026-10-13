@@ -7,6 +7,7 @@ import router from "@/router";
 import { useNotyf } from '@/composables/useNotyf';
 import * as XLSX from 'xlsx';
 import { obtenirEtatIpe } from '@/api/ipe.api';
+import FiabiliteIpeView from '@/views/FiabiliteIpeView.vue';
 
 
 const axios = inject('axios');
@@ -599,8 +600,13 @@ const stepKeys = computed(() => new Set(
   workflowPhases.value.flatMap(p => p.steps.map(s => s.key))
 ));
 
+// Écrans affichés dans la zone principale, sous la barre latérale, mais HORS
+// des 11 étapes (ni progression, ni workflowPhases) — docs/PLAN_verrou_IPE.md §6.
+const ECRAN_FIABILITE_IPE = 'fiabilite_ipe';
+const ECRANS_HORS_ETAPES = new Set([ECRAN_FIABILITE_IPE]);
+
 function isValidStepKey(key) {
-  return typeof key === 'string' && stepKeys.value.has(key);
+  return typeof key === 'string' && (stepKeys.value.has(key) || ECRANS_HORS_ETAPES.has(key));
 }
 
   // Toggle ouverture phase
@@ -669,8 +675,9 @@ function etapeEstVerrouillee(step) {
   return ipeVerrouApplicable.value && !ipeFiabiliteValidee.value && ETAPES_VERROUILLABLES.has(step.key);
 }
 
+// Affiché dans la zone principale : la barre latérale reste visible.
 function allerVersFiabiliteIpe() {
-  router.push(`/grouping-analyse/${props.missionId}/fiabilite-ipe`);
+  showComponent(ECRAN_FIABILITE_IPE);
 }
 
 // Calcul progression
@@ -978,6 +985,15 @@ function showComponent(type, options = {}) {
   componentKey.value = type;  // <- Gère l’affichage composant
 
   console.log("➡️ Navigation vers composant :", type);
+
+  if (type === ECRAN_FIABILITE_IPE) {
+    renderComponent.value = h(FiabiliteIpeView, {
+      missionId: props.missionId,
+      integre: true,
+      onEtatIpe: (etat) => { ipeEtat.value = etat; },
+    });
+    return;
+  }
 
   // 1️⃣ Onglets historiques (Groupement & États financiers)
   if (type === "grouping") {
@@ -2509,20 +2525,25 @@ function formatAmount(value) {
       <!-- Point de contrôle "Fiabilité IPE" : entre Phase 1 et Phase 2
            (docs/PLAN_verrou_IPE.md §6). HORS de workflowPhases : n'entre
            jamais dans le décompte des 11 étapes ni dans la progression. -->
-      <div v-if="idx === 0" class="rounded-xl bg-white/10 px-4 py-3 flex items-center justify-between gap-3">
+      <div
+        v-if="idx === 0"
+        class="rounded-xl px-4 py-3 flex items-center justify-between gap-3 cursor-pointer transition"
+        :class="componentKey === ECRAN_FIABILITE_IPE ? 'bg-white' : 'bg-white/10 hover:bg-white/20'"
+        @click="allerVersFiabiliteIpe"
+      >
         <div class="flex items-center gap-2 min-w-0">
-          <i class="fa-solid fa-shield-halved text-white/70"></i>
+          <i class="fa-solid fa-shield-halved" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-blue-ycube' : 'text-white/70'"></i>
           <div class="flex flex-col min-w-0">
-            <span class="font-semibold text-sm">Fiabilité IPE</span>
-            <span class="text-xs text-white/60 truncate">{{ ipeStatutLabel }}</span>
+            <span class="font-semibold text-sm" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-blue-ycube' : ''">Fiabilité IPE</span>
+            <span class="text-xs truncate" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-blue-ycube/70' : 'text-white/60'">{{ ipeStatutLabel }}</span>
           </div>
         </div>
-        <button
-          class="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition"
-          @click="allerVersFiabiliteIpe"
+        <span
+          class="shrink-0 text-xs px-3 py-1.5 rounded-lg transition"
+          :class="componentKey === ECRAN_FIABILITE_IPE ? 'bg-blue-ycube/10 text-blue-ycube' : 'bg-white/10'"
         >
           Détail
-        </button>
+        </span>
       </div>
     </template>
 
