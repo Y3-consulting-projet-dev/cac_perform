@@ -110,6 +110,37 @@ export async function listerFichiersComplementaires(missionId) {
   throw new Error(data?.error || 'Erreur lors de la récupération des fichiers complémentaires')
 }
 
+// Contrôles avant enregistrement (type de comptes, exercice) : renvoie des
+// alertes, n'écrit rien en base.
+export async function verifierFichierComplementaire(missionId, fichier, typeFichier) {
+  const formData = new FormData()
+  formData.append('fichier', fichier)
+  formData.append('type', typeFichier)
+  let data
+  try {
+    ({ data } = await axios.post(`${BASE_URL}/missions/${missionId}/fichiers-complementaires/verification`, formData))
+  } catch (e) {
+    throw new Error(messageErreur(e, 'Erreur lors de la vérification du fichier'))
+  }
+  if (data?.success) return data.data
+  throw new Error(data?.error || 'Erreur lors de la vérification du fichier')
+}
+
+// Action « Retirer » : archive la version active (rien n'est supprimé).
+export async function retirerFichierComplementaire(missionId, fichierId, utilisateurId, commentaire) {
+  let data
+  try {
+    ({ data } = await api.post(`/missions/${missionId}/fichiers-complementaires/${fichierId}/retrait`, {
+      utilisateur_id: utilisateurId,
+      commentaire,
+    }))
+  } catch (e) {
+    throw new Error(messageErreur(e, 'Erreur lors du retrait du fichier'))
+  }
+  if (data?.success) return data.data
+  throw new Error(data?.error || 'Erreur lors du retrait du fichier')
+}
+
 // Versions active + archivées d'un type de fichier (la plus récente d'abord).
 export async function historiqueFichiersComplementaires(missionId, typeFichier) {
   const { data } = await api.get(`/missions/${missionId}/fichiers-complementaires/${typeFichier}/historique`)

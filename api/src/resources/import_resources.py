@@ -15,7 +15,8 @@ from src.services import balance_auxiliaire_service
 from src.services import immobilisation_service
 from src.services import controle_preliminaire_service
 from src.services import fichiers_complementaires_service
-from src.schemas.import_schemas import MappingImportCreateSchema, validate_import_data
+from src.services import verification_fichier_service
+from src.schemas.import_schemas import MappingImportCreateSchema, RetraitFichierSchema, validate_import_data
 
 
 def _get_uploaded_file(nom_champ="fichier"):
@@ -230,6 +231,55 @@ class ImportResource:
         try:
             resultat = fichiers_complementaires_service.lister_fichiers_complementaires(mission_id)
             return make_response(jsonify({"success": True, "data": resultat}), 200)
+        except Exception as e:
+            return make_response(jsonify({
+                "success": False,
+                "error": f"Erreur serveur: {str(e)}"
+            }), 500)
+
+    @staticmethod
+    def verifier_fichier_complementaire(mission_id: str):
+        """
+        POST /api/v1/missions/<mission_id>/fichiers-complementaires/verification
+        Contrôles AVANT enregistrement (type de comptes, exercice) : renvoie
+        des alertes, n'écrit rien en base. Champs : fichier, type.
+        """
+        try:
+            fichier = _get_uploaded_file("fichier")
+            if not fichier:
+                return make_response(jsonify({
+                    "success": False,
+                    "error": "Aucun fichier reçu (champ attendu : 'fichier')"
+                }), 400)
+            annee = verification_fichier_service.annee_auditee_de_la_mission(mission_id)
+            resultat = verification_fichier_service.verifier_fichier(fichier, request.form.get("type", ""), annee)
+            return make_response(jsonify({"success": True, "data": resultat}), 200)
+        except ValueError as e:
+            return make_response(jsonify({"success": False, "error": str(e)}), 400)
+        except Exception as e:
+            return make_response(jsonify({
+                "success": False,
+                "error": f"Erreur lors de la vérification du fichier: {str(e)}"
+            }), 500)
+
+    @staticmethod
+    def retirer_fichier_complementaire(mission_id: str, fichier_id: str):
+        """
+        POST /api/v1/missions/<mission_id>/fichiers-complementaires/<fichier_id>/retrait
+        Archive la version active (rien n'est supprimé), avec utilisateur et
+        commentaire obligatoires.
+        """
+        try:
+            data = validate_import_data(request.get_json(silent=True) or {}, RetraitFichierSchema)
+            resultat = fichiers_complementaires_service.retirer_fichier(
+                mission_id, fichier_id, data["utilisateur_id"], data["commentaire"],
+            )
+            return make_response(jsonify({"success": True, "data": resultat}), 200)
+        except ValidationError as e:
+            messages = [m for liste in e.messages.values() for m in (liste if isinstance(liste, list) else [liste])]
+            return make_response(jsonify({"success": False, "error": " ".join(messages)}), 400)
+        except ValueError as e:
+            return make_response(jsonify({"success": False, "error": str(e)}), 400)
         except Exception as e:
             return make_response(jsonify({
                 "success": False,

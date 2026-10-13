@@ -245,7 +245,7 @@ TYPE_VERS_MODULE = {
 def decider_invalidation(
     etat_ipe: Dict[str, Any],
     type_fichier: str,
-    nouveau_fichier_id: str,
+    nouveau_fichier_id: Optional[str],
 ) -> Optional[Dict[str, Any]]:
     """
     Fonction pure : décide si le remplacement de `type_fichier` (nouvel _id
@@ -255,6 +255,9 @@ def decider_invalidation(
     rapprochement_ipe_service.valider_fiabilite) ET que le fichier a
     effectivement changé. Ne décide rien côté Mongo : voir
     invalider_si_fichier_remplace pour l'écriture.
+
+    `nouveau_fichier_id` à None : le fichier a été retiré sans remplacement
+    (action « Retirer » de l'écran Fichiers complémentaires).
 
     Renvoie None si rien à invalider, sinon {"updates": {...}, "action": ...,
     "resultat": {...}, "commentaire": ...} à transformer en entrée
@@ -278,13 +281,13 @@ def decider_invalidation(
         "action": "invalidation_automatique",
         "resultat": {"type_fichier": type_fichier, "module": module},
         "commentaire": (
-            f"Fichier '{type_fichier}' remplacé après validation : "
+            f"Fichier '{type_fichier}' {'retiré' if nouveau_fichier_id is None else 'remplacé'} après validation : "
             "fiabilité IPE invalidée automatiquement."
         ),
     }
 
 
-def invalider_si_fichier_remplace(mission_id: str, type_fichier: str, nouveau_fichier_id: str) -> None:
+def invalider_si_fichier_remplace(mission_id: str, type_fichier: str, nouveau_fichier_id: Optional[str]) -> None:
     """
     Invalidation automatique après remplacement d'un fichier utilisé par une
     validation IPE positive (docs/PLAN_verrou_IPE.md). Appelée depuis les

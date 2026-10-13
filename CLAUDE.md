@@ -102,6 +102,8 @@ Aujourd'hui, **aucune authentification ni cloisonnement par mission** ne s'appli
 
 - **`Mission1.balances` n'est pas restructuré** dans ce lot : on garde la liste actuelle de `_id` de balances générales, compatible avec `api/src/model.py`. Les fichiers complémentaires (auxiliaires, immobilisations) sont tracés séparément dans `Balance.mission_id` + `Balance.type`, pas dans `Mission1.balances`.
 - **Collection `MappingImport`** : conçue librement côté développement, avec deux contraintes imposées — un mapping est identifié par `(id_client, logiciel_comptable)`, et chaque sauvegarde crée une nouvelle version horodatée (`version`, `created_at`) plutôt que d'écraser la précédente.
+- **Contrôles avant import d'un fichier complémentaire** (`api/src/services/verification_fichier_service.py`) — provisoires : ce sont des **alertes**, jamais un refus (l'utilisateur annule ou importe quand même). Type : alerte si moins de la moitié des comptes reconnus relèvent de la famille attendue (41x clients, 40x fournisseurs, 2x immobilisations) — seuil `TODO(décision)` ; codes tiers alphanumériques = non vérifiable, pas d'alerte. Exercice : alerte si des années sont lues (nom du fichier, lignes de titre) et qu'aucune n'est l'exercice audité — tolérance exacte `TODO(spec)`.
+- **Action « Retirer »** : archive la version active (`actif=False` + `retrait` {utilisateur, commentaire ≥ 15 caractères, horodatage}), rien n'est supprimé ; utilisateur identifié obligatoire. La version précédente n'est **pas** réactivée. Si le fichier avait servi à une validation IPE positive, celle-ci est invalidée automatiquement (comme un remplacement).
 
 ## Décisions prises durant le développement (verrou IPE) — provisoires, à documenter/réviser avec CAC-IPE-01
 

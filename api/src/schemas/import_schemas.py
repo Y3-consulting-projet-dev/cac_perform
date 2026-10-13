@@ -6,7 +6,10 @@ client_schemas.py existants.
 """
 from typing import Any, Dict
 
-from marshmallow import Schema, fields, validate, ValidationError
+from marshmallow import Schema, fields, pre_load, validate, ValidationError
+
+# Même seuil que les commentaires du circuit IPE (CLAUDE.md).
+from src.schemas.ipe_schemas import LONGUEUR_MIN_COMMENTAIRE_VALIDATION
 
 # Champs cibles reconnus pour le mapping d'une balance générale. Reprend
 # l'inventaire des formats détectés aujourd'hui par Mission.creation_balance()
@@ -78,6 +81,35 @@ class ImmobilisationUploadSchema(Schema):
 
     id_client = fields.Str(required=True, validate=validate.Length(min=1))
     annee = fields.Str(required=True, validate=validate.Length(min=4, max=4))
+
+
+class RetraitFichierSchema(Schema):
+    """Action « Retirer » d'un fichier complémentaire : utilisateur identifié et commentaire obligatoires."""
+
+    utilisateur_id = fields.Str(
+        required=True,
+        validate=validate.Length(min=1, error="Utilisateur non identifié : connectez-vous pour retirer un fichier."),
+        error_messages={
+            "required": "Utilisateur non identifié : connectez-vous pour retirer un fichier.",
+            "null": "Utilisateur non identifié : connectez-vous pour retirer un fichier.",
+        },
+    )
+    commentaire = fields.Str(
+        required=True,
+        validate=validate.Length(
+            min=LONGUEUR_MIN_COMMENTAIRE_VALIDATION,
+            error=f"Le commentaire est obligatoire et doit contenir au moins {LONGUEUR_MIN_COMMENTAIRE_VALIDATION} caractères.",
+        ),
+        error_messages={
+            "required": f"Le commentaire est obligatoire et doit contenir au moins {LONGUEUR_MIN_COMMENTAIRE_VALIDATION} caractères.",
+            "null": f"Le commentaire est obligatoire et doit contenir au moins {LONGUEUR_MIN_COMMENTAIRE_VALIDATION} caractères.",
+        },
+    )
+
+    @pre_load
+    def _nettoyer(self, data, **kwargs):
+        # Un commentaire fait d'espaces ne compte pas.
+        return {k: (v.strip() if isinstance(v, str) else v) for k, v in (data or {}).items()}
 
 
 def validate_import_data(data: Dict[str, Any], schema_class) -> Dict[str, Any]:

@@ -21,7 +21,10 @@ import {
   detailFichierComplementaire,
   importerBalanceAuxiliaire,
   importerImmobilisations,
+  verifierFichierComplementaire,
+  retirerFichierComplementaire,
 } from '@/api/imports.api'
+import { formatDateHeureFr } from '@/utils/formatDate'
 
 const props = defineProps(['missionId'])
 const notyf = useNotyf()
@@ -92,33 +95,110 @@ function fermerDetail() {
   detailOuvert.value = null
 }
 
+// Import en deux temps : contrôles (type de comptes, exercice) PUIS
+// enregistrement. En cas d'alerte, rien n'est enregistré tant que
+// l'utilisateur n'a pas choisi « Importer quand même ».
+const importEnAttente = ref(null) // { fichier, type, verification }
+
 async function onImporter(event, type) {
   const fichier = event.target.files[0]
+  event.target.value = '' // permet de re-sélectionner le même fichier ensuite
   if (!fichier) return
 
   if (!infoMission.value) {
     notyf.trigger(`Import impossible — mission non chargée : ${erreurMission.value || 'raison inconnue'}`, 'error')
-    event.target.value = ''
     return
   }
 
   importingType.value = type
   try {
-    const idClient = infoMission.value.id_client
-    const annee = infoMission.value.annee_auditee
-    if (type === 'immobilisations') {
-      await importerImmobilisations(props.missionId, fichier, idClient, annee)
-    } else {
-      const typeAuxiliaire = type === 'auxiliaire_client' ? 'client' : 'fournisseur'
-      await importerBalanceAuxiliaire(props.missionId, fichier, typeAuxiliaire, idClient, annee)
+    const verification = await verifierFichierComplementaire(props.missionId, fichier, type)
+    if (verification.alertes.length) {
+      importEnAttente.value = { fichier, type, verification }
+      return
     }
-    notyf.trigger("Fichier importé avec succès (l'ancienne version reste dans l'historique)", 'success')
-    await chargerFichiers()
+    await enregistrerImport(fichier, type)
+  } catch (e) {
+    notyf.trigger(e.message || "Erreur lors de l'import", 'error')
+  } finally {
+    if (!importEnAttente.value) importingType.value = null
+  }
+}
+
+function annulerImport() {
+  importEnAttente.value = null
+  importingType.value = null
+  notyf.trigger('Import annulé : aucun fichier enregistré.', 'success')
+}
+
+async function confirmerImport() {
+  const { fichier, type } = importEnAttente.value
+  importEnAttente.value = null
+  try {
+    await enregistrerImport(fichier, type)
   } catch (e) {
     notyf.trigger(e.message || "Erreur lors de l'import", 'error')
   } finally {
     importingType.value = null
-    event.target.value = ''
+  }
+}
+
+async function enregistrerImport(fichier, type) {
+  const idClient = infoMission.value.id_client
+  const annee = infoMission.value.annee_auditee
+  if (type === 'immobilisations') {
+    await importerImmobilisations(props.missionId, fichier, idClient, annee)
+  } else {
+    const typeAuxiliaire = type === 'auxiliaire_client' ? 'client' : 'fournisseur'
+    await importerBalanceAuxiliaire(props.missionId, fichier, typeAuxiliaire, idClient, annee)
+  }
+  notyf.trigger("Fichier importé avec succès (l'ancienne version reste dans l'historique)", 'success')
+  await chargerFichiers()
+}
+
+/* --- Action « Retirer » : archive la version active, tracée (utilisateur + commentaire) --- */
+const LONGUEUR_MIN_COMMENTAIRE = 15 // même seuil que le backend (import_schemas.py)
+const retraitOuvert = ref(null) // fichier à retirer
+const commentaireRetrait = ref('')
+const retraitEnCours = ref(false)
+
+// Même lecture de l'utilisateur connecté que FiabiliteIpeView.vue.
+function utilisateurConnecte() {
+  try {
+    const utilisateur = JSON.parse(sessionStorage.getItem('user') || 'null')
+    if (!utilisateur) return null
+    const nom = `${utilisateur.firstname || ''} ${utilisateur.lastname || ''}`.trim()
+    return nom || utilisateur._id || null
+  } catch {
+    return null
+  }
+}
+
+function ouvrirRetrait(fichier) {
+  retraitOuvert.value = fichier
+  commentaireRetrait.value = ''
+}
+
+async function confirmerRetrait() {
+  const utilisateur = utilisateurConnecte()
+  if (!utilisateur) {
+    notyf.trigger('Utilisateur non identifié : connectez-vous pour retirer un fichier.', 'error')
+    return
+  }
+  if (commentaireRetrait.value.trim().length < LONGUEUR_MIN_COMMENTAIRE) {
+    notyf.trigger(`Le commentaire doit contenir au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères.`, 'error')
+    return
+  }
+  retraitEnCours.value = true
+  try {
+    await retirerFichierComplementaire(props.missionId, retraitOuvert.value._id, utilisateur, commentaireRetrait.value.trim())
+    notyf.trigger('Fichier retiré : la version est archivée, rien n\'a été supprimé.', 'success')
+    retraitOuvert.value = null
+    await chargerFichiers()
+  } catch (e) {
+    notyf.trigger(e.message || 'Erreur lors du retrait du fichier', 'error')
+  } finally {
+    retraitEnCours.value = false
   }
 }
 
@@ -196,17 +276,34 @@ function back() {
               <span class="text-sm font-semibold truncate">{{ f.nom_fichier || 'Fichier sans nom' }}</span>
               <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
             </div>
-            <span class="text-xs text-gray-500">{{ f.date_import }}</span>
-            <span class="text-xs text-gray-500">{{ f.nb_lignes }} lignes · version {{ f.version }}</span>
+            <span class="text-xs text-gray-500">Importé le {{ formatDateHeureFr(f.date_import) }}</span>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-gray-500">{{ f.nb_lignes }} lignes · version {{ f.version }}</span>
+              <button
+                class="px-3 py-1 text-xs border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 transition"
+                title="Désactiver ce fichier importé par erreur (archivé, rien n'est supprimé)"
+                @click.stop="ouvrirRetrait(f)"
+              >
+                Retirer
+              </button>
+            </div>
           </div>
 
           <div v-if="archives[type]?.length" class="flex flex-col gap-1">
             <p class="text-xs text-gray-500">Versions archivées</p>
             <div v-for="f in archives[type]" :key="f._id"
-              class="border rounded-lg p-2 flex items-center justify-between gap-2 cursor-pointer hover:bg-gray-50 text-gray-500"
+              class="border rounded-lg p-2 flex flex-col gap-1 cursor-pointer hover:bg-gray-50 text-gray-500"
               @click="voirDetail(f._id)">
-              <span class="text-xs truncate">v{{ f.version }} · {{ f.nom_fichier || 'Fichier sans nom' }} · {{ f.nb_lignes }} lignes</span>
-              <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">Archivée</span>
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs truncate">v{{ f.version }} · {{ f.nom_fichier || 'Fichier sans nom' }} · {{ f.nb_lignes }} lignes</span>
+                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 whitespace-nowrap">
+                  {{ f.retrait ? 'Retirée' : 'Remplacée' }}
+                </span>
+              </div>
+              <span class="text-xs">Importé le {{ formatDateHeureFr(f.date_import) }}</span>
+              <span v-if="f.retrait" class="text-xs">
+                Retirée le {{ formatDateHeureFr(f.retrait.horodatage) }} par {{ f.retrait.utilisateur_id }} : « {{ f.retrait.commentaire }} »
+              </span>
             </div>
           </div>
 
@@ -221,6 +318,89 @@ function back() {
 
     </div>
 
+    <!-- Alertes avant enregistrement (type de comptes, exercice) — rien n'est
+         enregistré tant que l'utilisateur n'a pas choisi. Modale : charte CLAUDE.md. -->
+    <div v-if="importEnAttente" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4">
+        <div>
+          <h3 class="text-xl font-bold text-blue-ycube">Vérifier avant d'importer</h3>
+          <p class="text-sm text-gray-500">
+            {{ importEnAttente.fichier.name }} → {{ LIBELLES_TYPE[importEnAttente.type] }}
+          </p>
+        </div>
+        <div
+          v-for="alerte in importEnAttente.verification.alertes"
+          :key="alerte.code"
+          class="border-l-4 border-orange-500 bg-orange-50 rounded-lg p-3 text-sm text-gray-800"
+        >
+          <p class="font-semibold text-orange-700">
+            {{ alerte.code === 'type_incoherent' ? 'Type de fichier' : 'Exercice' }}
+          </p>
+          <p>{{ alerte.message }}</p>
+        </div>
+        <p v-for="info in importEnAttente.verification.informations" :key="info" class="text-xs text-gray-500">{{ info }}</p>
+        <p class="text-sm text-gray-700">Rien n'est enregistré tant que vous n'avez pas choisi.</p>
+        <div class="flex justify-end gap-3">
+          <button
+            class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition"
+            @click="annulerImport"
+          >
+            Annuler
+          </button>
+          <button
+            class="px-5 py-2 rounded-lg bg-blue-ycube text-white font-semibold hover:bg-blue-900 transition"
+            @click="confirmerImport"
+          >
+            Importer quand même
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Retrait d'un fichier importé par erreur : archivé, tracé, jamais supprimé -->
+    <div v-if="retraitOuvert" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      @click.self="retraitOuvert = null">
+      <div class="bg-white rounded-2xl w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4">
+        <div>
+          <h3 class="text-xl font-bold text-blue-ycube">Retirer un fichier</h3>
+          <p class="text-sm text-gray-500">
+            {{ retraitOuvert.nom_fichier || 'Fichier sans nom' }} · version {{ retraitOuvert.version }}
+            · importé le {{ formatDateHeureFr(retraitOuvert.date_import) }}
+          </p>
+        </div>
+        <p class="text-sm text-gray-700">
+          La version est archivée et le retrait est tracé dans l'historique : rien n'est supprimé.
+          La version précédente n'est pas réactivée ; importez le bon fichier ensuite.
+          Si ce fichier a servi à une validation IPE, celle-ci est invalidée.
+        </p>
+        <p class="text-sm">
+          <span class="text-gray-500">Utilisateur :</span>
+          <span class="font-semibold text-gray-800">{{ utilisateurConnecte() || 'Non identifié — connexion requise' }}</span>
+        </p>
+        <textarea
+          v-model="commentaireRetrait"
+          rows="3"
+          class="text-sm border border-gray-300 rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+          :placeholder="`Pourquoi retirer ce fichier ? (au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères)`"
+        ></textarea>
+        <div class="flex justify-end gap-3">
+          <button
+            class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition"
+            @click="retraitOuvert = null"
+          >
+            Annuler
+          </button>
+          <button
+            class="px-5 py-2 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="retraitEnCours || !utilisateurConnecte() || commentaireRetrait.trim().length < LONGUEUR_MIN_COMMENTAIRE"
+            @click="confirmerRetrait"
+          >
+            Retirer le fichier
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Détail d'un fichier — même recette de modale que ClientsView.vue (charte CLAUDE.md) -->
     <div v-if="detailOuvert" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       @click.self="fermerDetail">
@@ -228,7 +408,14 @@ function back() {
         <div class="flex justify-between items-start">
           <div>
             <h3 class="font-bold text-blue-ycube">{{ detailOuvert.nom_fichier || 'Fichier sans nom' }}</h3>
-            <p class="text-xs text-gray-500">Importé le {{ detailOuvert.date_import }} · version {{ detailOuvert.version }}</p>
+            <p class="text-xs text-gray-500">
+              Importé le {{ formatDateHeureFr(detailOuvert.date_import) }} · version {{ detailOuvert.version }}
+              · {{ detailOuvert.actif ? 'active' : (detailOuvert.retrait ? 'retirée' : 'remplacée') }}
+            </p>
+            <p v-if="detailOuvert.retrait" class="text-xs text-gray-500">
+              Retirée le {{ formatDateHeureFr(detailOuvert.retrait.horodatage) }} par {{ detailOuvert.retrait.utilisateur_id }} :
+              « {{ detailOuvert.retrait.commentaire }} »
+            </p>
           </div>
           <button class="text-gray-500 hover:text-gray-800" @click="fermerDetail">
             <i class="fa-solid fa-xmark text-2xl"></i>

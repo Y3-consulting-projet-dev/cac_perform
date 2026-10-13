@@ -11,6 +11,7 @@ Versionnement : un remplacement ne supprime rien. La version précédente est
 marquée `actif=False` (archivée) plutôt que supprimée ; `lister_*` ne renvoie
 que la version active, `lister_historique` renvoie tout.
 """
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
@@ -84,7 +85,60 @@ def _resume(doc: Dict[str, Any]) -> Dict[str, Any]:
         "version": doc.get("version", 1),
         "actif": doc.get("actif", True),
         "nb_lignes": len(doc.get("balance", []) or []),
+        # Présent seulement si la version a été retirée (action « Retirer ») ;
+        # absent pour une version archivée par un remplacement.
+        "retrait": doc.get("retrait"),
     }
+
+
+def refus_retrait(doc: Optional[Dict[str, Any]], mission_id: str) -> Optional[str]:
+    """Fonction pure : raison pour laquelle le retrait est impossible, ou None."""
+    if not doc or doc.get("mission_id") != mission_id or doc.get("type") not in TYPES_FICHIERS_COMPLEMENTAIRES:
+        return "Fichier introuvable pour cette mission."
+    if not doc.get("actif", True):
+        return "Ce fichier n'est pas la version active : il est déjà archivé."
+    return None
+
+
+def retirer_fichier(mission_id: str, fichier_id: str, utilisateur_id: str, commentaire: str) -> Dict[str, Any]:
+    """
+    Action « Retirer » : désactive un fichier importé par erreur. Rien n'est
+    supprimé — la version est archivée (`actif=False`) et le retrait tracé
+    sur le document (utilisateur, commentaire, horodatage), visible dans
+    l'historique du type de fichier. La version précédente n'est PAS
+    réactivée : le type reste sans fichier actif jusqu'au prochain import.
+
+    Si ce fichier avait servi à une validation IPE positive, la validation
+    est invalidée automatiquement, comme pour un remplacement.
+    """
+    from src.services import verrou_ipe_service  # import différé : verrou_ipe_service importe ce module
+
+    try:
+        object_id = ObjectId(fichier_id)
+    except InvalidId:
+        raise ValueError("Fichier introuvable pour cette mission.")
+
+    doc = _collection().find_one({"_id": object_id})
+    refus = refus_retrait(doc, mission_id)
+    if refus:
+        raise ValueError(refus)
+
+    retrait = {
+        "utilisateur_id": utilisateur_id,
+        "commentaire": commentaire,
+        "horodatage": datetime.now(timezone.utc).isoformat(),
+    }
+    # Filtre sur actif=True : deux retraits simultanés ne tracent qu'un seul retrait.
+    resultat = _collection().update_one(
+        {"_id": object_id, "actif": True},
+        {"$set": {"actif": False, "retrait": retrait}},
+    )
+    if resultat.modified_count == 0:
+        raise ValueError("Ce fichier n'est pas la version active : il est déjà archivé.")
+
+    verrou_ipe_service.invalider_si_fichier_remplace(mission_id, doc["type"], None)
+
+    return _resume({**doc, "actif": False, "retrait": retrait})
 
 
 # Paires débit/crédit reconnues (format "balance auxiliaire Y3") : quand un
@@ -176,6 +230,7 @@ def lire_detail_fichier(mission_id: str, fichier_id: str) -> Optional[Dict[str, 
         "date_import": doc.get("date_import"),
         "version": doc.get("version", 1),
         "actif": doc.get("actif", True),
+        "retrait": doc.get("retrait"),
         "mapping_utilise": doc.get("mapping_utilise"),
         "controles_preliminaires": doc.get("controles_preliminaires"),
         "lignes": lignes,
