@@ -69,9 +69,11 @@ def _etat_par_defaut() -> Dict[str, Any]:
         "verrou_applicable": False,
         "verrou_actif": False,
         "ipe_fiabilite_validee": None,
+        "statut_circuit": "en_cours",
         "modules": {},
         "historique": [],
         "fichiers_references": {},
+        "remarques": [],
     }
 
 
@@ -97,9 +99,11 @@ def lire_etat_ipe(mission_id: str) -> Dict[str, Any]:
         "verrou_applicable": ipe.get("verrou_applicable", False),
         "verrou_actif": ipe.get("verrou_actif", False),
         "ipe_fiabilite_validee": ipe.get("ipe_fiabilite_validee"),
+        "statut_circuit": ipe.get("statut_circuit") or "en_cours",
         "modules": ipe.get("modules", {}),
         "historique": ipe.get("historique", []),
         "fichiers_references": ipe.get("fichiers_references", {}),
+        "remarques": ipe.get("remarques", []),
     })
     return etat
 
@@ -120,15 +124,23 @@ def mission_est_bloquee(etat_ipe: Dict[str, Any]) -> bool:
 
 def statut_affiche(etat_ipe: Dict[str, Any]) -> str:
     """
-    Statut destiné à l'indicateur « Fiabilité IPE » de la barre latérale
-    (docs/PLAN_verrou_IPE.md §6) :
-    "anterieure_au_verrou" | "non_commence" | "en_cours" | "valide".
+    Statut destiné à l'indicateur « Fiabilité IPE » de la barre latérale et
+    à l'écran dédié (docs/PLAN_verrou_IPE.md §6, circuit de revue) :
+    "anterieure_au_verrou" | "non_commence" | "en_cours" |
+    "soumis_pour_revue" | "en_attente_correction" | "valide". Dérivé de
+    statut_circuit (jamais de ipe_fiabilite_validee directement) : les deux
+    sont maintenus en cohérence à chaque écriture (valider_fiabilite,
+    invalidation automatique) — "valide" <=> ipe_fiabilite_validee is True.
     """
     if not etat_ipe.get("verrou_applicable"):
         return "anterieure_au_verrou"
-    if etat_ipe.get("ipe_fiabilite_validee") is True:
-        return "valide"
-    if etat_ipe.get("ipe_fiabilite_validee") is None and not etat_ipe.get("modules"):
+
+    statut_circuit = etat_ipe.get("statut_circuit") or "en_cours"
+    if statut_circuit in ("valide", "soumis_pour_revue", "en_attente_correction"):
+        return statut_circuit
+
+    # "en_cours" : distingue "jamais évalué" de "évalué mais pas encore soumis".
+    if not etat_ipe.get("modules"):
         return "non_commence"
     return "en_cours"
 
@@ -152,8 +164,10 @@ def capturer_verrou_applicable_a_la_creation(mission_id: str) -> None:
             "ipe.verrou_applicable": actif,
             "ipe.verrou_actif": actif,
             "ipe.ipe_fiabilite_validee": None,
+            "ipe.statut_circuit": "en_cours",
             "ipe.modules": {},
             "ipe.historique": [],
+            "ipe.remarques": [],
         }},
     )
 
@@ -247,7 +261,9 @@ def decider_invalidation(
         return None  # même document (ne devrait pas arriver, un import crée toujours un nouvel _id)
 
     module = TYPE_VERS_MODULE.get(type_fichier)
-    updates: Dict[str, Any] = {"ipe.ipe_fiabilite_validee": False}
+    # statut_circuit repasse à "en_cours" avec ipe_fiabilite_validee (les
+    # deux doivent toujours rester cohérents — docs/PLAN_verrou_IPE.md).
+    updates: Dict[str, Any] = {"ipe.ipe_fiabilite_validee": False, "ipe.statut_circuit": "en_cours"}
     if module:
         updates[f"ipe.modules.{module}.statut"] = "non_evalue"
 
@@ -390,11 +406,14 @@ def verifier_coherence_fichiers(mission_id: str) -> Dict[str, Any]:
     _collection().update_one(
         {"_id": ObjectId(mission_id)},
         {
-            "$set": {"ipe.ipe_fiabilite_validee": False},
+            # statut_circuit repasse à "en_cours" avec ipe_fiabilite_validee
+            # (toujours cohérents — docs/PLAN_verrou_IPE.md).
+            "$set": {"ipe.ipe_fiabilite_validee": False, "ipe.statut_circuit": "en_cours"},
             "$push": {"ipe.historique": historique_entree},
         },
     )
 
     etat["ipe_fiabilite_validee"] = False
+    etat["statut_circuit"] = "en_cours"
     etat["historique"] = etat.get("historique", []) + [historique_entree]
     return etat

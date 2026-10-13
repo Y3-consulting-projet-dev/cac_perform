@@ -13,6 +13,11 @@ import {
   obtenirEtatIpe,
   evaluerIpe,
   validerFiabiliteIpe,
+  soumettrePourRevueIpe,
+  demanderCorrectionIpe,
+  ajouterRemarqueIpe,
+  repondreRemarqueIpe,
+  marquerRemarqueTraiteeIpe,
 } from '@/api/ipe.api'
 
 const props = defineProps(['missionId'])
@@ -28,7 +33,19 @@ const IPE_STATUT_LABELS = {
   anterieure_au_verrou: 'Antérieure au verrou',
   non_commence: 'Non commencé',
   en_cours: 'En cours',
+  soumis_pour_revue: 'Soumis pour revue',
+  en_attente_correction: 'En attente de correction',
   valide: 'Validé',
+}
+
+// Statuts du circuit de revue (docs/PLAN_verrou_IPE.md) — badge dédié, même
+// palette que les statuts de mission (MissionsView.vue) : gris neutre, orange
+// en cours de traitement, rouge correction demandée, vert validé.
+const STATUT_CIRCUIT_INFO = {
+  en_cours: { label: 'En cours', classe: 'bg-gray-100 text-gray-700' },
+  soumis_pour_revue: { label: 'Soumis pour revue', classe: 'bg-orange-100 text-orange-700' },
+  en_attente_correction: { label: 'En attente de correction', classe: 'bg-red-100 text-red-700' },
+  valide: { label: 'Validé', classe: 'bg-green-100 text-green-700' },
 }
 
 // 3 statuts visuels distincts (module ou ligne de collectif) — le rouge est
@@ -49,6 +66,12 @@ const ACTION_HISTORIQUE_LABELS = {
   validation_manager: 'Validation',
   invalidation_automatique: 'Invalidation automatique (fichier remplacé)',
   invalidation_detectee_a_la_lecture: 'Invalidation détectée (fichier modifié)',
+  soumission_revue: 'Soumission pour revue',
+  demande_correction: 'Demande de correction',
+  remarque_ajoutee: 'Remarque ajoutée',
+  remarque_repondue: 'Réponse à une remarque',
+  remarque_traitee: 'Remarque marquée traitée',
+  remarque_rouverte: 'Remarque rouverte',
 }
 
 // Colonne "Résultat" de l'historique : validé / invalidé / rapprochement /
@@ -59,6 +82,8 @@ function resultatHistorique(entree) {
   if (entree.action === 'invalidation_automatique' || entree.action === 'invalidation_detectee_a_la_lecture') {
     return 'Invalidation automatique'
   }
+  if (entree.action === 'soumission_revue') return 'Soumis pour revue'
+  if (entree.action === 'demande_correction') return 'En attente de correction'
   return '—'
 }
 
@@ -134,23 +159,185 @@ const syntheseModules = computed(() => {
   }))
 })
 
-// Un module "en écart non qualifié" bloque la validation : écart réel
-// (jamais "non_evaluable") sans étiquette de qualification renseignée.
-const moduleEnEcartNonQualifie = computed(() => {
-  const modules = ipeEtat.value?.modules
-  if (!modules) return false
-  return Object.values(modules).some(
-    (m) => m.statut === 'ecart' && !m.derniere_evaluation?.qualification?.etiquette
-  )
-})
-
 // Historique le plus récent en premier (le backend pousse en ordre chronologique).
 const historiqueRecent = computed(() => {
   return [...(ipeEtat.value?.historique || [])].reverse()
 })
 
+/* ================================
+   CIRCUIT DE REVUE (docs/PLAN_verrou_IPE.md)
+   en_cours -> soumis_pour_revue -> valide
+                     ^                |
+                     |                v (invalider repasse à en_cours)
+             en_attente_correction <--+ (demande de correction manager)
+================================ */
+
+const statutCircuit = computed(() => ipeEtat.value?.statut_circuit || 'en_cours')
+
+// Reflet côté frontend de revue_ipe_service.ecarts_non_qualifies (backend) :
+// un écart réel (collectif "ok: false" d'un module "ecart") sans aucune
+// remarque attachée bloque la soumission pour revue.
+const ecartsNonQualifies = computed(() => {
+  const modules = ipeEtat.value?.modules || {}
+  const remarques = ipeEtat.value?.remarques || []
+  const collectifsCommentes = new Set(
+    remarques.filter((r) => r.module && r.numero_compte).map((r) => `${r.module}:${r.numero_compte}`)
+  )
+  const manquants = []
+  for (const [cle, module] of Object.entries(modules)) {
+    if (module.statut !== 'ecart') continue
+    for (const c of module.derniere_evaluation?.detail_collectifs || []) {
+      if (c.ok) continue
+      const id = `${cle}:${c.numero_compte}`
+      if (!collectifsCommentes.has(id)) manquants.push(id)
+    }
+  }
+  return manquants
+})
+
+const peutSoumettre = computed(
+  () => ['en_cours', 'en_attente_correction'].includes(statutCircuit.value) && ecartsNonQualifies.value.length === 0
+)
+const peutDemanderCorrection = computed(() => statutCircuit.value === 'soumis_pour_revue')
+const peutValider = computed(() => statutCircuit.value === 'soumis_pour_revue')
+
+const soumissionEnCours = ref(false)
+
+async function soumettrePourRevue() {
+  if (soumissionEnCours.value || !peutSoumettre.value) return
+  soumissionEnCours.value = true
+  try {
+    ipeEtat.value = await soumettrePourRevueIpe(props.missionId, null, utilisateurConnecte())
+    notyf.trigger('Contrôle IPE soumis pour revue', 'success')
+  } catch (e) {
+    notyf.trigger(e.message || 'Erreur lors de la soumission pour revue', 'error')
+  } finally {
+    soumissionEnCours.value = false
+  }
+}
+
+const confirmationDemandeCorrectionOuverte = ref(false)
+const commentaireDemandeCorrection = ref('')
+const demandeCorrectionEnCours = ref(false)
+
+function ouvrirDemandeCorrection() {
+  if (!peutDemanderCorrection.value) return
+  commentaireDemandeCorrection.value = ''
+  confirmationDemandeCorrectionOuverte.value = true
+}
+
+function annulerDemandeCorrection() {
+  confirmationDemandeCorrectionOuverte.value = false
+}
+
+async function confirmerDemandeCorrection() {
+  if (demandeCorrectionEnCours.value) return
+
+  const commentaire = commentaireDemandeCorrection.value.trim()
+  if (commentaire.length < LONGUEUR_MIN_COMMENTAIRE) {
+    notyf.trigger(
+      `Le commentaire est obligatoire et doit contenir au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères (${commentaire.length} actuellement).`,
+      'warning'
+    )
+    return
+  }
+
+  demandeCorrectionEnCours.value = true
+  try {
+    ipeEtat.value = await demanderCorrectionIpe(props.missionId, commentaire, utilisateurConnecte())
+    notyf.trigger('Correction demandée', 'success')
+    confirmationDemandeCorrectionOuverte.value = false
+  } catch (e) {
+    notyf.trigger(e.message || 'Erreur lors de la demande de correction', 'error')
+  } finally {
+    demandeCorrectionEnCours.value = false
+  }
+}
+
+/* ================================
+   REMARQUES à deux niveaux : générale (sur le contrôle) et sur un écart
+   précis (par module + compte collectif) — docs/PLAN_verrou_IPE.md.
+================================ */
+
+const remarquesGenerales = computed(() => (ipeEtat.value?.remarques || []).filter((r) => !r.module))
+
+function remarquesPourCollectif(module, numeroCompte) {
+  return (ipeEtat.value?.remarques || []).filter((r) => r.module === module && r.numero_compte === numeroCompte)
+}
+
+const nouvelleRemarqueGenerale = ref('')
+const nouvellesRemarquesEcart = ref({})
+const reponsesEnCours = ref({})
+const remarqueActionEnCours = ref(null)
+
+async function ajouterRemarqueGenerale() {
+  const texte = nouvelleRemarqueGenerale.value.trim()
+  if (!texte) {
+    notyf.trigger('La remarque ne peut pas être vide', 'warning')
+    return
+  }
+  try {
+    ipeEtat.value = await ajouterRemarqueIpe(props.missionId, texte, { utilisateurId: utilisateurConnecte() })
+    nouvelleRemarqueGenerale.value = ''
+    notyf.trigger('Remarque ajoutée', 'success')
+  } catch (e) {
+    notyf.trigger(e.message || "Erreur lors de l'ajout de la remarque", 'error')
+  }
+}
+
+async function ajouterRemarqueEcart(module, numeroCompte) {
+  const cle = `${module}:${numeroCompte}`
+  const texte = (nouvellesRemarquesEcart.value[cle] || '').trim()
+  if (!texte) {
+    notyf.trigger('La remarque ne peut pas être vide', 'warning')
+    return
+  }
+  try {
+    ipeEtat.value = await ajouterRemarqueIpe(props.missionId, texte, {
+      module,
+      numeroCompte,
+      utilisateurId: utilisateurConnecte(),
+    })
+    nouvellesRemarquesEcart.value[cle] = ''
+    notyf.trigger('Remarque ajoutée', 'success')
+  } catch (e) {
+    notyf.trigger(e.message || "Erreur lors de l'ajout de la remarque", 'error')
+  }
+}
+
+async function envoyerReponse(remarque) {
+  const texte = (reponsesEnCours.value[remarque._id] || '').trim()
+  if (!texte) {
+    notyf.trigger('La réponse ne peut pas être vide', 'warning')
+    return
+  }
+  if (remarqueActionEnCours.value) return
+  remarqueActionEnCours.value = remarque._id
+  try {
+    ipeEtat.value = await repondreRemarqueIpe(props.missionId, remarque._id, texte, utilisateurConnecte())
+    reponsesEnCours.value[remarque._id] = ''
+    notyf.trigger('Réponse envoyée', 'success')
+  } catch (e) {
+    notyf.trigger(e.message || 'Erreur lors de la réponse à la remarque', 'error')
+  } finally {
+    remarqueActionEnCours.value = null
+  }
+}
+
+async function basculerTraitee(remarque) {
+  if (remarqueActionEnCours.value) return
+  remarqueActionEnCours.value = remarque._id
+  try {
+    ipeEtat.value = await marquerRemarqueTraiteeIpe(props.missionId, remarque._id, !remarque.traitee, utilisateurConnecte())
+  } catch (e) {
+    notyf.trigger(e.message || 'Erreur lors de la mise à jour de la remarque', 'error')
+  } finally {
+    remarqueActionEnCours.value = null
+  }
+}
+
 function ouvrirConfirmationValidation() {
-  if (moduleEnEcartNonQualifie.value) return
+  if (!peutValider.value) return
   commentaireValidation.value = ''
   confirmationValidationOuverte.value = true
 }
@@ -263,7 +450,10 @@ function back() {
       <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-4 w-full" v-if="ipeEtat">
         <div class="flex items-center justify-between flex-wrap gap-2">
           <h2 class="font-bold text-sm uppercase text-blue-ycube">Rapprochement IPE</h2>
-          <span class="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-700">
+          <span
+            class="text-xs font-semibold px-3 py-1 rounded-full"
+            :class="ipeEtat.verrou_applicable ? (STATUT_CIRCUIT_INFO[statutCircuit]?.classe || 'bg-gray-100 text-gray-700') : 'bg-gray-100 text-gray-700'"
+          >
             {{ IPE_STATUT_LABELS[ipeEtat.statut_affiche] || 'Non commencé' }}
           </span>
         </div>
@@ -308,11 +498,35 @@ function back() {
             {{ ipeEvaluationEnCours ? 'Rapprochement en cours...' : 'Lancer le rapprochement IPE-1/2/3' }}
           </button>
 
-          <!-- Bouton principal : désactivé tant qu'un module est en écart non qualifié -->
+          <!-- Action auditeur : désactivée tant qu'un écart réel n'a aucune remarque attachée,
+               ou si le statut actuel ne permet pas de soumettre. TODO(décision) : qui a le
+               droit de soumettre n'est pas vérifié aujourd'hui. -->
+          <button
+            class="px-5 py-2 rounded-lg bg-blue-ycube-3 text-white font-semibold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="soumissionEnCours || !peutSoumettre"
+            :title="ecartsNonQualifies.length ? 'Ajoutez une remarque sur chaque écart avant de soumettre (voir ci-dessous)' : ''"
+            @click="soumettrePourRevue"
+          >
+            {{ soumissionEnCours ? 'Soumission en cours...' : 'Soumettre pour revue' }}
+          </button>
+
+          <!-- Action manager : possible seulement depuis "Soumis pour revue". Ne valide ni
+               n'invalide — TODO(décision) : qui a le droit de demander une correction n'est
+               pas vérifié aujourd'hui. -->
+          <button
+            class="px-5 py-2 rounded-lg border border-red-300 text-red-700 font-semibold hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="!peutDemanderCorrection"
+            @click="ouvrirDemandeCorrection"
+          >
+            Demander une correction
+          </button>
+
+          <!-- Action manager : possible seulement depuis "Soumis pour revue".
+               TODO(décision) : qui a le droit de valider n'est pas vérifié aujourd'hui. -->
           <button
             class="px-5 py-2 rounded-lg bg-green-ycube-2 text-white font-semibold hover:bg-green-ycube transition disabled:opacity-40 disabled:cursor-not-allowed"
-            :disabled="ipeValidationEnCours || moduleEnEcartNonQualifie"
-            :title="moduleEnEcartNonQualifie ? 'Qualifiez les écarts avant de valider (voir les modules en écart ci-dessous)' : ''"
+            :disabled="ipeValidationEnCours || !peutValider"
+            :title="!peutValider ? 'Le contrôle doit être « Soumis pour revue » avant de pouvoir être validé' : ''"
             @click="ouvrirConfirmationValidation"
           >
             Valider la fiabilité IPE
@@ -327,12 +541,39 @@ function back() {
             Invalider
           </button>
         </div>
-        <p v-if="moduleEnEcartNonQualifie" class="text-xs text-gray-500 italic">
-          Un ou plusieurs modules sont en écart non qualifié : la validation est désactivée tant qu'ils ne sont pas qualifiés (TODO(spec: CAC-IPE-01) — valeurs de qualification non confirmées).
+        <p v-if="ecartsNonQualifies.length" class="text-xs text-gray-500 italic">
+          Écart(s) sans remarque attachée (bloque la soumission) : {{ ecartsNonQualifies.join(', ') }}.
+          TODO(spec: CAC-IPE-01) — valeurs de qualification.etiquette non confirmées, la remarque
+          est le mécanisme de qualification retenu pour ce circuit.
         </p>
-        <!-- Validation enregistrée sans contrôle de rôle : aucun système
-             d'authentification/droits n'existe sur les missions aujourd'hui
-             (CLAUDE.md, point de sécurité connu). -->
+        <!-- Validation/soumission/demande de correction enregistrées sans
+             contrôle de rôle : aucun système d'authentification/droits
+             n'existe sur les missions aujourd'hui (CLAUDE.md, point de
+             sécurité connu). TODO(décision) : qui peut valider et demander
+             une correction. -->
+
+        <!-- Confirmation de demande de correction (commentaire obligatoire) -->
+        <div v-if="confirmationDemandeCorrectionOuverte" class="border border-red-300 bg-red-50 rounded-lg p-4 flex flex-col gap-2">
+          <p class="text-sm font-semibold text-red-700">Confirmer la demande de correction</p>
+          <textarea
+            v-model="commentaireDemandeCorrection"
+            rows="2"
+            class="text-sm border border-gray-300 rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+            placeholder="Commentaire (obligatoire, enregistré dans l'historique)"
+          ></textarea>
+          <div class="flex gap-3">
+            <button
+              class="px-5 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition disabled:opacity-50"
+              :disabled="demandeCorrectionEnCours"
+              @click="confirmerDemandeCorrection"
+            >
+              Confirmer
+            </button>
+            <button class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition" @click="annulerDemandeCorrection">
+              Annuler
+            </button>
+          </div>
+        </div>
 
         <!-- Confirmation de validation (commentaire obligatoire, enregistré dans l'historique) -->
         <div v-if="confirmationValidationOuverte" class="border border-green-ycube/40 bg-green-50 rounded-lg p-4 flex flex-col gap-2">
@@ -427,6 +668,64 @@ function back() {
               </table>
               <p v-else-if="module.statut !== 'non_evaluable'" class="italic">Aucun compte collectif trouvé dans la balance générale pour ce module.</p>
 
+              <!-- Remarques sur un écart précis (par compte collectif) — niveau 2 des
+                   commentaires (docs/PLAN_verrou_IPE.md). Une remarque ici qualifie
+                   l'écart pour la soumission (ecartsNonQualifies). -->
+              <div
+                v-for="c in (module.derniere_evaluation.detail_collectifs || []).filter((c) => !c.ok)"
+                :key="'remarques-' + c.numero_compte"
+                class="border border-gray-200 rounded-lg p-3 flex flex-col gap-2 text-xs"
+              >
+                <p class="font-semibold text-gray-700">Remarques — collectif {{ c.numero_compte }}</p>
+
+                <p v-if="!remarquesPourCollectif(cle, c.numero_compte).length" class="text-gray-500 italic">
+                  Aucune remarque : la soumission pour revue est bloquée tant que cet écart n'en a pas.
+                </p>
+
+                <div v-for="r in remarquesPourCollectif(cle, c.numero_compte)" :key="r._id" class="border-t pt-2 flex flex-col gap-1">
+                  <p><span class="font-semibold">{{ r.utilisateur_id || 'Non identifié' }}</span> — {{ formatHorodatage(r.horodatage) }}</p>
+                  <p class="text-gray-700">{{ r.commentaire }}</p>
+                  <p v-if="r.reponse" class="ml-3 text-gray-600 italic">
+                    Réponse de {{ r.reponse.utilisateur_id || 'Non identifié' }} ({{ formatHorodatage(r.reponse.horodatage) }}) : {{ r.reponse.commentaire }}
+                  </p>
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                      :class="r.traitee ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+                    >
+                      {{ r.traitee ? 'Traitée' : 'Non traitée' }}
+                    </span>
+                    <button class="text-blue-ycube font-semibold hover:underline" @click="basculerTraitee(r)">
+                      {{ r.traitee ? 'Rouvrir' : 'Marquer traitée' }}
+                    </button>
+                  </div>
+                  <div v-if="!r.reponse" class="flex gap-2 mt-1">
+                    <input
+                      v-model="reponsesEnCours[r._id]"
+                      type="text"
+                      placeholder="Répondre..."
+                      class="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+                    />
+                    <button class="text-blue-ycube font-semibold hover:underline" @click="envoyerReponse(r)">Répondre</button>
+                  </div>
+                </div>
+
+                <div class="flex gap-2 mt-1">
+                  <input
+                    v-model="nouvellesRemarquesEcart[`${cle}:${c.numero_compte}`]"
+                    type="text"
+                    placeholder="Ajouter une remarque sur cet écart..."
+                    class="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+                  />
+                  <button
+                    class="px-3 py-1 rounded-lg bg-blue-ycube text-white text-xs font-semibold hover:bg-blue-900 transition"
+                    @click="ajouterRemarqueEcart(cle, c.numero_compte)"
+                  >
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+
               <p v-if="module.derniere_evaluation.tiers_orphelins?.balance_generale_seulement?.length" class="text-gray-500 text-sm">
                 Comptes collectifs sans tiers rattaché dans l'auxiliaire (TODO(spec: CAC-IPE-01) — traitement attendu non confirmé) :
                 {{ module.derniere_evaluation.tiers_orphelins.balance_generale_seulement.join(', ') }}
@@ -444,6 +743,57 @@ function back() {
         <p v-else class="text-sm text-gray-500 italic">
           Aucune évaluation IPE encore lancée pour cette mission.
         </p>
+      </div>
+
+      <!-- Commentaire général — niveau 1 des remarques (docs/PLAN_verrou_IPE.md),
+           sur le contrôle dans son ensemble, pas sur un écart précis. -->
+      <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-3 w-full" v-if="ipeEtat">
+        <h2 class="font-bold text-sm uppercase text-blue-ycube">Commentaires généraux</h2>
+
+        <p v-if="!remarquesGenerales.length" class="text-sm text-gray-500 italic">Aucun commentaire général.</p>
+
+        <div v-for="r in remarquesGenerales" :key="r._id" class="border-t pt-3 flex flex-col gap-1 text-sm">
+          <p><span class="font-semibold">{{ r.utilisateur_id || 'Non identifié' }}</span> — {{ formatHorodatage(r.horodatage) }}</p>
+          <p class="text-gray-700">{{ r.commentaire }}</p>
+          <p v-if="r.reponse" class="ml-3 text-gray-600 italic">
+            Réponse de {{ r.reponse.utilisateur_id || 'Non identifié' }} ({{ formatHorodatage(r.reponse.horodatage) }}) : {{ r.reponse.commentaire }}
+          </p>
+          <div class="flex items-center gap-2">
+            <span
+              class="px-2 py-0.5 rounded-full text-xs font-semibold"
+              :class="r.traitee ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+            >
+              {{ r.traitee ? 'Traitée' : 'Non traitée' }}
+            </span>
+            <button class="text-blue-ycube font-semibold hover:underline text-xs" @click="basculerTraitee(r)">
+              {{ r.traitee ? 'Rouvrir' : 'Marquer traitée' }}
+            </button>
+          </div>
+          <div v-if="!r.reponse" class="flex gap-2 mt-1">
+            <input
+              v-model="reponsesEnCours[r._id]"
+              type="text"
+              placeholder="Répondre..."
+              class="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+            />
+            <button class="text-blue-ycube font-semibold hover:underline" @click="envoyerReponse(r)">Répondre</button>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <input
+            v-model="nouvelleRemarqueGenerale"
+            type="text"
+            placeholder="Ajouter un commentaire général sur le contrôle..."
+            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+          />
+          <button
+            class="px-5 py-2 rounded-lg bg-blue-ycube text-white font-semibold hover:bg-blue-900 transition"
+            @click="ajouterRemarqueGenerale"
+          >
+            Ajouter
+          </button>
+        </div>
       </div>
 
       <!-- Historique — toutes les actions enregistrées sur Mission1.ipe.historique -->

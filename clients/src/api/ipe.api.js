@@ -51,3 +51,74 @@ export async function validerFiabiliteIpe(missionId, validee, commentaire = null
     throw new Error(extraireMessageErreur(error, 'Erreur lors de la validation de la fiabilité IPE'))
   }
 }
+
+// --- Circuit de revue (docs/PLAN_verrou_IPE.md) ---
+// TODO(décision) : qui a le droit de soumettre / demander une correction /
+// valider n'est pas vérifié aujourd'hui (CLAUDE.md, point de sécurité connu).
+
+export async function soumettrePourRevueIpe(missionId, commentaire = null, utilisateurId = null) {
+  try {
+    const { data } = await api.post(`/missions/${missionId}/ipe/soumettre`, {
+      commentaire,
+      utilisateur_id: utilisateurId,
+    })
+    if (data?.success) return data.data
+    throw new Error(data?.error || 'Erreur lors de la soumission pour revue')
+  } catch (error) {
+    throw new Error(extraireMessageErreur(error, 'Erreur lors de la soumission pour revue'))
+  }
+}
+
+export async function demanderCorrectionIpe(missionId, commentaire, utilisateurId = null) {
+  try {
+    const { data } = await api.post(`/missions/${missionId}/ipe/demander-correction`, {
+      commentaire,
+      utilisateur_id: utilisateurId,
+    })
+    if (data?.success) return data.data
+    throw new Error(data?.error || 'Erreur lors de la demande de correction')
+  } catch (error) {
+    throw new Error(extraireMessageErreur(error, 'Erreur lors de la demande de correction'))
+  }
+}
+
+export async function ajouterRemarqueIpe(missionId, commentaire, { module = null, numeroCompte = null, utilisateurId = null } = {}) {
+  try {
+    const { data } = await api.post(`/missions/${missionId}/ipe/remarques`, {
+      commentaire,
+      module,
+      numero_compte: numeroCompte,
+      utilisateur_id: utilisateurId,
+    })
+    if (data?.success) return data.data
+    throw new Error(data?.error || "Erreur lors de l'ajout de la remarque")
+  } catch (error) {
+    throw new Error(extraireMessageErreur(error, "Erreur lors de l'ajout de la remarque"))
+  }
+}
+
+export async function repondreRemarqueIpe(missionId, remarqueId, commentaire, utilisateurId = null) {
+  try {
+    const { data } = await api.put(`/missions/${missionId}/ipe/remarques/${remarqueId}/reponse`, {
+      commentaire,
+      utilisateur_id: utilisateurId,
+    })
+    if (data?.success) return data.data
+    throw new Error(data?.error || 'Erreur lors de la réponse à la remarque')
+  } catch (error) {
+    throw new Error(extraireMessageErreur(error, 'Erreur lors de la réponse à la remarque'))
+  }
+}
+
+export async function marquerRemarqueTraiteeIpe(missionId, remarqueId, traitee, utilisateurId = null) {
+  try {
+    const { data } = await api.put(`/missions/${missionId}/ipe/remarques/${remarqueId}/traitee`, {
+      traitee,
+      utilisateur_id: utilisateurId,
+    })
+    if (data?.success) return data.data
+    throw new Error(data?.error || 'Erreur lors de la mise à jour de la remarque')
+  } catch (error) {
+    throw new Error(extraireMessageErreur(error, 'Erreur lors de la mise à jour de la remarque'))
+  }
+}

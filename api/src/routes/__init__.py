@@ -160,6 +160,32 @@ def register_routes(app):
         """POST /api/v1/missions/<id>/ipe/validation - Validation manager de la fiabilité IPE"""
         return IpeResource.valider(mission_id)
 
+    # --- Circuit de revue du contrôle IPE — docs/PLAN_verrou_IPE.md ---
+    @mission_bp.route('/<mission_id>/ipe/soumettre', methods=['POST'])
+    def soumettre_ipe(mission_id):
+        """POST /api/v1/missions/<id>/ipe/soumettre - Action auditeur : soumet le contrôle IPE pour revue"""
+        return IpeResource.soumettre(mission_id)
+
+    @mission_bp.route('/<mission_id>/ipe/demander-correction', methods=['POST'])
+    def demander_correction_ipe(mission_id):
+        """POST /api/v1/missions/<id>/ipe/demander-correction - Action manager : demande une correction"""
+        return IpeResource.demander_correction(mission_id)
+
+    @mission_bp.route('/<mission_id>/ipe/remarques', methods=['POST'])
+    def ajouter_remarque_ipe(mission_id):
+        """POST /api/v1/missions/<id>/ipe/remarques - Ajoute une remarque (générale ou sur un écart précis)"""
+        return IpeResource.ajouter_remarque(mission_id)
+
+    @mission_bp.route('/<mission_id>/ipe/remarques/<remarque_id>/reponse', methods=['PUT'])
+    def repondre_remarque_ipe(mission_id, remarque_id):
+        """PUT /api/v1/missions/<id>/ipe/remarques/<remarque_id>/reponse - Réponse de l'auditeur à une remarque"""
+        return IpeResource.repondre_remarque(mission_id, remarque_id)
+
+    @mission_bp.route('/<mission_id>/ipe/remarques/<remarque_id>/traitee', methods=['PUT'])
+    def marquer_remarque_traitee_ipe(mission_id, remarque_id):
+        """PUT /api/v1/missions/<id>/ipe/remarques/<remarque_id>/traitee - Marque (ou démarque) une remarque comme traitée"""
+        return IpeResource.marquer_remarque_traitee(mission_id, remarque_id)
+
     # Enregistrer le blueprint mission
     app.register_blueprint(mission_bp)
     

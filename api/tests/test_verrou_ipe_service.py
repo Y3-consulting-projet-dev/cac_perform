@@ -73,8 +73,19 @@ def test_statut_affiche_en_cours():
 
 
 def test_statut_affiche_valide():
-    etat = {"verrou_applicable": True, "ipe_fiabilite_validee": True, "modules": {}}
+    """statut_affiche est dérivé de statut_circuit (jamais de ipe_fiabilite_validee directement)."""
+    etat = {"verrou_applicable": True, "statut_circuit": "valide", "modules": {}}
     assert service.statut_affiche(etat) == "valide"
+
+
+def test_statut_affiche_soumis_pour_revue():
+    etat = {"verrou_applicable": True, "statut_circuit": "soumis_pour_revue", "modules": {}}
+    assert service.statut_affiche(etat) == "soumis_pour_revue"
+
+
+def test_statut_affiche_en_attente_correction():
+    etat = {"verrou_applicable": True, "statut_circuit": "en_attente_correction", "modules": {}}
+    assert service.statut_affiche(etat) == "en_attente_correction"
 
 
 # ---------------------------------------------------------------------------

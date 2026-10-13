@@ -36,6 +36,66 @@ class ValidationFiabiliteSchema(Schema):
     utilisateur_id = fields.Str(required=False, allow_none=True)
 
 
+class SoumissionRevueSchema(Schema):
+    """
+    Corps attendu pour POST /api/v1/missions/<id>/ipe/soumettre (action
+    auditeur — TODO(décision) : qui a le droit de soumettre n'est pas
+    vérifié aujourd'hui, voir CLAUDE.md). Commentaire optionnel : rien dans
+    docs/PLAN_verrou_IPE.md n'impose un commentaire à la soumission.
+    """
+
+    commentaire = fields.Str(required=False, allow_none=True)
+    utilisateur_id = fields.Str(required=False, allow_none=True)
+
+
+class DemandeCorrectionSchema(Schema):
+    """
+    Corps attendu pour POST /api/v1/missions/<id>/ipe/demander-correction
+    (action manager — TODO(décision) : qui a le droit de demander une
+    correction n'est pas vérifié aujourd'hui). Commentaire obligatoire,
+    même longueur minimale que pour une validation/invalidation.
+    """
+
+    commentaire = fields.Str(
+        required=True,
+        error_messages={
+            "required": f"Le commentaire est obligatoire et doit contenir au moins {LONGUEUR_MIN_COMMENTAIRE_VALIDATION} caractères.",
+            "null": f"Le commentaire est obligatoire et doit contenir au moins {LONGUEUR_MIN_COMMENTAIRE_VALIDATION} caractères.",
+        },
+        validate=validate.Length(
+            min=LONGUEUR_MIN_COMMENTAIRE_VALIDATION,
+            error=f"Le commentaire est obligatoire et doit contenir au moins {LONGUEUR_MIN_COMMENTAIRE_VALIDATION} caractères.",
+        ),
+    )
+    utilisateur_id = fields.Str(required=False, allow_none=True)
+
+
+class RemarqueCreationSchema(Schema):
+    """
+    Corps attendu pour POST /api/v1/missions/<id>/ipe/remarques — remarque à
+    deux niveaux (docs/PLAN_verrou_IPE.md) : générale si `module`/
+    `numero_compte` absents, sur un écart précis sinon.
+    """
+
+    commentaire = fields.Str(required=True, validate=validate.Length(min=1, error="Le commentaire ne peut pas être vide."))
+    module = fields.Str(required=False, allow_none=True, validate=validate.OneOf(MODULES_IPE))
+    numero_compte = fields.Str(required=False, allow_none=True)
+    utilisateur_id = fields.Str(required=False, allow_none=True)
+
+
+class ReponseRemarqueSchema(Schema):
+    """Corps attendu pour PUT .../ipe/remarques/<id>/reponse — réponse de l'auditeur à une remarque."""
+
+    commentaire = fields.Str(required=True, validate=validate.Length(min=1, error="La réponse ne peut pas être vide."))
+    utilisateur_id = fields.Str(required=False, allow_none=True)
+
+
+class TraiterRemarqueSchema(Schema):
+    """Corps attendu pour PUT .../ipe/remarques/<id>/traitee — marque (ou démarque) une remarque comme traitée."""
+
+    traitee = fields.Bool(required=True)
+
+
 def validate_ipe_data(data: Dict[str, Any], schema_class) -> Dict[str, Any]:
     """Valide des données selon le schéma marshmallow fourni."""
     schema = schema_class()

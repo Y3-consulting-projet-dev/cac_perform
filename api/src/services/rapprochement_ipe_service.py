@@ -433,6 +433,12 @@ def modules_en_ecart_non_qualifie(modules: Optional[Dict[str, Any]]) -> List[str
     de qualification renseignée. Les modules "non_evaluable" ne sont jamais
     inclus : leur traitement reste TODO(spec: CAC-IPE-01) — signalés à
     l'écran, pas bloquants ici.
+
+    Historique : n'est plus le mécanisme de blocage de valider_fiabilite
+    (remplacé par le circuit de revue — revue_ipe_service.ecarts_non_qualifies,
+    basé sur les remarques, seul mécanisme de qualification réellement
+    utilisable tant que qualification.etiquette n'a aucun écrivain). Conservée
+    (fonction + tests) comme utilitaire autonome, non appelée ailleurs.
     """
     non_qualifies = []
     for cle, module in (modules or {}).items():
@@ -459,15 +465,18 @@ def valider_fiabilite(
     Refuse explicitement (ValueError, rien n'est écrit) :
     - une validation/invalidation identique à la précédente il y a moins de
       DELAI_MIN_VALIDATIONS_IDENTIQUES_SECONDES (double clic) ;
-    - une validation positive (validee=True) tant qu'un module est en écart
-      réel sans qualification (modules_en_ecart_non_qualifie) — les modules
-      "non_evaluable" ne bloquent jamais, TODO(spec: CAC-IPE-01).
+    - une validation positive (validee=True) tant que le circuit de revue
+      n'est pas au statut "soumis_pour_revue" (voir revue_ipe_service) —
+      TODO(décision : qui a le droit de valider n'est pas vérifié
+      aujourd'hui, CLAUDE.md).
 
     Une validation positive fige les références des fichiers utilisés
     (balance générale + fichiers complémentaires actifs) : tout remplacement
     ultérieur d'un de ces fichiers invalide automatiquement cette validation
     (voir verrou_ipe_service.invalider_si_fichier_remplace, appelé depuis les
-    services d'import).
+    services d'import). Une validation positive fait passer statut_circuit à
+    "valide" ; une invalidation le remet à "en_cours" (les deux restent
+    toujours cohérents avec ipe_fiabilite_validee).
     """
     etat_actuel = verrou_ipe_service.lire_etat_ipe(mission_id)
 
@@ -480,17 +489,19 @@ def valider_fiabilite(
         )
 
     if validee:
-        modules_bloquants = modules_en_ecart_non_qualifie(etat_actuel.get("modules"))
-        if modules_bloquants:
+        statut_circuit_actuel = etat_actuel.get("statut_circuit") or "en_cours"
+        if statut_circuit_actuel != "soumis_pour_revue":
             raise ValueError(
-                "Validation refusée : module(s) en écart non qualifié : "
-                + ", ".join(modules_bloquants)
-                + ". Qualifiez chaque écart avant de valider "
-                "(TODO(spec: CAC-IPE-01) — valeurs de qualification non confirmées)."
+                "Validation refusée : le contrôle IPE doit d'abord être « Soumis pour revue » "
+                f"(statut actuel : {statut_circuit_actuel}). L'auditeur doit soumettre le contrôle "
+                "pour revue avant toute validation."
             )
 
     horodatage = datetime.now(timezone.utc).isoformat()
-    updates: Dict[str, Any] = {"ipe.ipe_fiabilite_validee": validee}
+    updates: Dict[str, Any] = {
+        "ipe.ipe_fiabilite_validee": validee,
+        "ipe.statut_circuit": "valide" if validee else "en_cours",
+    }
     if validee:
         updates["ipe.fichiers_references"] = _fichiers_references_actuels(mission_id)
 

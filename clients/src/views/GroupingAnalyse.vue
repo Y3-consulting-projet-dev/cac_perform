@@ -645,6 +645,8 @@ const IPE_STATUT_LABELS = {
   anterieure_au_verrou: 'Antérieure au verrou',
   non_commence: 'Non commencé',
   en_cours: 'En cours',
+  soumis_pour_revue: 'Soumis pour revue',
+  en_attente_correction: 'En attente de correction',
   valide: 'Validé',
 };
 
