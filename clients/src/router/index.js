@@ -106,6 +106,15 @@ const router = createRouter({
       props: true
     },
     {
+      path: '/grouping-analyse/:missionId/fiabilite-ipe',
+      name: 'fiabiliteIpe',
+      component: () => import('@/views/FiabiliteIpeView.vue'),
+      meta: {
+        showHeader: true
+      },
+      props: true
+    },
+    {
       path: '/aide',
       name: 'help',
       component: HelpView,

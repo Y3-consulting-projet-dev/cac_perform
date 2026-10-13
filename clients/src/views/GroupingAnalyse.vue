@@ -668,7 +668,7 @@ function etapeEstVerrouillee(step) {
 }
 
 function allerVersFiabiliteIpe() {
-  router.push(`/grouping-analyse/${props.missionId}/fichiers-complementaires`);
+  router.push(`/grouping-analyse/${props.missionId}/fiabilite-ipe`);
 }
 
 // Calcul progression
