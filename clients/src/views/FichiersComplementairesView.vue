@@ -11,11 +11,13 @@
 // Le rapprochement IPE (Module 1, CAC-IPE-01) ne vit plus ici : écran dédié
 // FiabiliteIpeView.vue, pour ne plus confondre les deux entrées de la barre
 // latérale de GroupingAnalyse.vue (docs/PLAN_verrou_IPE.md §6).
-import { ref, inject, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import router from '@/router'
 import { useNotyf } from '@/composables/useNotyf'
 import {
+  obtenirMission,
   listerFichiersComplementaires,
+  historiqueFichiersComplementaires,
   detailFichierComplementaire,
   importerBalanceAuxiliaire,
   importerImmobilisations,
@@ -23,7 +25,6 @@ import {
 
 const props = defineProps(['missionId'])
 const notyf = useNotyf()
-const axios = inject('axios') // instance /cors existante, utilisée ici en lecture seule uniquement
 
 const LIBELLES_TYPE = {
   auxiliaire_client: 'Balance auxiliaire clients',
@@ -32,7 +33,10 @@ const LIBELLES_TYPE = {
 }
 
 const infoMission = ref(null)
+const erreurMission = ref(null) // raison affichée si la mission ne charge pas
 const fichiers = ref({ auxiliaire_client: [], auxiliaire_fournisseur: [], immobilisations: [] })
+// Versions archivées (actif=false) par type : un remplacement ne supprime rien.
+const archives = ref({ auxiliaire_client: [], auxiliaire_fournisseur: [], immobilisations: [] })
 const detailOuvert = ref(null)
 const loading = ref(false)
 const importingType = ref(null)
@@ -42,11 +46,20 @@ onMounted(async () => {
   await chargerFichiers()
 })
 
+// L'import a besoin du client et de l'exercice de la mission : on refuse
+// d'importer tant qu'ils ne sont pas connus, en affichant la raison.
 async function chargerInfoMission() {
+  erreurMission.value = null
   try {
-    infoMission.value = (await axios.get(`/mission/affichage_infos_mission/${props.missionId}`)).data.response
+    const mission = await obtenirMission(props.missionId)
+    const manquants = ['id_client', 'annee_auditee'].filter((cle) => !mission[cle])
+    if (manquants.length) {
+      throw new Error(`la mission ne renseigne pas : ${manquants.join(', ')}`)
+    }
+    infoMission.value = mission
   } catch (e) {
-    console.error('Erreur chargement infos mission', e)
+    infoMission.value = null
+    erreurMission.value = e.message
   }
 }
 
@@ -54,6 +67,12 @@ async function chargerFichiers() {
   loading.value = true
   try {
     fichiers.value = await listerFichiersComplementaires(props.missionId)
+    const historiques = await Promise.all(
+      Object.keys(LIBELLES_TYPE).map((type) => historiqueFichiersComplementaires(props.missionId, type)),
+    )
+    archives.value = Object.fromEntries(
+      Object.keys(LIBELLES_TYPE).map((type, i) => [type, historiques[i].filter((f) => !f.actif)]),
+    )
   } catch (e) {
     notyf.trigger(e.message || 'Erreur lors du chargement des fichiers', 'error')
   } finally {
@@ -78,7 +97,8 @@ async function onImporter(event, type) {
   if (!fichier) return
 
   if (!infoMission.value) {
-    notyf.trigger('Informations de mission non chargées', 'error')
+    notyf.trigger(`Import impossible — mission non chargée : ${erreurMission.value || 'raison inconnue'}`, 'error')
+    event.target.value = ''
     return
   }
 
@@ -127,6 +147,23 @@ function back() {
 
     <div class="p-6 flex flex-col gap-6">
 
+      <!-- Mission non chargée : import impossible, raison affichée -->
+      <div v-if="erreurMission" class="bg-white rounded-xl shadow p-6 flex items-center justify-between flex-wrap gap-3 border-l-4 border-red-500">
+        <div>
+          <h2 class="font-semibold text-sm uppercase text-red-700">Mission non chargée — import impossible</h2>
+          <p class="text-sm text-gray-700">{{ erreurMission }}</p>
+        </div>
+        <button
+          class="border border-blue-ycube text-blue-ycube font-semibold hover:bg-blue-ycube hover:text-white transition px-5 py-2 rounded-lg"
+          @click="chargerInfoMission"
+        >
+          Réessayer
+        </button>
+      </div>
+      <p v-else-if="infoMission" class="text-sm text-gray-500">
+        Exercice audité : <span class="font-semibold text-gray-800">{{ infoMission.annee_auditee }}</span>
+      </p>
+
       <!-- Lien vers l'écran dédié au rapprochement IPE (Module 1, CAC-IPE-01) -->
       <div class="bg-white rounded-xl shadow p-6 flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -155,9 +192,22 @@ function back() {
           <div v-for="f in fichiers[type]" :key="f._id"
             class="border rounded-lg p-3 flex flex-col gap-1 cursor-pointer hover:bg-gray-50"
             @click="voirDetail(f._id)">
-            <span class="text-sm font-semibold truncate">{{ f.nom_fichier || 'Fichier sans nom' }}</span>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm font-semibold truncate">{{ f.nom_fichier || 'Fichier sans nom' }}</span>
+              <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
+            </div>
             <span class="text-xs text-gray-500">{{ f.date_import }}</span>
             <span class="text-xs text-gray-500">{{ f.nb_lignes }} lignes · version {{ f.version }}</span>
+          </div>
+
+          <div v-if="archives[type]?.length" class="flex flex-col gap-1">
+            <p class="text-xs text-gray-500">Versions archivées</p>
+            <div v-for="f in archives[type]" :key="f._id"
+              class="border rounded-lg p-2 flex items-center justify-between gap-2 cursor-pointer hover:bg-gray-50 text-gray-500"
+              @click="voirDetail(f._id)">
+              <span class="text-xs truncate">v{{ f.version }} · {{ f.nom_fichier || 'Fichier sans nom' }} · {{ f.nb_lignes }} lignes</span>
+              <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">Archivée</span>
+            </div>
           </div>
 
           <label

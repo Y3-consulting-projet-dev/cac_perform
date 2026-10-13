@@ -12,6 +12,26 @@ import api from './index'
 
 const BASE_URL = 'http://localhost:5000/api/v1'
 
+// axios lève une exception sur un 4xx/5xx : on remonte le message du backend
+// ({ success: false, error }) plutôt que « Request failed with status code 400 ».
+function messageErreur(e, defaut) {
+  return e?.response?.data?.error || (e?.response ? `${defaut} (HTTP ${e.response.status})` : `${defaut} : ${e?.message || 'serveur injoignable'}`)
+}
+
+// Informations de la mission (id_client, annee_auditee...) via /api/v1 —
+// remplace la lecture de /cors/mission/affichage_infos_mission, dont la
+// réponse n'a pas de clé `response` (l'écran restait sans mission chargée).
+export async function obtenirMission(missionId) {
+  let data
+  try {
+    ({ data } = await api.get(`/missions/${missionId}`))
+  } catch (e) {
+    throw new Error(messageErreur(e, 'Mission non chargée'))
+  }
+  if (data?.success && data.data) return data.data
+  throw new Error(data?.error || 'Mission non chargée : réponse inattendue du serveur')
+}
+
 export async function apercuMapping(fichier) {
   const formData = new FormData()
   formData.append('fichier', fichier)
@@ -55,7 +75,12 @@ export async function importerBalanceAuxiliaire(missionId, fichier, typeAuxiliai
   formData.append('id_client', idClient)
   formData.append('annee', String(annee))
 
-  const { data } = await axios.post(`${BASE_URL}/missions/${missionId}/balances-auxiliaires`, formData)
+  let data
+  try {
+    ({ data } = await axios.post(`${BASE_URL}/missions/${missionId}/balances-auxiliaires`, formData))
+  } catch (e) {
+    throw new Error(messageErreur(e, "Erreur lors de l'import de la balance auxiliaire"))
+  }
   if (data?.success) return data.data
   throw new Error(data?.error || "Erreur lors de l'import de la balance auxiliaire")
 }
@@ -66,7 +91,12 @@ export async function importerImmobilisations(missionId, fichier, idClient, anne
   formData.append('id_client', idClient)
   formData.append('annee', String(annee))
 
-  const { data } = await axios.post(`${BASE_URL}/missions/${missionId}/immobilisations`, formData)
+  let data
+  try {
+    ({ data } = await axios.post(`${BASE_URL}/missions/${missionId}/immobilisations`, formData))
+  } catch (e) {
+    throw new Error(messageErreur(e, "Erreur lors de l'import du fichier des immobilisations"))
+  }
   if (data?.success) return data.data
   throw new Error(data?.error || "Erreur lors de l'import du fichier des immobilisations")
 }
@@ -78,6 +108,13 @@ export async function listerFichiersComplementaires(missionId) {
   const { data } = await api.get(`/missions/${missionId}/fichiers-complementaires`)
   if (data?.success) return data.data
   throw new Error(data?.error || 'Erreur lors de la récupération des fichiers complémentaires')
+}
+
+// Versions active + archivées d'un type de fichier (la plus récente d'abord).
+export async function historiqueFichiersComplementaires(missionId, typeFichier) {
+  const { data } = await api.get(`/missions/${missionId}/fichiers-complementaires/${typeFichier}/historique`)
+  if (data?.success) return data.data
+  throw new Error(data?.error || "Erreur lors de la récupération de l'historique")
 }
 
 export async function detailFichierComplementaire(missionId, fichierId) {

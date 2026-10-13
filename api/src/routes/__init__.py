@@ -137,6 +137,11 @@ def register_routes(app):
         """GET /api/v1/missions/<id>/fichiers-complementaires - Liste les fichiers complémentaires (lecture seule)"""
         return ImportResource.lister_fichiers_complementaires(mission_id)
 
+    @mission_bp.route('/<mission_id>/fichiers-complementaires/<type_fichier>/historique', methods=['GET'])
+    def historique_fichiers_complementaires(mission_id, type_fichier):
+        """GET /api/v1/missions/<id>/fichiers-complementaires/<type>/historique - Versions active + archivées (lecture seule)"""
+        return ImportResource.historique_fichiers_complementaires(mission_id, type_fichier)
+
     @mission_bp.route('/<mission_id>/fichiers-complementaires/<fichier_id>', methods=['GET'])
     def detail_fichier_complementaire(mission_id, fichier_id):
         """GET /api/v1/missions/<id>/fichiers-complementaires/<fichier_id> - Détail d'un fichier complémentaire"""

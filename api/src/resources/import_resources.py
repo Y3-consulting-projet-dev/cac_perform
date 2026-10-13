@@ -237,6 +237,27 @@ class ImportResource:
             }), 500)
 
     @staticmethod
+    def historique_fichiers_complementaires(mission_id: str, type_fichier: str):
+        """
+        GET /api/v1/missions/<mission_id>/fichiers-complementaires/<type>/historique
+        Toutes les versions (active + archivées) d'un type de fichier, la plus
+        récente d'abord. Lecture seule, filtrée par mission_id.
+        """
+        if type_fichier not in fichiers_complementaires_service.TYPES_FICHIERS_COMPLEMENTAIRES:
+            return make_response(jsonify({
+                "success": False,
+                "error": f"Type de fichier inconnu : '{type_fichier}'"
+            }), 400)
+        try:
+            resultat = fichiers_complementaires_service.lister_historique(mission_id, type_fichier)
+            return make_response(jsonify({"success": True, "data": resultat}), 200)
+        except Exception as e:
+            return make_response(jsonify({
+                "success": False,
+                "error": f"Erreur serveur: {str(e)}"
+            }), 500)
+
+    @staticmethod
     def detail_fichier_complementaire(mission_id: str, fichier_id: str):
         """
         GET /api/v1/missions/<mission_id>/fichiers-complementaires/<fichier_id>
