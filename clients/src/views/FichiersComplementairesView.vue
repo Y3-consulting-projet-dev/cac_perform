@@ -48,11 +48,12 @@ const IPE_STATUT_LABELS = {
 
 // 3 statuts visuels distincts (module ou ligne de collectif) — le rouge est
 // réservé aux vrais écarts, jamais à "rien à comparer" (fichier absent,
-// aucun collectif trouvé).
+// aucun collectif trouvé). Mêmes couleurs que les badges de statut de
+// mission (MissionsView.vue) — charte d'interface, CLAUDE.md.
 const STATUT_MODULE_INFO = {
-  ok: { label: 'OK', classe: 'bg-green-100 text-green-ycube' },
-  ecart: { label: 'Écart', classe: 'bg-red-100 text-red-600' },
-  non_evaluable: { label: 'Non évaluable', classe: 'bg-gray-100 text-gray-500' },
+  ok: { label: 'OK', classe: 'bg-green-100 text-green-700' },
+  ecart: { label: 'Écart', classe: 'bg-red-100 text-red-700' },
+  non_evaluable: { label: 'Non évaluable', classe: 'bg-gray-100 text-gray-700' },
 }
 
 // Ordre d'affichage fixe pour la synthèse (IPE-1 puis IPE-2 puis IPE-3),
@@ -248,23 +249,29 @@ function back() {
 </script>
 
 <template>
-  <div class="h-full w-full overflow-y-auto bg-[#f5f7fa] p-6">
-    <div class="flex items-center justify-between mb-6">
-      <button class="px-4 py-2 rounded-lg bg-white shadow font-semibold flex items-center gap-2" @click="back">
+  <div class="h-full w-full overflow-y-auto bg-[#f5f7fa]">
+    <!-- En-tête de page — même recette que ClientSpace.vue (charte d'interface, CLAUDE.md) -->
+    <div class="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
+      <button class="text-blue-ycube font-semibold hover:underline flex items-center gap-2" @click="back">
         <i class="fa-solid fa-arrow-left"></i> Retour
       </button>
-      <h1 class="text-xl font-bold text-blue-ycube">Fichiers complémentaires de la mission</h1>
-      <div></div>
+      <div class="text-center">
+        <h1 class="text-xl font-bold text-blue-ycube">Fichiers complémentaires</h1>
+        <p class="text-sm text-gray-500">Rapprochement IPE et balances auxiliaires</p>
+      </div>
+      <div class="w-20"></div>
     </div>
+
+    <div class="p-6 flex flex-col gap-6">
 
     <!-- Rapprochement IPE (Module 1, CAC-IPE-01) — docs/PLAN_verrou_IPE.md §4/§5.
          Écran de diagnostic, pas une étape d'audit : volontairement hors des
          11 étapes de GroupingAnalyse.vue (voir l'indicateur "Fiabilité IPE"
          dans sa barre latérale, qui renvoie ici pour le détail). -->
-    <div class="bg-white rounded-xl shadow p-4 mb-6 flex flex-col gap-4 w-full" v-if="ipeEtat">
+    <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-4 w-full" v-if="ipeEtat">
       <div class="flex items-center justify-between flex-wrap gap-2">
         <h2 class="font-bold text-sm uppercase text-blue-ycube">Rapprochement IPE</h2>
-        <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-700">
           {{ IPE_STATUT_LABELS[ipeEtat.statut_affiche] || 'Non commencé' }}
         </span>
       </div>
@@ -273,34 +280,36 @@ function back() {
         Mission antérieure à l'activation du verrou IPE : jamais bloquée, ce rapprochement reste informatif.
       </p>
 
-      <!-- Synthèse : une ligne par module, statut + écart global -->
-      <table class="w-full text-xs">
-        <thead>
-          <tr class="text-gray-500 text-left border-b">
-            <th class="py-1">Module</th>
-            <th class="py-1">Statut</th>
-            <th class="py-1 text-right">Écart global</th>
+      <!-- Synthèse : une ligne par module, statut + écart global.
+           Tableau à en-tête bleu marine (ClientSpace.vue) — charte CLAUDE.md. -->
+      <table class="min-w-full text-sm">
+        <thead class="bg-blue-ycube text-white h-12 text-left">
+          <tr>
+            <th class="px-3">Module</th>
+            <th class="px-3">Statut</th>
+            <th class="px-3 text-right">Écart global</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="ligne in syntheseModules" :key="ligne.cle" class="border-b last:border-0">
-            <td class="py-2">{{ ligne.libelle }}</td>
-            <td class="py-2">
+          <tr v-for="ligne in syntheseModules" :key="ligne.cle" class="h-12 border-b">
+            <td class="px-3">{{ ligne.libelle }}</td>
+            <td class="px-3">
               <span
-                class="px-2 py-0.5 rounded-full text-xs font-medium"
-                :class="ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.classe : 'bg-gray-100 text-gray-400'"
+                class="px-3 py-1 rounded-full text-xs font-semibold"
+                :class="ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.classe : 'bg-gray-100 text-gray-700'"
               >
                 {{ ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.label : 'Non évalué' }}
               </span>
             </td>
-            <td class="py-2 text-right font-mono">{{ formatMontant(ligne.ecartGlobal) }}</td>
+            <td class="px-3 text-right font-mono">{{ formatMontant(ligne.ecartGlobal) }}</td>
           </tr>
         </tbody>
       </table>
 
-      <div class="flex flex-wrap items-center gap-2">
+      <!-- Boutons : primaire plein (recette ClientSpace.vue), secondaire en contour — charte CLAUDE.md -->
+      <div class="flex flex-wrap items-center gap-3">
         <button
-          class="text-xs px-3 py-2 rounded-lg bg-blue-ycube text-white hover:opacity-90 transition disabled:opacity-50"
+          class="px-5 py-2 rounded-lg bg-blue-ycube text-white font-semibold hover:bg-blue-900 transition disabled:opacity-50"
           :disabled="ipeEvaluationEnCours"
           @click="lancerEvaluationIpe"
         >
@@ -309,7 +318,7 @@ function back() {
 
         <!-- Bouton principal : désactivé tant qu'un module est en écart non qualifié -->
         <button
-          class="text-xs px-3 py-2 rounded-lg bg-green-ycube text-white hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          class="px-5 py-2 rounded-lg bg-green-ycube-2 text-white font-semibold hover:bg-green-ycube transition disabled:opacity-40 disabled:cursor-not-allowed"
           :disabled="ipeValidationEnCours || moduleEnEcartNonQualifie"
           :title="moduleEnEcartNonQualifie ? 'Qualifiez les écarts avant de valider (voir les modules en écart ci-dessous)' : ''"
           @click="ouvrirConfirmationValidation"
@@ -319,7 +328,7 @@ function back() {
 
         <!-- Bouton secondaire, volontairement moins mis en avant -->
         <button
-          class="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition disabled:opacity-40"
+          class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition disabled:opacity-40"
           :disabled="ipeValidationEnCours"
           @click="ouvrirConfirmationInvalidation"
         >
@@ -334,106 +343,107 @@ function back() {
            (CLAUDE.md, point de sécurité connu). -->
 
       <!-- Confirmation de validation (commentaire obligatoire, enregistré dans l'historique) -->
-      <div v-if="confirmationValidationOuverte" class="border border-green-ycube/40 bg-green-50 rounded-lg p-3 flex flex-col gap-2">
-        <p class="text-xs font-semibold text-green-ycube">Confirmer la validation de la fiabilité IPE</p>
+      <div v-if="confirmationValidationOuverte" class="border border-green-ycube/40 bg-green-50 rounded-lg p-4 flex flex-col gap-2">
+        <p class="text-sm font-semibold text-green-ycube">Confirmer la validation de la fiabilité IPE</p>
         <textarea
           v-model="commentaireValidation"
           rows="2"
-          class="text-xs border rounded-lg p-2 w-full"
+          class="text-sm border border-gray-300 rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-ycube"
           placeholder="Commentaire (obligatoire, enregistré dans l'historique)"
         ></textarea>
-        <div class="flex gap-2">
+        <div class="flex gap-3">
           <button
-            class="text-xs px-3 py-1.5 rounded-lg bg-green-ycube text-white hover:opacity-90 transition disabled:opacity-50"
+            class="px-5 py-2 rounded-lg bg-green-ycube-2 text-white font-semibold hover:bg-green-ycube transition disabled:opacity-50"
             :disabled="ipeValidationEnCours"
             @click="confirmerValidation"
           >
             Confirmer
           </button>
-          <button class="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition" @click="annulerValidation">
+          <button class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition" @click="annulerValidation">
             Annuler
           </button>
         </div>
       </div>
 
       <!-- Confirmation d'invalidation -->
-      <div v-if="confirmationInvalidationOuverte" class="border border-gray-300 bg-gray-50 rounded-lg p-3 flex flex-col gap-2">
-        <p class="text-xs font-semibold text-gray-600">Confirmer l'invalidation de la fiabilité IPE ?</p>
-        <div class="flex gap-2">
+      <div v-if="confirmationInvalidationOuverte" class="border border-gray-300 bg-gray-50 rounded-lg p-4 flex flex-col gap-2">
+        <p class="text-sm font-semibold text-gray-700">Confirmer l'invalidation de la fiabilité IPE ?</p>
+        <div class="flex gap-3">
           <button
-            class="text-xs px-3 py-1.5 rounded-lg border border-gray-400 text-gray-700 hover:bg-gray-100 transition disabled:opacity-50"
+            class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition disabled:opacity-50"
             :disabled="ipeValidationEnCours"
             @click="confirmerInvalidation"
           >
             Confirmer
           </button>
-          <button class="text-xs px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition" @click="annulerInvalidation">
+          <button class="px-5 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition" @click="annulerInvalidation">
             Annuler
           </button>
         </div>
       </div>
 
-      <div v-if="ipeEtat.modules && Object.keys(ipeEtat.modules).length" class="flex flex-col gap-3 mt-2">
-        <div v-for="(module, cle) in ipeEtat.modules" :key="cle" class="border rounded-lg p-3 text-xs">
+      <div v-if="ipeEtat.modules && Object.keys(ipeEtat.modules).length" class="flex flex-col gap-4 mt-2">
+        <div v-for="(module, cle) in ipeEtat.modules" :key="cle" class="border border-gray-200 rounded-lg p-4 text-sm">
           <div class="flex items-center justify-between">
-            <span class="font-semibold">{{ LIBELLES_MODULE[cle] || cle }}</span>
+            <span class="font-semibold text-gray-800">{{ LIBELLES_MODULE[cle] || cle }}</span>
             <span
-              class="px-2 py-0.5 rounded-full text-xs font-medium"
-              :class="STATUT_MODULE_INFO[module.statut]?.classe || 'bg-gray-100 text-gray-500'"
+              class="px-3 py-1 rounded-full text-xs font-semibold"
+              :class="STATUT_MODULE_INFO[module.statut]?.classe || 'bg-gray-100 text-gray-700'"
             >
               {{ STATUT_MODULE_INFO[module.statut]?.label || module.statut }}
             </span>
           </div>
 
-          <div v-if="module.derniere_evaluation" class="mt-2 flex flex-col gap-2 text-gray-600">
+          <div v-if="module.derniere_evaluation" class="mt-3 flex flex-col gap-3 text-gray-600">
             <p v-if="module.statut === 'non_evaluable'" class="italic text-gray-500">
               Non évaluable — {{ module.derniere_evaluation.motif_non_evaluable === 'fichier_complementaire_absent'
                 ? 'aucun fichier complémentaire actif pour ce module.'
                 : 'aucun compte collectif trouvé dans la balance générale pour ce module.' }}
             </p>
-            <p v-else>Écart global : <span class="font-mono">{{ formatMontant(module.derniere_evaluation.ecart_global) }}</span></p>
+            <p v-else class="text-sm">Écart global : <span class="font-mono font-semibold text-gray-800">{{ formatMontant(module.derniere_evaluation.ecart_global) }}</span></p>
 
-            <table v-if="module.derniere_evaluation.detail_collectifs?.length" class="w-full text-left">
-              <thead>
-                <tr class="text-gray-500">
-                  <th class="pr-3 py-1">Compte collectif</th>
-                  <th class="pr-3 py-1 text-right">Solde balance générale</th>
-                  <th class="pr-3 py-1 text-right">Solde auxiliaire</th>
-                  <th class="pr-3 py-1 text-right">Tiers rattachés</th>
-                  <th class="py-1 text-right">Écart</th>
+            <table v-if="module.derniere_evaluation.detail_collectifs?.length" class="min-w-full text-sm">
+              <thead class="bg-blue-ycube text-white h-12 text-left">
+                <tr>
+                  <th class="px-3">Compte collectif</th>
+                  <th class="px-3 text-right">Solde balance générale</th>
+                  <th class="px-3 text-right">Solde auxiliaire</th>
+                  <th class="px-3 text-right">Tiers rattachés</th>
+                  <th class="px-3 text-right">Écart</th>
                 </tr>
               </thead>
               <tbody>
                 <tr
                   v-for="c in module.derniere_evaluation.detail_collectifs"
                   :key="c.numero_compte"
-                  :class="module.statut !== 'ecart' ? 'text-gray-500' : (c.ok ? 'text-green-ycube' : 'text-red-500')"
+                  class="h-12 border-b"
+                  :class="module.statut !== 'ecart' ? 'text-gray-500' : (c.ok ? 'text-green-700' : 'text-red-700')"
                 >
-                  <td class="pr-3 py-1">{{ c.numero_compte }}</td>
-                  <td class="pr-3 py-1 text-right font-mono">{{ formatMontant(c.solde_balance_generale) }}</td>
-                  <td class="pr-3 py-1 text-right font-mono">{{ formatMontant(c.solde_auxiliaire) }}</td>
-                  <td class="pr-3 py-1 text-right">{{ c.nb_tiers_rattaches }}</td>
-                  <td class="py-1 text-right font-mono">{{ formatMontant(c.ecart) }}</td>
+                  <td class="px-3">{{ c.numero_compte }}</td>
+                  <td class="px-3 text-right font-mono">{{ formatMontant(c.solde_balance_generale) }}</td>
+                  <td class="px-3 text-right font-mono">{{ formatMontant(c.solde_auxiliaire) }}</td>
+                  <td class="px-3 text-right">{{ c.nb_tiers_rattaches }}</td>
+                  <td class="px-3 text-right font-mono">{{ formatMontant(c.ecart) }}</td>
                 </tr>
               </tbody>
             </table>
             <p v-else-if="module.statut !== 'non_evaluable'" class="italic">Aucun compte collectif trouvé dans la balance générale pour ce module.</p>
 
-            <p v-if="module.derniere_evaluation.tiers_orphelins?.balance_generale_seulement?.length" class="text-gray-500">
+            <p v-if="module.derniere_evaluation.tiers_orphelins?.balance_generale_seulement?.length" class="text-gray-500 text-sm">
               Comptes collectifs sans tiers rattaché dans l'auxiliaire (TODO(spec: CAC-IPE-01) — traitement attendu non confirmé) :
               {{ module.derniere_evaluation.tiers_orphelins.balance_generale_seulement.join(', ') }}
             </p>
-            <p v-if="module.derniere_evaluation.tiers_orphelins?.auxiliaire_seulement?.length" class="text-gray-500">
+            <p v-if="module.derniere_evaluation.tiers_orphelins?.auxiliaire_seulement?.length" class="text-gray-500 text-sm">
               Tiers de l'auxiliaire sans compte collectif correspondant (TODO(spec: CAC-IPE-01) — traitement attendu non confirmé) :
               {{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.join(', ') }}
             </p>
-            <p v-if="module.derniere_evaluation.lignes_non_calculables?.length" class="text-orange-500">
+            <p v-if="module.derniere_evaluation.lignes_non_calculables?.length" class="text-orange-600 text-sm">
               {{ module.derniere_evaluation.lignes_non_calculables.length }} ligne(s) auxiliaire(s) sans montant exploitable (mapping incomplet).
             </p>
           </div>
         </div>
       </div>
-      <p v-else class="text-xs text-gray-500 italic">
+      <p v-else class="text-sm text-gray-500 italic">
         Aucune évaluation IPE encore lancée pour cette mission.
       </p>
     </div>
@@ -466,17 +476,19 @@ function back() {
       </div>
     </div>
 
-    <!-- Détail d'un fichier -->
-    <div v-if="detailOuvert" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6"
+    </div>
+
+    <!-- Détail d'un fichier — même recette de modale que ClientsView.vue (charte CLAUDE.md) -->
+    <div v-if="detailOuvert" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       @click.self="fermerDetail">
-      <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[85vh] overflow-y-auto p-6 flex flex-col gap-4">
+      <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-auto p-6 relative flex flex-col gap-4">
         <div class="flex justify-between items-start">
           <div>
             <h3 class="font-bold text-blue-ycube">{{ detailOuvert.nom_fichier || 'Fichier sans nom' }}</h3>
             <p class="text-xs text-gray-500">Importé le {{ detailOuvert.date_import }} · version {{ detailOuvert.version }}</p>
           </div>
-          <button class="text-gray-400 hover:text-gray-600" @click="fermerDetail">
-            <i class="fa-solid fa-xmark"></i>
+          <button class="text-gray-500 hover:text-gray-800" @click="fermerDetail">
+            <i class="fa-solid fa-xmark text-2xl"></i>
           </button>
         </div>
 

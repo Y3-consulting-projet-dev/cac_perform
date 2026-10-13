@@ -50,6 +50,50 @@ Règles connues :
 
 Toujours dire **« poste significatif »**. Ne jamais dire « PRAS ».
 
+## Charte d'interface (obligatoire pour tout nouvel écran)
+
+Relevée sur le code réel de `ClientSpace.vue`, `ClientsView.vue`, `MissionsView.vue` et `GroupingAnalyse.vue` — pas inventée. Tout nouvel écran V2 doit s'y conformer ; ne pas introduire une nouvelle convention sans la documenter ici.
+
+**Palette** (définie en `@theme` CSS, `clients/src/assets/style.css` — Tailwind v4, pas `tailwind.config.js`) :
+- `blue-ycube` `#043C5D` — couleur principale (sidebar, en-têtes de tableau, titres, boutons primaires). Variantes : `blue-ycube-1` `#053D5E`, `blue-ycube-2` `#8faadc`, `blue-ycube-3` `#156082`.
+- `green-ycube` `#589654` / `green-ycube-2` `#7FC241` — vert (actions positives, validation).
+- `gray-ycube` `#F2F2F2` / `gray-ycube-1` `#B2B2B2` — gris neutres.
+- Les classes `.btn-*` de `style.css` existent mais ne sont utilisées par aucun des 4 écrans de référence : ne pas les introduire ; composer directement les classes Tailwind ci-dessous.
+
+**En-tête de page** (référence : `ClientSpace.vue`, la fiche client) — barre blanche en tête du contenu, `bg-white shadow-sm px-6 py-4 flex items-center justify-between` :
+- gauche : retour en **lien**, jamais un bouton plein — `text-blue-ycube font-semibold hover:underline flex items-center gap-2` + icône `fa-solid fa-arrow-left` ;
+- centre : titre `text-xl font-bold text-blue-ycube`, sous-titre `text-sm text-gray-500` ;
+- droite : groupe d'actions, `flex gap-3`.
+
+**Cartes** : fond blanc, coins `rounded-xl`, `shadow` simple (jamais `shadow-lg`/`shadow-xl` hors modale) — `bg-white rounded-xl shadow p-6` (carte d'information, `ClientSpace.vue`) ou `p-4` pour une carte plus dense (liste, `ClientsView.vue`).
+
+**Tableaux** — en-tête **bleu marine**, texte blanc (référence : tableau des missions dans `ClientSpace.vue`) :
+```html
+<table class="min-w-full text-sm">
+  <thead class="bg-blue-ycube text-white h-12 text-left">
+    <tr><th class="px-3">…</th></tr>
+  </thead>
+  <tbody>
+    <tr class="h-12 border-b hover:bg-gray-50"><td class="px-3">…</td></tr>
+  </tbody>
+</table>
+```
+(`ClientsView.vue`/`MissionsView.vue` ont par endroits un en-tête `bg-gray-100 text-gray-700`, plus ancien — **l'en-tête bleu marine de `ClientSpace.vue` est la convention à suivre pour tout nouvel écran**.)
+
+**Boutons** :
+- *Primaire* : fond plein coloré (`bg-blue-ycube text-white` ou `bg-green-ycube-2 text-white` selon la nature de l'action), `font-semibold`, coins `rounded-lg`/`rounded-xl`, `hover:` fonce la couleur. Ex. `ClientSpace.vue` « Nouvelle mission » : `px-5 py-2 rounded-lg bg-green-ycube-2 text-white font-semibold hover:bg-green-ycube transition`.
+- *Secondaire* : contour, pas de fond — `border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition` (« Annuler »), ou variante colorée `border border-blue-ycube text-blue-ycube font-semibold hover:bg-blue-ycube hover:text-white transition` (« Modifier client »).
+- *Destructeur* : `bg-red-500 text-white rounded hover:bg-red-600` (petit, dans une ligne de tableau).
+- *Pagination* : `px-3 py-1 border rounded disabled:opacity-50`.
+
+**Titres / libellés / valeurs** : titre de page `text-xl font-bold text-blue-ycube` ; titre de section `font-semibold text-sm uppercase text-blue-ycube` ; libellé `text-gray-500 text-sm` ; valeur `font-semibold text-gray-800`.
+
+**Badges de statut** (référence : statut de mission, `MissionsView.vue`) — pilule `px-3 py-1 rounded-full text-xs font-semibold`, couleur selon le sens : positif `bg-green-100 text-green-700`, négatif/écart `bg-red-100 text-red-700`, neutre/en attente `bg-orange-100 text-orange-700`, « rien à signaler »/non applicable `bg-gray-100 text-gray-700`. Le rouge est réservé à un vrai écart, jamais à « rien à comparer ».
+
+**Modales** (référence : `ClientsView.vue`) — fond `fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4` ; panneau `bg-white rounded-2xl w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto`.
+
+**Mise en page/défilement** : toute vue rendue par `pageLayout.vue` porte sa propre hauteur et son propre défilement à la racine — `h-full w-full overflow-y-auto` (jamais `h-screen`/`min-h-screen`, qui dépasse la hauteur réellement allouée dès que le `Header` est affiché, et rend le bas de l'écran inaccessible).
+
 ## Point de sécurité connu (à garder en tête, pas à régler maintenant)
 
 Aujourd'hui, **aucune authentification ni cloisonnement par mission** ne s'applique aux clients et aux missions (voir `RECAP_V1_CAC_PERFORM.md`, section 5). Ce chantier ne refait pas l'authentification. On pose seulement, dans le nouveau code, les bases d'un filtrage par mission (ex. prévoir un champ/paramètre de mission dans les nouveaux services), sans l'appliquer rétroactivement à l'existant.
