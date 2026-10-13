@@ -389,6 +389,61 @@ def _fichiers_references_actuels(mission_id: str) -> Dict[str, Any]:
     return references
 
 
+# Délai minimal entre deux validations/invalidations IDENTIQUES (même valeur
+# de `validee`) — garde-fou contre un double clic qui passerait malgré la
+# désactivation du bouton côté frontend (docs/PLAN_verrou_IPE.md).
+DELAI_MIN_VALIDATIONS_IDENTIQUES_SECONDES = 5.0
+
+
+def validation_identique_trop_recente(
+    historique: List[Dict[str, Any]],
+    validee: bool,
+    maintenant: Optional[Any] = None,
+) -> bool:
+    """
+    Fonction pure : vraie si la dernière entrée d'historique est déjà une
+    validation manager avec la MÊME valeur de `validee`, survenue il y a
+    moins de DELAI_MIN_VALIDATIONS_IDENTIQUES_SECONDES — signe d'un double
+    clic plutôt que de deux décisions distinctes (ex. valider puis
+    invalider, volontaire, n'est jamais bloqué par cette règle).
+    """
+    if not historique:
+        return False
+
+    derniere = historique[-1]
+    if derniere.get("action") != "validation_manager":
+        return False
+    if derniere.get("resultat", {}).get("validee") != validee:
+        return False
+
+    try:
+        horodatage_derniere = datetime.fromisoformat(derniere["horodatage"])
+    except (KeyError, TypeError, ValueError):
+        return False
+
+    maintenant = maintenant or datetime.now(timezone.utc)
+    ecart_secondes = (maintenant - horodatage_derniere).total_seconds()
+    return 0 <= ecart_secondes < DELAI_MIN_VALIDATIONS_IDENTIQUES_SECONDES
+
+
+def modules_en_ecart_non_qualifie(modules: Optional[Dict[str, Any]]) -> List[str]:
+    """
+    Fonction pure : clés des modules dont le statut est "ecart" (un vrai
+    écart, jamais "non_evaluable" — docs/PLAN_verrou_IPE.md) sans étiquette
+    de qualification renseignée. Les modules "non_evaluable" ne sont jamais
+    inclus : leur traitement reste TODO(spec: CAC-IPE-01) — signalés à
+    l'écran, pas bloquants ici.
+    """
+    non_qualifies = []
+    for cle, module in (modules or {}).items():
+        if module.get("statut") != "ecart":
+            continue
+        qualification = (module.get("derniere_evaluation") or {}).get("qualification") or {}
+        if not qualification.get("etiquette"):
+            non_qualifies.append(cle)
+    return non_qualifies
+
+
 def valider_fiabilite(
     mission_id: str,
     validee: bool,
@@ -401,12 +456,39 @@ def valider_fiabilite(
     droits n'existe sur les missions aujourd'hui (CLAUDE.md, point de
     sécurité connu) — utilisateur_id reste nullable.
 
-    Une validation positive (validee=True) fige les références des fichiers
-    utilisés (balance générale + fichiers complémentaires actifs) : tout
-    remplacement ultérieur d'un de ces fichiers invalide automatiquement
-    cette validation (voir verrou_ipe_service.invalider_si_fichier_remplace,
-    appelé depuis les services d'import).
+    Refuse explicitement (ValueError, rien n'est écrit) :
+    - une validation/invalidation identique à la précédente il y a moins de
+      DELAI_MIN_VALIDATIONS_IDENTIQUES_SECONDES (double clic) ;
+    - une validation positive (validee=True) tant qu'un module est en écart
+      réel sans qualification (modules_en_ecart_non_qualifie) — les modules
+      "non_evaluable" ne bloquent jamais, TODO(spec: CAC-IPE-01).
+
+    Une validation positive fige les références des fichiers utilisés
+    (balance générale + fichiers complémentaires actifs) : tout remplacement
+    ultérieur d'un de ces fichiers invalide automatiquement cette validation
+    (voir verrou_ipe_service.invalider_si_fichier_remplace, appelé depuis les
+    services d'import).
     """
+    etat_actuel = verrou_ipe_service.lire_etat_ipe(mission_id)
+
+    if validation_identique_trop_recente(etat_actuel.get("historique") or [], validee):
+        raise ValueError(
+            "Validation refusée : une "
+            + ("validation" if validee else "invalidation")
+            + " identique vient déjà d'être enregistrée il y a moins de "
+            f"{DELAI_MIN_VALIDATIONS_IDENTIQUES_SECONDES:.0f} secondes (double clic ?)."
+        )
+
+    if validee:
+        modules_bloquants = modules_en_ecart_non_qualifie(etat_actuel.get("modules"))
+        if modules_bloquants:
+            raise ValueError(
+                "Validation refusée : module(s) en écart non qualifié : "
+                + ", ".join(modules_bloquants)
+                + ". Qualifiez chaque écart avant de valider "
+                "(TODO(spec: CAC-IPE-01) — valeurs de qualification non confirmées)."
+            )
+
     horodatage = datetime.now(timezone.utc).isoformat()
     updates: Dict[str, Any] = {"ipe.ipe_fiabilite_validee": validee}
     if validee:

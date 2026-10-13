@@ -41,26 +41,62 @@ const STATUT_MODULE_INFO = {
   non_evaluable: { label: 'Non évaluable', classe: 'bg-gray-100 text-gray-700' },
 }
 
+// "Validation manager" renommé en "Validation" tant que le rôle de qui
+// valide n'est pas vérifié (aucun contrôle d'accès sur les missions
+// aujourd'hui — CLAUDE.md, point de sécurité connu).
 const ACTION_HISTORIQUE_LABELS = {
   evaluation: 'Rapprochement lancé',
-  validation_manager: 'Validation manager',
+  validation_manager: 'Validation',
   invalidation_automatique: 'Invalidation automatique (fichier remplacé)',
   invalidation_detectee_a_la_lecture: 'Invalidation détectée (fichier modifié)',
+}
+
+// Colonne "Résultat" de l'historique : validé / invalidé / rapprochement /
+// invalidation automatique — distinct de la colonne "Action" ci-dessus.
+function resultatHistorique(entree) {
+  if (entree.action === 'evaluation') return 'Rapprochement'
+  if (entree.action === 'validation_manager') return entree.resultat?.validee ? 'Validé' : 'Invalidé'
+  if (entree.action === 'invalidation_automatique' || entree.action === 'invalidation_detectee_a_la_lecture') {
+    return 'Invalidation automatique'
+  }
+  return '—'
 }
 
 // Ordre d'affichage fixe pour la synthèse (IPE-1 puis IPE-2 puis IPE-3),
 // quel que soit l'ordre des clés dans la réponse API.
 const ORDRE_MODULES = ['ipe_1_clients', 'ipe_2_fournisseurs', 'ipe_3_immobilisations']
 
+// Longueur minimale du commentaire de validation/invalidation — même règle
+// que le backend (api/src/schemas/ipe_schemas.py), vérifiée ici aussi pour
+// un message immédiat sans aller-retour serveur.
+const LONGUEUR_MIN_COMMENTAIRE = 15
+
+// Utilisateur connecté, tel qu'enregistré côté frontend (sessionStorage,
+// même convention que clients/src/utils/uploadFile.js) : aucune
+// authentification sur les missions aujourd'hui (CLAUDE.md), donc "non
+// identifié" si absent — jamais inventé.
+function utilisateurConnecte() {
+  try {
+    const utilisateur = JSON.parse(sessionStorage.getItem('user') || 'null')
+    if (!utilisateur) return null
+    const nom = `${utilisateur.firstname || ''} ${utilisateur.lastname || ''}`.trim()
+    return nom || utilisateur._id || null
+  } catch {
+    return null
+  }
+}
+
 const ipeEtat = ref(null)
 const ipeEvaluationEnCours = ref(false)
 const ipeValidationEnCours = ref(false)
 
-// Confirmation obligatoire avant validation (avec commentaire, enregistré
-// dans l'historique) et avant invalidation (bouton secondaire).
+// Confirmation obligatoire avant validation ET avant invalidation, avec un
+// commentaire obligatoire d'au moins LONGUEUR_MIN_COMMENTAIRE caractères
+// dans les deux cas, enregistré dans l'historique.
 const confirmationValidationOuverte = ref(false)
 const commentaireValidation = ref('')
 const confirmationInvalidationOuverte = ref(false)
+const commentaireInvalidation = ref('')
 
 onMounted(async () => {
   await chargerEtatIpe()
@@ -124,13 +160,22 @@ function annulerValidation() {
 }
 
 async function confirmerValidation() {
-  if (!commentaireValidation.value.trim()) {
-    notyf.trigger('Un commentaire est requis pour valider la fiabilité IPE', 'warning')
+  // Garde contre le double clic : refus synchrone, avant même la mise à
+  // jour réactive de :disabled (docs/PLAN_verrou_IPE.md).
+  if (ipeValidationEnCours.value) return
+
+  const commentaire = commentaireValidation.value.trim()
+  if (commentaire.length < LONGUEUR_MIN_COMMENTAIRE) {
+    notyf.trigger(
+      `Le commentaire est obligatoire et doit contenir au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères (${commentaire.length} actuellement).`,
+      'warning'
+    )
     return
   }
+
   ipeValidationEnCours.value = true
   try {
-    ipeEtat.value = await validerFiabiliteIpe(props.missionId, true, commentaireValidation.value.trim())
+    ipeEtat.value = await validerFiabiliteIpe(props.missionId, true, commentaire, utilisateurConnecte())
     notyf.trigger('Fiabilité IPE validée', 'success')
     confirmationValidationOuverte.value = false
   } catch (e) {
@@ -141,6 +186,7 @@ async function confirmerValidation() {
 }
 
 function ouvrirConfirmationInvalidation() {
+  commentaireInvalidation.value = ''
   confirmationInvalidationOuverte.value = true
 }
 
@@ -149,9 +195,22 @@ function annulerInvalidation() {
 }
 
 async function confirmerInvalidation() {
+  // Garde contre le double clic : refus synchrone, avant même la mise à
+  // jour réactive de :disabled (docs/PLAN_verrou_IPE.md).
+  if (ipeValidationEnCours.value) return
+
+  const commentaire = commentaireInvalidation.value.trim()
+  if (commentaire.length < LONGUEUR_MIN_COMMENTAIRE) {
+    notyf.trigger(
+      `Le commentaire est obligatoire et doit contenir au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères (${commentaire.length} actuellement).`,
+      'warning'
+    )
+    return
+  }
+
   ipeValidationEnCours.value = true
   try {
-    ipeEtat.value = await validerFiabiliteIpe(props.missionId, false)
+    ipeEtat.value = await validerFiabiliteIpe(props.missionId, false, commentaire, utilisateurConnecte())
     notyf.trigger('Fiabilité IPE invalidée', 'success')
     confirmationInvalidationOuverte.value = false
   } catch (e) {
@@ -298,9 +357,15 @@ function back() {
           </div>
         </div>
 
-        <!-- Confirmation d'invalidation -->
+        <!-- Confirmation d'invalidation (commentaire obligatoire, enregistré dans l'historique) -->
         <div v-if="confirmationInvalidationOuverte" class="border border-gray-300 bg-gray-50 rounded-lg p-4 flex flex-col gap-2">
           <p class="text-sm font-semibold text-gray-700">Confirmer l'invalidation de la fiabilité IPE ?</p>
+          <textarea
+            v-model="commentaireInvalidation"
+            rows="2"
+            class="text-sm border border-gray-300 rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+            placeholder="Commentaire (obligatoire, enregistré dans l'historique)"
+          ></textarea>
           <div class="flex gap-3">
             <button
               class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition disabled:opacity-50"
@@ -394,6 +459,8 @@ function back() {
             <tr>
               <th class="px-3">Date</th>
               <th class="px-3">Action</th>
+              <th class="px-3">Utilisateur</th>
+              <th class="px-3">Résultat</th>
               <th class="px-3">Commentaire</th>
             </tr>
           </thead>
@@ -401,6 +468,8 @@ function back() {
             <tr v-for="(entree, i) in historiqueRecent" :key="i" class="h-12 border-b align-top">
               <td class="px-3 py-2 whitespace-nowrap">{{ formatHorodatage(entree.horodatage) }}</td>
               <td class="px-3 py-2">{{ ACTION_HISTORIQUE_LABELS[entree.action] || entree.action }}</td>
+              <td class="px-3 py-2">{{ entree.utilisateur_id || 'Non identifié' }}</td>
+              <td class="px-3 py-2">{{ resultatHistorique(entree) }}</td>
               <td class="px-3 py-2 text-gray-600">{{ entree.commentaire || '—' }}</td>
             </tr>
           </tbody>

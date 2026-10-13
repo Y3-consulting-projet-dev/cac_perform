@@ -8,6 +8,8 @@ Excel nécessaire : rapprocher_famille travaille sur des lignes déjà
 parsées). Seule la fonction pure est testée ici ; evaluer_ipe/valider_fiabilite
 (accès Mongo) ne le sont pas, comme pour les autres services de ce lot.
 """
+from datetime import datetime, timedelta, timezone
+
 from src.services import rapprochement_ipe_service as service
 
 
@@ -347,3 +349,101 @@ def test_convention_de_signe_coherente_cote_crediteur():
     lignes_aux = [{"numero_compte": "4011AAA", "solde_final_debit": 0.0, "solde_final_credit": 500.0}]
     resultat = service.rapprocher_famille(lignes_bg, lignes_aux, "401", "numero_compte")
     assert resultat["collectifs"][0]["ecart"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# validation_identique_trop_recente — garde-fou double clic (refuse côté
+# backend deux validations/invalidations identiques à quelques secondes
+# d'intervalle), docs/PLAN_verrou_IPE.md.
+# ---------------------------------------------------------------------------
+
+def test_validation_identique_trop_recente_bloque_le_double_clic():
+    maintenant = datetime.now(timezone.utc)
+    historique = [{
+        "horodatage": (maintenant - timedelta(seconds=2)).isoformat(),
+        "action": "validation_manager",
+        "resultat": {"validee": True},
+    }]
+    assert service.validation_identique_trop_recente(historique, True, maintenant) is True
+
+
+def test_validation_identique_trop_recente_laisse_passer_apres_le_delai():
+    maintenant = datetime.now(timezone.utc)
+    historique = [{
+        "horodatage": (maintenant - timedelta(seconds=30)).isoformat(),
+        "action": "validation_manager",
+        "resultat": {"validee": True},
+    }]
+    assert service.validation_identique_trop_recente(historique, True, maintenant) is False
+
+
+def test_validation_identique_trop_recente_laisse_passer_une_valeur_differente():
+    """Valider puis invalider juste après est une décision distincte, jamais bloquée."""
+    maintenant = datetime.now(timezone.utc)
+    historique = [{
+        "horodatage": (maintenant - timedelta(seconds=1)).isoformat(),
+        "action": "validation_manager",
+        "resultat": {"validee": True},
+    }]
+    assert service.validation_identique_trop_recente(historique, False, maintenant) is False
+
+
+def test_validation_identique_trop_recente_ignore_une_autre_action():
+    maintenant = datetime.now(timezone.utc)
+    historique = [{
+        "horodatage": (maintenant - timedelta(seconds=1)).isoformat(),
+        "action": "evaluation",
+        "resultat": {"ipe_1_clients": "ok"},
+    }]
+    assert service.validation_identique_trop_recente(historique, True, maintenant) is False
+
+
+def test_validation_identique_trop_recente_historique_vide():
+    assert service.validation_identique_trop_recente([], True) is False
+
+
+# ---------------------------------------------------------------------------
+# modules_en_ecart_non_qualifie — refuse la validation tant qu'un module est
+# en écart réel sans qualification ; "non_evaluable" n'est jamais bloquant
+# (TODO(spec: CAC-IPE-01)), docs/PLAN_verrou_IPE.md.
+# ---------------------------------------------------------------------------
+
+def test_modules_en_ecart_non_qualifie_detecte_un_ecart_sans_etiquette():
+    modules = {
+        "ipe_2_fournisseurs": {
+            "statut": "ecart",
+            "derniere_evaluation": {"qualification": {"etiquette": None}},
+        },
+    }
+    assert service.modules_en_ecart_non_qualifie(modules) == ["ipe_2_fournisseurs"]
+
+
+def test_modules_en_ecart_non_qualifie_laisse_passer_un_ecart_qualifie():
+    modules = {
+        "ipe_2_fournisseurs": {
+            "statut": "ecart",
+            "derniere_evaluation": {"qualification": {"etiquette": "accepte"}},
+        },
+    }
+    assert service.modules_en_ecart_non_qualifie(modules) == []
+
+
+def test_modules_en_ecart_non_qualifie_ignore_les_modules_non_evaluables():
+    """Un module "non_evaluable" (fichier absent, ou aucun collectif) ne bloque jamais la validation."""
+    modules = {
+        "ipe_1_clients": {
+            "statut": "non_evaluable",
+            "derniere_evaluation": {"qualification": {"etiquette": None}},
+        },
+    }
+    assert service.modules_en_ecart_non_qualifie(modules) == []
+
+
+def test_modules_en_ecart_non_qualifie_ignore_les_modules_ok():
+    modules = {"ipe_3_immobilisations": {"statut": "ok", "derniere_evaluation": {"qualification": {}}}}
+    assert service.modules_en_ecart_non_qualifie(modules) == []
+
+
+def test_modules_en_ecart_non_qualifie_sans_modules():
+    assert service.modules_en_ecart_non_qualifie(None) == []
+    assert service.modules_en_ecart_non_qualifie({}) == []
