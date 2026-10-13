@@ -3,12 +3,17 @@ Rapprochements IPE-1/2/3 (clients↔411, fournisseurs↔40x, immobilisations↔2
 et validation manager de la fiabilité IPE. Nouveau périmètre V2 — voir
 docs/PLAN_verrou_IPE.md §4 et §5.
 
-Point clé (corrigé après relecture du plan) : la balance générale ne contient
-QUE des comptes collectifs (ex. une ligne "411", ou plusieurs collectifs plus
-fins "401"/"402"/"403"), jamais le détail par tiers. Le rapprochement se fait
+IPE-1 et IPE-2 (tiers) : la balance générale ne contient QUE des comptes
+collectifs (ex. une ligne "411", ou plusieurs collectifs plus fins
+"401"/"402"/"403"), jamais le détail par tiers. Le rapprochement se fait
 donc collectif par collectif : solde du collectif (balance générale) comparé
 à la somme des tiers de l'auxiliaire qui s'y rattachent — jamais une simple
 somme globale balance-générale-contre-tout-l'auxiliaire.
+
+IPE-3 (immobilisations) : le fichier liste des BIENS, pas des tiers —
+valeurs brutes contre comptes 20 à 27, amortissements cumulés contre
+comptes 28, par compte ou par total, et contrôle de la valeur nette bien par
+bien (voir rapprocher_immobilisations).
 
 Lecture de la balance générale : les documents Balance de la V1
 (Mission.creation_balance(), api/src/model.py) n'ont ni mission_id ni type —
@@ -24,9 +29,10 @@ model.py.
 TODO(spec: CAC-IPE-01 §2) — explicitement non inventés ici, voir le détail
 dans chaque fonction : rattachement tiers↔collectif par préfixe le plus long
 (hypothèse de travail), tolérance d'écart (0 par défaut), convention de signe
-harmonisée entre balance générale et auxiliaire, périmètre exact d'IPE-3
-(inclusion ou non des comptes 28x/29x), traitement des orphelins, conditions
-de passage à TRUE de ipe_fiabilite_validee.
+harmonisée entre balance générale et auxiliaire, traitement des orphelins,
+conditions de passage à TRUE de ipe_fiabilite_validee. Pour IPE-3 :
+TODO(spec: CAC-IPE-01 §3) — granularité de la comparaison, tolérance,
+prise en compte des dépréciations (29).
 """
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -43,16 +49,25 @@ from src.services import verrou_ipe_service
 COLLECTION_MISSION = "Mission1"
 COLLECTION_BALANCE = "Balance"
 
-# Famille IPE -> (racine du compte collectif ciblé, type de fichier auxiliaire
-# correspondant dans la collection Balance). Voir CLAUDE.md pour IPE-1/2/3.
+# Famille IPE -> type de fichier complémentaire correspondant dans la
+# collection Balance, et nature du rapprochement. Voir CLAUDE.md pour IPE-1/2/3.
+# - "tiers" (IPE-1, IPE-2) : compte collectif par compte collectif, tiers de
+#   l'auxiliaire rattachés par préfixe (rapprocher_famille) ;
+# - "immobilisations" (IPE-3) : un fichier de BIENS, sans tiers — valeurs
+#   brutes contre comptes 20 à 27, amortissements cumulés contre comptes 28
+#   (rapprocher_immobilisations).
 FAMILLES_IPE: Dict[str, Dict[str, str]] = {
-    "ipe_1_clients": {"racine_collectif": "411", "type_auxiliaire": "auxiliaire_client"},
-    "ipe_2_fournisseurs": {"racine_collectif": "40", "type_auxiliaire": "auxiliaire_fournisseur"},
-    # TODO(spec: CAC-IPE-01 §2) — périmètre exact de "2xxx" : inclut-on les
-    # comptes d'amortissement/provision (28x/29x) ? Pris au sens large de
-    # CLAUDE.md pour l'instant (racine "2" seule).
-    "ipe_3_immobilisations": {"racine_collectif": "2", "type_auxiliaire": "immobilisations"},
+    "ipe_1_clients": {"nature": "tiers", "racine_collectif": "411", "type_auxiliaire": "auxiliaire_client"},
+    "ipe_2_fournisseurs": {"nature": "tiers", "racine_collectif": "40", "type_auxiliaire": "auxiliaire_fournisseur"},
+    "ipe_3_immobilisations": {"nature": "immobilisations", "type_auxiliaire": "immobilisations"},
 }
+
+# IPE-3 : comptes de la balance générale comparés au fichier des
+# immobilisations. Les dépréciations (29) ne sont PAS prises en compte —
+# TODO(spec: CAC-IPE-01 §3) : granularité de la comparaison, tolérance,
+# prise en compte des dépréciations (29).
+RACINES_IMMOBILISATIONS_BRUTES = ("20", "21", "22", "23", "24", "25", "26", "27")
+RACINE_AMORTISSEMENTS = "28"
 
 
 def _solde_ligne_balance_generale(ligne: Dict[str, Any]) -> Optional[float]:
@@ -190,6 +205,187 @@ def rapprocher_famille(
     }
 
 
+# ---------------------------------------------------------------------------
+# IPE-3 — immobilisations : un fichier de biens, pas de tiers
+# ---------------------------------------------------------------------------
+
+def _compte_du_bien(bien: Dict[str, Any]) -> Optional[str]:
+    """
+    Compte d'immobilisation d'un bien : `numero_compte` s'il est renseigné,
+    sinon la catégorie si c'est elle-même un numéro de compte de classe 2.
+    Une catégorie en toutes lettres (« Matériel de transport ») n'est pas
+    traduite en compte — TODO(spec: CAC-IPE-01 §3) : table de
+    correspondance catégorie -> compte non fournie.
+    """
+    numero = str(bien.get("numero_compte") or "").strip()
+    if numero:
+        return numero
+    categorie = str(bien.get("categorie") or "").strip()
+    if categorie[:2].isdigit() and categorie.startswith("2"):
+        return categorie
+    return None
+
+
+def _identifiant_bien(bien: Dict[str, Any]) -> str:
+    return str(bien.get("code_bien") or bien.get("libelle_bien") or "bien sans code").strip()
+
+
+def _ligne_comparaison(numero_compte, nature, solde_bg, montant_fichier, nb_biens, tolerance) -> Dict[str, Any]:
+    ecart = solde_bg - montant_fichier
+    return {
+        "numero_compte": numero_compte,
+        "nature": nature,
+        "solde_balance_generale": solde_bg,
+        "montant_fichier": montant_fichier,
+        "nb_biens": nb_biens,
+        "ecart": ecart,
+        "ok": abs(ecart) <= tolerance,
+    }
+
+
+def rapprocher_immobilisations(
+    lignes_balance_generale: List[Dict[str, Any]],
+    biens: List[Dict[str, Any]],
+    tolerance: float = 0.0,
+) -> Dict[str, Any]:
+    """
+    IPE-3 (docs/PLAN_verrou_IPE.md) : compare le fichier des immobilisations
+    (un bien par ligne : valeur brute, amortissements cumulés, valeur nette)
+    à la balance générale :
+    - somme des valeurs brutes <-> comptes 20 à 27 (soldes débiteurs) ;
+    - somme des amortissements cumulés <-> comptes 28 (soldes créditeurs :
+      comparés en valeur positive, -solde_reel).
+    Par compte si chaque bien porte un compte (ou une catégorie qui en est
+    un), sinon par total. Par compte, l'amortissement d'un bien du compte
+    2xyz est rattaché au compte 28xyz (convention SYSCOHADA, préfixe le plus
+    long) — hypothèse de travail.
+
+    Contrôle complémentaire, bien par bien quand la valeur nette est fournie :
+    valeur nette = valeur brute − amortissements cumulés.
+
+    TODO(spec: CAC-IPE-01 §3) : granularité de la comparaison, tolérance
+    (0 par défaut), prise en compte des dépréciations (comptes 29, exclues
+    ici).
+    """
+    def numero(ligne):
+        return str(ligne.get("numero_compte") or "").strip()
+
+    lignes_brut_bg = [l for l in lignes_balance_generale if numero(l).startswith(RACINES_IMMOBILISATIONS_BRUTES)]
+    lignes_amort_bg = [l for l in lignes_balance_generale if numero(l).startswith(RACINE_AMORTISSEMENTS)]
+
+    biens_calculables = [b for b in biens if isinstance(b.get("valeur_brute"), (int, float))]
+    lignes_non_calculables = [
+        {"bien": _identifiant_bien(b)} for b in biens if not isinstance(b.get("valeur_brute"), (int, float))
+    ]
+
+    def amortissement(bien):
+        # Cellule vide = bien non amorti (ex. terrain) : 0.
+        return bien.get("amortissements_cumules") or 0
+
+    total_bg_brut = sum((_solde_ligne_balance_generale(l) or 0) for l in lignes_brut_bg)
+    total_bg_amort = -sum((_solde_ligne_balance_generale(l) or 0) for l in lignes_amort_bg)
+    total_fichier_brut = sum(b["valeur_brute"] for b in biens_calculables)
+    total_fichier_amort = sum(amortissement(b) for b in biens_calculables)
+
+    totaux = {
+        "valeur_brute": _ligne_comparaison("20-27", "valeur_brute", total_bg_brut, total_fichier_brut,
+                                           len(biens_calculables), tolerance),
+        "amortissements": _ligne_comparaison("28", "amortissements", total_bg_amort, total_fichier_amort,
+                                             len(biens_calculables), tolerance),
+    }
+
+    par_compte = bool(biens_calculables) and all(_compte_du_bien(b) for b in biens_calculables)
+    biens_sans_compte_correspondant: List[str] = []
+    biens_amortis_sans_compte_amortissement: List[str] = []
+
+    if par_compte:
+        comptes_brut = sorted({normaliser_compte_collectif(numero(l)) for l in lignes_brut_bg}, key=len, reverse=True)
+        comptes_amort = sorted({normaliser_compte_collectif(numero(l)) for l in lignes_amort_bg}, key=len, reverse=True)
+        biens_par_compte_brut: Dict[str, List[Dict[str, Any]]] = {c: [] for c in comptes_brut}
+        biens_par_compte_amort: Dict[str, List[Dict[str, Any]]] = {c: [] for c in comptes_amort}
+
+        for bien in biens_calculables:
+            compte = normaliser_compte_collectif(_compte_du_bien(bien))
+            compte_brut = next((c for c in comptes_brut if compte.startswith(c)), None)
+            if compte_brut is None:
+                biens_sans_compte_correspondant.append(_identifiant_bien(bien))
+            else:
+                biens_par_compte_brut[compte_brut].append(bien)
+
+            compte_amort_attendu = RACINE_AMORTISSEMENTS + compte[1:]
+            compte_amort = next((c for c in comptes_amort if compte_amort_attendu.startswith(c)), None)
+            if compte_amort is not None:
+                biens_par_compte_amort[compte_amort].append(bien)
+            elif amortissement(bien):
+                biens_amortis_sans_compte_amortissement.append(_identifiant_bien(bien))
+
+        lignes = []
+        for compte in sorted(comptes_brut):
+            solde_bg = sum((_solde_ligne_balance_generale(l) or 0) for l in lignes_brut_bg
+                           if normaliser_compte_collectif(numero(l)) == compte)
+            biens_compte = biens_par_compte_brut[compte]
+            lignes.append(_ligne_comparaison(compte, "valeur_brute", solde_bg,
+                                             sum(b["valeur_brute"] for b in biens_compte), len(biens_compte), tolerance))
+        for compte in sorted(comptes_amort):
+            solde_bg = -sum((_solde_ligne_balance_generale(l) or 0) for l in lignes_amort_bg
+                            if normaliser_compte_collectif(numero(l)) == compte)
+            biens_compte = biens_par_compte_amort[compte]
+            lignes.append(_ligne_comparaison(compte, "amortissements", solde_bg,
+                                             sum(amortissement(b) for b in biens_compte), len(biens_compte), tolerance))
+    else:
+        lignes = [totaux["valeur_brute"], totaux["amortissements"]]
+
+    # Valeur nette = valeur brute − amortissements, bien par bien.
+    biens_avec_vnc = [b for b in biens_calculables if isinstance(b.get("valeur_nette"), (int, float))]
+    biens_en_ecart_vnc = []
+    for bien in biens_avec_vnc:
+        ecart_vnc = bien["valeur_nette"] - (bien["valeur_brute"] - amortissement(bien))
+        if abs(ecart_vnc) > tolerance:
+            biens_en_ecart_vnc.append({
+                "bien": _identifiant_bien(bien),
+                "valeur_brute": bien["valeur_brute"],
+                "amortissements_cumules": amortissement(bien),
+                "valeur_nette": bien["valeur_nette"],
+                "ecart": ecart_vnc,
+            })
+    controle_vnc = {
+        "applicable": bool(biens_avec_vnc),
+        "nb_biens_controles": len(biens_avec_vnc),
+        "biens_en_ecart": biens_en_ecart_vnc,
+    }
+    if biens_avec_vnc:
+        # Ligne qualifiable comme les autres (circuit de revue) si le fichier est incohérent.
+        lignes.append({
+            "numero_compte": "VNC",
+            "nature": "controle_vnc",
+            "solde_balance_generale": None,
+            "montant_fichier": None,
+            "nb_biens": len(biens_avec_vnc),
+            "ecart": sum(e["ecart"] for e in biens_en_ecart_vnc),
+            "ok": not biens_en_ecart_vnc,
+        })
+
+    ok = (
+        bool(lignes)
+        and all(l["ok"] for l in lignes)
+        and not biens_sans_compte_correspondant
+        and not biens_amortis_sans_compte_amortissement
+        and not lignes_non_calculables
+    )
+
+    return {
+        "tolerance": tolerance,
+        "mode_comparaison": "par_compte" if par_compte else "par_total",
+        "lignes": lignes,
+        "totaux": totaux,
+        "controle_vnc": controle_vnc,
+        "biens_sans_compte_correspondant": biens_sans_compte_correspondant,
+        "biens_amortis_sans_compte_amortissement": biens_amortis_sans_compte_amortissement,
+        "lignes_non_calculables": lignes_non_calculables,
+        "ok": ok,
+    }
+
+
 def resoudre_annee_auditee(annee_brute: Any) -> int:
     """Fonction pure : Mission1.annee_auditee -> int, ou échec clair si absente/invalide."""
     try:
@@ -294,6 +490,74 @@ def determiner_statut_module(resultat: Dict[str, Any], fichier_auxiliaire_absent
     return {"statut": "ecart", "motif_non_evaluable": None}
 
 
+def evaluer_module(
+    config: Dict[str, str],
+    lignes_balance_generale: List[Dict[str, Any]],
+    lignes_fichier: List[Dict[str, Any]],
+    horodatage: str,
+) -> Dict[str, Any]:
+    """
+    Fonction pure : statut + dernière évaluation d'un module IPE, selon sa
+    nature (tiers ou immobilisations). Aucun fichier complémentaire actif ->
+    "non_evaluable" (fichier absent), quelle que soit la nature.
+
+    `detail_collectifs` reste le nom de stockage des lignes de comparaison
+    pour tous les modules (lu par le circuit de revue pour la qualification
+    des écarts) : pour IPE-3, ce sont des comptes d'immobilisations ou
+    d'amortissements, jamais des tiers.
+    """
+    fichier_absent = not lignes_fichier
+
+    if config["nature"] == "immobilisations":
+        resultat = rapprocher_immobilisations(lignes_balance_generale, lignes_fichier)
+        lignes = resultat["lignes"]
+        decision_statut = determiner_statut_module({"collectifs": lignes, "ok": resultat["ok"]}, fichier_absent)
+        statut = decision_statut["statut"]
+        specifique = {
+            # Écart global affiché en synthèse : celui des valeurs brutes (total).
+            "ecart_global": None if fichier_absent else resultat["totaux"]["valeur_brute"]["ecart"],
+            "mode_comparaison": resultat["mode_comparaison"],
+            "totaux": resultat["totaux"],
+            "controle_vnc": resultat["controle_vnc"],
+            "biens_sans_compte_correspondant": resultat["biens_sans_compte_correspondant"],
+            "biens_amortis_sans_compte_amortissement": resultat["biens_amortis_sans_compte_amortissement"],
+        }
+    else:
+        resultat = rapprocher_famille(
+            lignes_balance_generale, lignes_fichier,
+            config["racine_collectif"], _cle_identifiante(lignes_fichier),
+        )
+        lignes = resultat["collectifs"]
+        decision_statut = determiner_statut_module(resultat, fichier_absent)
+        statut = decision_statut["statut"]
+        specifique = {
+            "ecart_global": sum(c["ecart"] for c in lignes) if lignes else None,
+            "tiers_orphelins": {
+                "balance_generale_seulement": resultat["orphelins_balance_generale"],
+                "auxiliaire_seulement": [o["numero"] for o in resultat["orphelins_auxiliaire"]],
+            },
+        }
+
+    return {
+        "statut": statut,
+        "derniere_evaluation": {
+            "date_evaluation": horodatage,
+            "nature": config["nature"],
+            "motif_non_evaluable": decision_statut["motif_non_evaluable"],
+            "detail_collectifs": lignes,
+            "lignes_non_calculables": resultat["lignes_non_calculables"],
+            **specifique,
+            "qualification": {
+                # TODO(spec: CAC-IPE-01) — valeurs possibles non confirmées.
+                "etiquette": None,
+                "statut": statut,
+                "commentaire": None,
+                "validation": {"validee": None, "par_utilisateur_id": None, "horodatage": None},
+            },
+        },
+    }
+
+
 def evaluer_ipe(mission_id: str) -> Dict[str, Any]:
     """
     Lance le rapprochement des 3 familles IPE pour une mission et enregistre
@@ -308,41 +572,9 @@ def evaluer_ipe(mission_id: str) -> Dict[str, Any]:
     resultat_par_module: Dict[str, str] = {}
 
     for module, config in FAMILLES_IPE.items():
-        lignes_auxiliaire = _lire_auxiliaire_actif(mission_id, config["type_auxiliaire"])
-        fichier_absent = not lignes_auxiliaire
-        cle_identifiante = _cle_identifiante(lignes_auxiliaire)
-        resultat = rapprocher_famille(
-            lignes_balance_generale, lignes_auxiliaire,
-            config["racine_collectif"], cle_identifiante,
-        )
-
-        decision_statut = determiner_statut_module(resultat, fichier_absent)
-        statut = decision_statut["statut"]
-
-        ecart_global = sum(c["ecart"] for c in resultat["collectifs"]) if resultat["collectifs"] else None
-
-        modules_doc[module] = {
-            "statut": statut,
-            "derniere_evaluation": {
-                "date_evaluation": horodatage,
-                "ecart_global": ecart_global,
-                "motif_non_evaluable": decision_statut["motif_non_evaluable"],
-                "tiers_orphelins": {
-                    "balance_generale_seulement": resultat["orphelins_balance_generale"],
-                    "auxiliaire_seulement": [o["numero"] for o in resultat["orphelins_auxiliaire"]],
-                },
-                "detail_collectifs": resultat["collectifs"],
-                "lignes_non_calculables": resultat["lignes_non_calculables"],
-                "qualification": {
-                    # TODO(spec: CAC-IPE-01) — valeurs possibles non confirmées.
-                    "etiquette": None,
-                    "statut": statut,
-                    "commentaire": None,
-                    "validation": {"validee": None, "par_utilisateur_id": None, "horodatage": None},
-                },
-            },
-        }
-        resultat_par_module[module] = statut
+        lignes_fichier = _lire_auxiliaire_actif(mission_id, config["type_auxiliaire"])
+        modules_doc[module] = evaluer_module(config, lignes_balance_generale, lignes_fichier, horodatage)
+        resultat_par_module[module] = modules_doc[module]["statut"]
 
     historique_entree = {
         "horodatage": horodatage,

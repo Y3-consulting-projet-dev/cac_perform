@@ -28,7 +28,10 @@ from src.services import fichiers_complementaires_service as fc_service
 from src.services import controle_preliminaire_service as cp_service
 from src.services import verrou_ipe_service
 
-CLES_IDENTIFIANTES_POSSIBLES = ("numero_compte", "numero")
+# Un fichier des immobilisations liste des BIENS : plusieurs biens partagent
+# le même compte, donc le code du bien passe en premier (sinon le contrôle
+# de doublons signalerait à tort chaque compte utilisé par plusieurs biens).
+CLES_IDENTIFIANTES_POSSIBLES = ("code_bien", "numero_compte", "numero")
 
 
 def _resoudre_mapping(fichier, id_client: str, logiciel_comptable: Optional[str],

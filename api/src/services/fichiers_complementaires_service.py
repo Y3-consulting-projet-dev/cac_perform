@@ -114,6 +114,19 @@ def _calculer_totaux(lignes: List[Dict[str, Any]]) -> Dict[str, Any]:
         return {"mode": "vide", "totaux": {}}
 
     premiere_ligne = lignes[0]
+
+    # Fichier des immobilisations : des biens, pas de débit/crédit — sommes
+    # des valeurs brutes, amortissements cumulés et valeurs nettes.
+    if "valeur_brute" in premiere_ligne:
+        return {
+            "mode": "immobilisations",
+            "totaux": {},
+            "sommes": {
+                champ: sum((l.get(champ) or 0) for l in lignes)
+                for champ in ("valeur_brute", "amortissements_cumules", "valeur_nette")
+                if champ in premiere_ligne
+            },
+        }
     paires_presentes = [
         (champ_debit, champ_credit, libelle)
         for champ_debit, champ_credit, libelle in PAIRES_DEBIT_CREDIT

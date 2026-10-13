@@ -28,7 +28,7 @@ const notyf = useNotyf()
 const LIBELLES_MODULE = {
   ipe_1_clients: 'IPE-1 — Clients (compte 411)',
   ipe_2_fournisseurs: 'IPE-2 — Fournisseurs (comptes 40x)',
-  ipe_3_immobilisations: 'IPE-3 — Immobilisations (comptes 2xxx)',
+  ipe_3_immobilisations: 'IPE-3 — Immobilisations (comptes 20 à 28)',
 }
 
 const IPE_STATUT_LABELS = {
@@ -76,6 +76,24 @@ const ACTION_HISTORIQUE_LABELS = {
   remarque_rouverte: 'Remarque rouverte',
   qualification_ecart: "Qualification d'un écart",
   justification_non_evaluable: 'Justification d\'un module non évaluable',
+}
+
+// IPE-3 compare des biens (valeur brute, amortissements, valeur nette) à la
+// balance générale — jamais des tiers (docs/PLAN_verrou_IPE.md).
+const NATURE_LIGNE_IMMO = {
+  valeur_brute: 'Valeur brute',
+  amortissements: 'Amortissements',
+  controle_vnc: 'Contrôle valeur nette',
+}
+
+function estImmobilisations(module) {
+  return module.derniere_evaluation?.nature === 'immobilisations'
+}
+
+function libelleLigneEcart(module, ligne) {
+  if (!estImmobilisations(module)) return `collectif ${ligne.numero_compte}`
+  if (ligne.nature === 'controle_vnc') return 'contrôle valeur nette (bien par bien)'
+  return `${NATURE_LIGNE_IMMO[ligne.nature] || ligne.nature} — compte ${ligne.numero_compte}`
 }
 
 const TYPE_REMARQUE_INFO = {
@@ -806,8 +824,8 @@ function back() {
             <div v-if="module.derniere_evaluation" class="mt-3 flex flex-col gap-3 text-gray-600">
               <p v-if="module.statut === 'non_evaluable'" class="italic text-gray-500">
                 Non évaluable — {{ module.derniere_evaluation.motif_non_evaluable === 'fichier_complementaire_absent'
-                  ? 'aucun fichier complémentaire actif pour ce module.'
-                  : 'aucun compte collectif trouvé dans la balance générale pour ce module.' }}
+                  ? (estImmobilisations(module) ? 'aucun fichier des immobilisations importé.' : 'aucun fichier complémentaire actif pour ce module.')
+                  : (estImmobilisations(module) ? 'aucun compte d\'immobilisation trouvé dans la balance générale.' : 'aucun compte collectif trouvé dans la balance générale pour ce module.') }}
               </p>
 
               <!-- Justification écrite exigée pour valider malgré un module non évaluable.
@@ -838,9 +856,76 @@ function back() {
                   </button>
                 </div>
               </div>
-              <p v-else class="text-sm">Écart global : <span class="font-mono font-semibold text-gray-800">{{ formatMontant(module.derniere_evaluation.ecart_global) }}</span></p>
+              <p v-else class="text-sm">
+                {{ estImmobilisations(module) ? 'Écart global sur les valeurs brutes' : 'Écart global' }} :
+                <span class="font-mono font-semibold text-gray-800">{{ formatMontant(module.derniere_evaluation.ecart_global) }}</span>
+                <span v-if="estImmobilisations(module)" class="text-gray-500">
+                  — comparaison {{ module.derniere_evaluation.mode_comparaison === 'par_compte' ? 'par compte' : 'par total (aucun compte par bien dans le fichier)' }}
+                </span>
+              </p>
 
-              <table v-if="module.derniere_evaluation.detail_collectifs?.length" class="min-w-full text-sm">
+              <!-- IPE-3 : biens vs comptes 20 à 27 (valeur brute) et 28 (amortissements).
+                   Granularité, tolérance, dépréciations (29) : TODO(spec: CAC-IPE-01 §3). -->
+              <table v-if="estImmobilisations(module) && module.derniere_evaluation.detail_collectifs?.length" class="min-w-full text-sm">
+                <thead class="bg-blue-ycube text-white h-12 text-left">
+                  <tr>
+                    <th class="px-3">Compte</th>
+                    <th class="px-3">Nature</th>
+                    <th class="px-3 text-right">Balance générale</th>
+                    <th class="px-3 text-right">Fichier des immobilisations</th>
+                    <th class="px-3 text-right">Biens</th>
+                    <th class="px-3 text-right">Écart</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="c in module.derniere_evaluation.detail_collectifs"
+                    :key="c.numero_compte"
+                    class="h-12 border-b"
+                    :class="module.statut !== 'ecart' ? 'text-gray-500' : (c.ok ? 'text-green-700' : 'text-red-700')"
+                  >
+                    <td class="px-3">{{ c.nature === 'controle_vnc' ? '—' : c.numero_compte }}</td>
+                    <td class="px-3">{{ NATURE_LIGNE_IMMO[c.nature] || c.nature }}</td>
+                    <td class="px-3 text-right font-mono">{{ c.solde_balance_generale === null ? '—' : formatMontant(c.solde_balance_generale) }}</td>
+                    <td class="px-3 text-right font-mono">{{ c.montant_fichier === null ? '—' : formatMontant(c.montant_fichier) }}</td>
+                    <td class="px-3 text-right">{{ c.nb_biens }}</td>
+                    <td class="px-3 text-right font-mono">{{ formatMontant(c.ecart) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-if="estImmobilisations(module) && module.statut !== 'non_evaluable'" class="flex flex-col gap-1 text-sm">
+                <p v-if="module.derniere_evaluation.mode_comparaison === 'par_compte' && module.derniere_evaluation.totaux">
+                  Totaux — valeurs brutes : balance générale
+                  <span class="font-mono">{{ formatMontant(module.derniere_evaluation.totaux.valeur_brute.solde_balance_generale) }}</span>,
+                  fichier <span class="font-mono">{{ formatMontant(module.derniere_evaluation.totaux.valeur_brute.montant_fichier) }}</span> ;
+                  amortissements : balance générale
+                  <span class="font-mono">{{ formatMontant(module.derniere_evaluation.totaux.amortissements.solde_balance_generale) }}</span>,
+                  fichier <span class="font-mono">{{ formatMontant(module.derniere_evaluation.totaux.amortissements.montant_fichier) }}</span>.
+                </p>
+                <p v-if="!module.derniere_evaluation.controle_vnc?.applicable" class="text-gray-500">
+                  Contrôle de la valeur nette non effectué : le fichier ne fournit pas de valeur nette.
+                </p>
+                <div v-else-if="module.derniere_evaluation.controle_vnc.biens_en_ecart.length" class="text-red-700">
+                  Valeur nette ≠ valeur brute − amortissements pour
+                  {{ module.derniere_evaluation.controle_vnc.biens_en_ecart.length }} bien(s) sur
+                  {{ module.derniere_evaluation.controle_vnc.nb_biens_controles }} :
+                  {{ module.derniere_evaluation.controle_vnc.biens_en_ecart.map((e) => `${e.bien} (${formatMontant(e.ecart)})`).join(', ') }}
+                </div>
+                <p v-else class="text-green-700">
+                  Valeur nette cohérente pour les {{ module.derniere_evaluation.controle_vnc.nb_biens_controles }} bien(s) contrôlé(s).
+                </p>
+                <p v-if="module.derniere_evaluation.biens_sans_compte_correspondant?.length" class="text-red-700">
+                  Biens dont le compte n'existe pas dans la balance générale :
+                  {{ module.derniere_evaluation.biens_sans_compte_correspondant.join(', ') }}
+                </p>
+                <p v-if="module.derniere_evaluation.biens_amortis_sans_compte_amortissement?.length" class="text-red-700">
+                  Biens amortis sans compte d'amortissement (28) correspondant :
+                  {{ module.derniere_evaluation.biens_amortis_sans_compte_amortissement.join(', ') }}
+                </p>
+                <p class="text-gray-500">Dépréciations (comptes 29) non prises en compte — TODO(spec: CAC-IPE-01 §3).</p>
+              </div>
+
+              <table v-if="!estImmobilisations(module) && module.derniere_evaluation.detail_collectifs?.length" class="min-w-full text-sm">
                 <thead class="bg-blue-ycube text-white h-12 text-left">
                   <tr>
                     <th class="px-3">Compte collectif</th>
@@ -865,7 +950,7 @@ function back() {
                   </tr>
                 </tbody>
               </table>
-              <p v-else-if="module.statut !== 'non_evaluable'" class="italic">Aucun compte collectif trouvé dans la balance générale pour ce module.</p>
+              <p v-else-if="!estImmobilisations(module) && module.statut !== 'non_evaluable'" class="italic">Aucun compte collectif trouvé dans la balance générale pour ce module.</p>
 
               <!-- Un bloc par écart réel (compte collectif) : qualification (cause +
                    commentaire, exigée pour soumettre et valider) puis remarques de
@@ -877,7 +962,7 @@ function back() {
                 class="border border-gray-200 rounded-lg p-3 flex flex-col gap-3 text-xs"
               >
                 <div class="flex items-center justify-between flex-wrap gap-2">
-                  <p class="font-semibold text-gray-700 text-sm">Écart — collectif {{ c.numero_compte }}</p>
+                  <p class="font-semibold text-gray-700 text-sm">Écart — {{ libelleLigneEcart(module, c) }}</p>
                   <span
                     class="px-3 py-1 rounded-full text-xs font-semibold"
                     :class="qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
@@ -999,7 +1084,8 @@ function back() {
                 {{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.join(', ') }}
               </p>
               <p v-if="module.derniere_evaluation.lignes_non_calculables?.length" class="text-orange-600 text-sm">
-                {{ module.derniere_evaluation.lignes_non_calculables.length }} ligne(s) auxiliaire(s) sans montant exploitable (mapping incomplet).
+                {{ module.derniere_evaluation.lignes_non_calculables.length }}
+                {{ estImmobilisations(module) ? 'bien(s) sans valeur brute exploitable' : 'ligne(s) auxiliaire(s) sans montant exploitable' }} (mapping incomplet).
               </p>
             </div>
           </div>

@@ -65,6 +65,23 @@ PAIRES_DEBIT_CREDIT = [
     ("solde_final_debit", "solde_final_credit"),
 ]
 
+# Format « fichier des immobilisations » : un bien par ligne (pas des tiers),
+# reconnu par le NOM des en-têtes. Noms acceptés pour chaque champ cible =
+# hypothèse de travail, TODO(spec: CAC-IPE-01 §3) — colonnes exactes d'un
+# fichier d'immobilisations non confirmées ; un mapping explicite ou
+# mémorisé reste toujours possible pour un autre libellé de colonne.
+ENTETES_IMMOBILISATIONS: Dict[str, Tuple[str, ...]] = {
+    "code_bien": ("CODE_BIEN", "CODE", "NUMERO_BIEN", "REFERENCE", "N°_BIEN"),
+    "libelle_bien": ("LIBELLE_BIEN", "LIBELLE", "DESIGNATION", "INTITULE"),
+    "numero_compte": ("NUMERO_COMPTE", "COMPTE", "N°_COMPTE", "COMPTE_IMMOBILISATION"),
+    "categorie": ("CATEGORIE", "FAMILLE"),
+    "valeur_brute": ("VALEUR_BRUTE", "VALEUR_D'ORIGINE", "VALEUR_ORIGINE", "VALEUR_D_ORIGINE", "VALEUR_ACQUISITION"),
+    "amortissements_cumules": (
+        "AMORTISSEMENTS_CUMULES", "AMORTISSEMENT_CUMULE", "CUMUL_AMORTISSEMENTS", "AMORTISSEMENTS",
+    ),
+    "valeur_nette": ("VALEUR_NETTE", "VALEUR_NETTE_COMPTABLE", "VNC"),
+}
+
 # Champs lus comme nombre (le reste est conservé tel quel, en texte).
 CHAMPS_NUMERIQUES = {
     "debit_initial", "credit_initial", "debit_mvt", "credit_mvt", "debit_fin", "credit_fin",
@@ -73,6 +90,7 @@ CHAMPS_NUMERIQUES = {
     "mouvement_debit", "mouvement_credit",
     "solde_mouvement_debit", "solde_mouvement_credit",
     "solde_final_debit", "solde_final_credit",
+    "valeur_brute", "amortissements_cumules", "valeur_nette",
 }
 
 
@@ -153,6 +171,26 @@ def _detecter_format_balance_auxiliaire_y3(colonnes_detectees: List[str]) -> Opt
     return mapping if (a_identification and a_une_paire) else None
 
 
+def _detecter_format_immobilisations(colonnes_detectees: List[str]) -> Optional[Dict[str, str]]:
+    """
+    Reconnaît un fichier des immobilisations par le NOM des en-têtes
+    (ENTETES_IMMOBILISATIONS). Exige au moins la valeur brute et les
+    amortissements cumulés ; sinon None.
+    """
+    par_entete_normalisee = {_normaliser_entete(c): c for c in colonnes_detectees}
+
+    mapping: Dict[str, str] = {}
+    for champ, noms_acceptes in ENTETES_IMMOBILISATIONS.items():
+        for nom in noms_acceptes:
+            if nom in par_entete_normalisee:
+                mapping[champ] = par_entete_normalisee[nom]
+                break
+
+    if "valeur_brute" in mapping and "amortissements_cumules" in mapping:
+        return mapping
+    return None
+
+
 def generer_apercu_mapping(fichier) -> Dict[str, Any]:
     """
     Lit un fichier Excel et propose un mapping de colonnes par défaut.
@@ -178,6 +216,17 @@ def generer_apercu_mapping(fichier) -> Dict[str, Any]:
             "ligne_entete": ligne_entete,
             "format_propose": "balance_auxiliaire_detaillee",
             "mapping_propose": mapping_y3,
+            "nb_lignes_detectees": nb_lignes_detectees,
+        }
+
+    mapping_immobilisations = _detecter_format_immobilisations(colonnes_detectees)
+    if mapping_immobilisations:
+        return {
+            "colonnes_detectees": colonnes_detectees,
+            "feuille": sheet.title,
+            "ligne_entete": ligne_entete,
+            "format_propose": "immobilisations",
+            "mapping_propose": mapping_immobilisations,
             "nb_lignes_detectees": nb_lignes_detectees,
         }
 
