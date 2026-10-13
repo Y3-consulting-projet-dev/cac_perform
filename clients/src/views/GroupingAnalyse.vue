@@ -8,6 +8,7 @@ import { useNotyf } from '@/composables/useNotyf';
 import * as XLSX from 'xlsx';
 import { obtenirEtatIpe } from '@/api/ipe.api';
 import FiabiliteIpeView from '@/views/FiabiliteIpeView.vue';
+import FichiersComplementairesView from '@/views/FichiersComplementairesView.vue';
 
 
 const axios = inject('axios');
@@ -603,7 +604,8 @@ const stepKeys = computed(() => new Set(
 // Écrans affichés dans la zone principale, sous la barre latérale, mais HORS
 // des 11 étapes (ni progression, ni workflowPhases) — docs/PLAN_verrou_IPE.md §6.
 const ECRAN_FIABILITE_IPE = 'fiabilite_ipe';
-const ECRANS_HORS_ETAPES = new Set([ECRAN_FIABILITE_IPE]);
+const ECRAN_FICHIERS_COMPLEMENTAIRES = 'fichiers_complementaires';
+const ECRANS_HORS_ETAPES = new Set([ECRAN_FIABILITE_IPE, ECRAN_FICHIERS_COMPLEMENTAIRES]);
 
 function isValidStepKey(key) {
   return typeof key === 'string' && (stepKeys.value.has(key) || ECRANS_HORS_ETAPES.has(key));
@@ -992,6 +994,11 @@ function showComponent(type, options = {}) {
       integre: true,
       onEtatIpe: (etat) => { ipeEtat.value = etat; },
     });
+    return;
+  }
+
+  if (type === ECRAN_FICHIERS_COMPLEMENTAIRES) {
+    renderComponent.value = h(FichiersComplementairesView, { missionId: props.missionId, integre: true });
     return;
   }
 
@@ -2436,9 +2443,11 @@ function formatAmount(value) {
 
   <!-- Écran de données (pas une étape d'audit) : volontairement hors de la
        barre de progression ci-dessous. Voir docs/PLAN_import_refonte.md. -->
+  <!-- Affiché dans la zone principale : la barre latérale reste visible. -->
   <button
-    class="mb-4 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm flex items-center gap-2 transition"
-    @click="router.push(`/grouping-analyse/${props.missionId}/fichiers-complementaires`)">
+    class="mb-4 px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition"
+    :class="componentKey === ECRAN_FICHIERS_COMPLEMENTAIRES ? 'bg-white text-blue-ycube font-semibold' : 'bg-white/10 hover:bg-white/20'"
+    @click="showComponent(ECRAN_FICHIERS_COMPLEMENTAIRES)">
     <i class="fa-solid fa-folder-open"></i> Fichiers complémentaires
   </button>
 

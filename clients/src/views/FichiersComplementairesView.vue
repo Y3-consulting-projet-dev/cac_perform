@@ -26,7 +26,9 @@ import {
 } from '@/api/imports.api'
 import { formatDateHeureFr } from '@/utils/formatDate'
 
-const props = defineProps(['missionId'])
+// `integre` : écran affiché dans la zone principale de GroupingAnalyse.vue,
+// sous la barre latérale bleue (qui porte déjà le « Retour »).
+const props = defineProps({ missionId: String, integre: Boolean })
 const notyf = useNotyf()
 
 const LIBELLES_TYPE = {
@@ -215,9 +217,10 @@ function back() {
   <div class="h-full w-full overflow-y-auto bg-[#f5f7fa]">
     <!-- En-tête de page — même recette que ClientSpace.vue (charte d'interface, CLAUDE.md) -->
     <div class="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
-      <button class="text-blue-ycube font-semibold hover:underline flex items-center gap-2" @click="back">
+      <button v-if="!integre" class="text-blue-ycube font-semibold hover:underline flex items-center gap-2" @click="back">
         <i class="fa-solid fa-arrow-left"></i> Retour
       </button>
+      <div v-else class="w-20"></div>
       <div class="text-center">
         <h1 class="text-xl font-bold text-blue-ycube">Fichiers complémentaires</h1>
         <p class="text-sm text-gray-500">Import, consultation et remplacement des balances auxiliaires</p>

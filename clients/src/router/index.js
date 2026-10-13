@@ -97,13 +97,14 @@ const router = createRouter({
       props: true
     },
     {
+      // Fichiers complémentaires s'affiche dans GroupingAnalyse, sous la barre
+      // latérale bleue : l'ancienne adresse y redirige pour garder la barre visible.
       path: '/grouping-analyse/:missionId/fichiers-complementaires',
       name: 'fichiersComplementaires',
-      component: () => import('@/views/FichiersComplementairesView.vue'),
-      meta: {
-        showHeader: true
-      },
-      props: true
+      redirect: (to) => ({
+        path: `/grouping-analyse/${to.params.missionId}`,
+        query: { step: 'fichiers_complementaires' },
+      }),
     },
     {
       // Fiabilité IPE s'affiche dans GroupingAnalyse, sous la barre latérale
