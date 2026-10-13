@@ -171,6 +171,16 @@ def register_routes(app):
         """POST /api/v1/missions/<id>/ipe/demander-correction - Action manager : demande une correction"""
         return IpeResource.demander_correction(mission_id)
 
+    @mission_bp.route('/<mission_id>/ipe/qualifications', methods=['PUT'])
+    def qualifier_ecart_ipe(mission_id):
+        """PUT /api/v1/missions/<id>/ipe/qualifications - Qualifie un écart (cause + commentaire)"""
+        return IpeResource.qualifier_ecart(mission_id)
+
+    @mission_bp.route('/<mission_id>/ipe/justifications-non-evaluables', methods=['PUT'])
+    def justifier_non_evaluable_ipe(mission_id):
+        """PUT /api/v1/missions/<id>/ipe/justifications-non-evaluables - Justifie un module non évaluable"""
+        return IpeResource.justifier_non_evaluable(mission_id)
+
     @mission_bp.route('/<mission_id>/ipe/remarques', methods=['POST'])
     def ajouter_remarque_ipe(mission_id):
         """POST /api/v1/missions/<id>/ipe/remarques - Ajoute une remarque (générale ou sur un écart précis)"""

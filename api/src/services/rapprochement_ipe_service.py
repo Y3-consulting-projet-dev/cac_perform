@@ -37,6 +37,7 @@ from bson.errors import InvalidId
 from src.utils.database import get_database
 from src.services import balance_auxiliaire_service
 from src.services import fichiers_complementaires_service as fc_service
+from src.services import revue_ipe_service
 from src.services import verrou_ipe_service
 
 COLLECTION_MISSION = "Mission1"
@@ -466,7 +467,10 @@ def valider_fiabilite(
     - une validation/invalidation identique à la précédente il y a moins de
       DELAI_MIN_VALIDATIONS_IDENTIQUES_SECONDES (double clic) ;
     - une validation positive (validee=True) tant que le circuit de revue
-      n'est pas au statut "soumis_pour_revue" (voir revue_ipe_service) —
+      n'est pas au statut "soumis_pour_revue", ou tant qu'un écart n'est
+      pas qualifié, qu'une demande de correction n'est pas traitée, ou
+      qu'un module non évaluable n'a pas de justification écrite (voir
+      revue_ipe_service.refus_validation) —
       TODO(décision : qui a le droit de valider n'est pas vérifié
       aujourd'hui, CLAUDE.md).
 
@@ -496,6 +500,11 @@ def valider_fiabilite(
                 f"(statut actuel : {statut_circuit_actuel}). L'auditeur doit soumettre le contrôle "
                 "pour revue avant toute validation."
             )
+        # Écarts qualifiés, demandes de correction traitées, modules non
+        # évaluables justifiés (revue_ipe_service.refus_validation).
+        refus = revue_ipe_service.refus_validation(etat_actuel)
+        if refus:
+            raise ValueError(refus)
 
     horodatage = datetime.now(timezone.utc).isoformat()
     updates: Dict[str, Any] = {

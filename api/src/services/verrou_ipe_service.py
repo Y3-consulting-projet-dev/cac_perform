@@ -74,6 +74,8 @@ def _etat_par_defaut() -> Dict[str, Any]:
         "historique": [],
         "fichiers_references": {},
         "remarques": [],
+        "qualifications_ecarts": [],
+        "justifications_non_evaluables": {},
     }
 
 
@@ -104,6 +106,8 @@ def lire_etat_ipe(mission_id: str) -> Dict[str, Any]:
         "historique": ipe.get("historique", []),
         "fichiers_references": ipe.get("fichiers_references", {}),
         "remarques": ipe.get("remarques", []),
+        "qualifications_ecarts": ipe.get("qualifications_ecarts", []),
+        "justifications_non_evaluables": ipe.get("justifications_non_evaluables", {}),
     })
     return etat
 
@@ -168,6 +172,8 @@ def capturer_verrou_applicable_a_la_creation(mission_id: str) -> None:
             "ipe.modules": {},
             "ipe.historique": [],
             "ipe.remarques": [],
+            "ipe.qualifications_ecarts": [],
+            "ipe.justifications_non_evaluables": {},
         }},
     )
 

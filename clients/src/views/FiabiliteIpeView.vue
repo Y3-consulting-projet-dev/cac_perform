@@ -6,7 +6,7 @@
 // N'est PAS une étape d'audit : volontairement absent de la barre de
 // progression des 11 étapes (voir l'indicateur "Fiabilité IPE" de la barre
 // latérale, qui renvoie ici pour le détail).
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import router from '@/router'
 import { useNotyf } from '@/composables/useNotyf'
 import {
@@ -18,6 +18,8 @@ import {
   ajouterRemarqueIpe,
   repondreRemarqueIpe,
   marquerRemarqueTraiteeIpe,
+  qualifierEcartIpe,
+  justifierNonEvaluableIpe,
 } from '@/api/ipe.api'
 
 const props = defineProps(['missionId'])
@@ -72,6 +74,13 @@ const ACTION_HISTORIQUE_LABELS = {
   remarque_repondue: 'Réponse à une remarque',
   remarque_traitee: 'Remarque marquée traitée',
   remarque_rouverte: 'Remarque rouverte',
+  qualification_ecart: "Qualification d'un écart",
+  justification_non_evaluable: 'Justification d\'un module non évaluable',
+}
+
+const TYPE_REMARQUE_INFO = {
+  information: { label: 'Information', classe: 'bg-gray-100 text-gray-700' },
+  demande_correction: { label: 'Demande de correction', classe: 'bg-red-100 text-red-700' },
 }
 
 // Colonne "Résultat" de l'historique : validé / invalidé / rapprochement /
@@ -174,32 +183,139 @@ const historiqueRecent = computed(() => {
 
 const statutCircuit = computed(() => ipeEtat.value?.statut_circuit || 'en_cours')
 
-// Reflet côté frontend de revue_ipe_service.ecarts_non_qualifies (backend) :
-// un écart réel (collectif "ok: false" d'un module "ecart") sans aucune
-// remarque attachée bloque la soumission pour revue.
-const ecartsNonQualifies = computed(() => {
-  const modules = ipeEtat.value?.modules || {}
-  const remarques = ipeEtat.value?.remarques || []
-  const collectifsCommentes = new Set(
-    remarques.filter((r) => r.module && r.numero_compte).map((r) => `${r.module}:${r.numero_compte}`)
+// Causes d'écart : liste provisoire renvoyée par le backend
+// (revue_ipe_service.CAUSES_ECART, TODO(spec: CAC-IPE-01)) — jamais recopiée ici.
+const causesEcart = computed(() => ipeEtat.value?.causes_ecart || [])
+
+// La qualification des écarts et la justification des modules non
+// évaluables sont figées une fois le contrôle soumis ou validé.
+const peutEditerAuditeur = computed(() => ['en_cours', 'en_attente_correction'].includes(statutCircuit.value))
+
+function qualificationPour(module, numeroCompte) {
+  return (ipeEtat.value?.qualifications_ecarts || []).find(
+    (q) => q.module === module && q.numero_compte === numeroCompte
   )
+}
+
+function qualificationComplete(q) {
+  return !!q && causesEcart.value.includes(q.cause) && !!(q.commentaire || '').trim()
+}
+
+// Reflet côté frontend de revue_ipe_service.ecarts_non_qualifies (backend) :
+// un écart réel (collectif "ok: false" d'un module "ecart") sans
+// qualification complète (cause + commentaire) bloque la soumission.
+const ecartsNonQualifies = computed(() => {
   const manquants = []
-  for (const [cle, module] of Object.entries(modules)) {
+  for (const [cle, module] of Object.entries(ipeEtat.value?.modules || {})) {
     if (module.statut !== 'ecart') continue
     for (const c of module.derniere_evaluation?.detail_collectifs || []) {
       if (c.ok) continue
-      const id = `${cle}:${c.numero_compte}`
-      if (!collectifsCommentes.has(id)) manquants.push(id)
+      if (!qualificationComplete(qualificationPour(cle, c.numero_compte))) manquants.push(`${cle}:${c.numero_compte}`)
     }
   }
   return manquants
 })
 
-const peutSoumettre = computed(
-  () => ['en_cours', 'en_attente_correction'].includes(statutCircuit.value) && ecartsNonQualifies.value.length === 0
+// Reflet de revue_ipe_service.refus_validation : bloquent la validation.
+const demandesCorrectionNonTraitees = computed(() =>
+  (ipeEtat.value?.remarques || []).filter((r) => r.type === 'demande_correction' && !r.traitee)
 )
+const modulesNonEvaluablesSansJustification = computed(() =>
+  Object.entries(ipeEtat.value?.modules || {})
+    .filter(([cle, m]) => m.statut === 'non_evaluable' && !(ipeEtat.value?.justifications_non_evaluables?.[cle]?.commentaire || '').trim())
+    .map(([cle]) => cle)
+)
+
+const peutSoumettre = computed(() => peutEditerAuditeur.value && ecartsNonQualifies.value.length === 0)
 const peutDemanderCorrection = computed(() => statutCircuit.value === 'soumis_pour_revue')
-const peutValider = computed(() => statutCircuit.value === 'soumis_pour_revue')
+const peutValider = computed(
+  () =>
+    statutCircuit.value === 'soumis_pour_revue' &&
+    ecartsNonQualifies.value.length === 0 &&
+    demandesCorrectionNonTraitees.value.length === 0 &&
+    modulesNonEvaluablesSansJustification.value.length === 0
+)
+
+const raisonValidationImpossible = computed(() => {
+  if (statutCircuit.value !== 'soumis_pour_revue') return 'Le contrôle doit être « Soumis pour revue ».'
+  if (ecartsNonQualifies.value.length) return 'Chaque écart doit être qualifié (cause + commentaire).'
+  if (demandesCorrectionNonTraitees.value.length) return 'Des demandes de correction ne sont pas traitées.'
+  if (modulesNonEvaluablesSansJustification.value.length) return 'Chaque module non évaluable doit être justifié.'
+  return ''
+})
+
+/* --- Qualification d'un écart (cause + commentaire, par compte collectif) --- */
+
+const formulairesQualification = ref({})
+const justificationsEnCours = ref({})
+
+// Pré-remplit les formulaires (qualification de chaque écart, justification
+// de chaque module non évaluable) à chaque nouvel état, sans écraser une
+// saisie en cours. Exécuté avant le rendu (flush "pre").
+watch(ipeEtat, (etat) => {
+  for (const [cle, module] of Object.entries(etat?.modules || {})) {
+    if (module.statut === 'ecart') {
+      for (const c of module.derniere_evaluation?.detail_collectifs || []) {
+        if (c.ok) continue
+        const id = `${cle}:${c.numero_compte}`
+        if (!formulairesQualification.value[id]) {
+          const existante = qualificationPour(cle, c.numero_compte)
+          formulairesQualification.value[id] = { cause: existante?.cause || '', commentaire: existante?.commentaire || '' }
+        }
+      }
+    }
+    if (module.statut === 'non_evaluable' && justificationsEnCours.value[cle] === undefined) {
+      justificationsEnCours.value[cle] = etat.justifications_non_evaluables?.[cle]?.commentaire || ''
+    }
+  }
+})
+
+const qualificationEnCours = ref(null)
+
+async function enregistrerQualification(module, numeroCompte) {
+  const cle = `${module}:${numeroCompte}`
+  if (qualificationEnCours.value) return
+  const { cause, commentaire } = formulairesQualification.value[cle] || { cause: '', commentaire: '' }
+  if (!cause) {
+    notyf.trigger("Choisissez la cause de l'écart", 'warning')
+    return
+  }
+  if (commentaire.trim().length < LONGUEUR_MIN_COMMENTAIRE) {
+    notyf.trigger(`Le commentaire doit contenir au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères.`, 'warning')
+    return
+  }
+  qualificationEnCours.value = cle
+  try {
+    ipeEtat.value = await qualifierEcartIpe(props.missionId, module, numeroCompte, cause, commentaire.trim(), utilisateurConnecte())
+    notyf.trigger('Écart qualifié', 'success')
+  } catch (e) {
+    notyf.trigger(e.message || "Erreur lors de la qualification de l'écart", 'error')
+  } finally {
+    qualificationEnCours.value = null
+  }
+}
+
+/* --- Justification écrite d'un module non évaluable --- */
+
+const justificationEnCours = ref(null)
+
+async function enregistrerJustification(module) {
+  if (justificationEnCours.value) return
+  const commentaire = (justificationsEnCours.value[module] || '').trim()
+  if (commentaire.length < LONGUEUR_MIN_COMMENTAIRE) {
+    notyf.trigger(`La justification doit contenir au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères.`, 'warning')
+    return
+  }
+  justificationEnCours.value = module
+  try {
+    ipeEtat.value = await justifierNonEvaluableIpe(props.missionId, module, commentaire, utilisateurConnecte())
+    notyf.trigger('Justification enregistrée', 'success')
+  } catch (e) {
+    notyf.trigger(e.message || 'Erreur lors de la justification du module', 'error')
+  } finally {
+    justificationEnCours.value = null
+  }
+}
 
 const soumissionEnCours = ref(false)
 
@@ -266,7 +382,9 @@ function remarquesPourCollectif(module, numeroCompte) {
 }
 
 const nouvelleRemarqueGenerale = ref('')
+const typeNouvelleRemarqueGenerale = ref('information')
 const nouvellesRemarquesEcart = ref({})
+const typesNouvellesRemarquesEcart = ref({})
 const reponsesEnCours = ref({})
 const remarqueActionEnCours = ref(null)
 
@@ -277,8 +395,12 @@ async function ajouterRemarqueGenerale() {
     return
   }
   try {
-    ipeEtat.value = await ajouterRemarqueIpe(props.missionId, texte, { utilisateurId: utilisateurConnecte() })
+    ipeEtat.value = await ajouterRemarqueIpe(props.missionId, texte, {
+      type: typeNouvelleRemarqueGenerale.value,
+      utilisateurId: utilisateurConnecte(),
+    })
     nouvelleRemarqueGenerale.value = ''
+    typeNouvelleRemarqueGenerale.value = 'information'
     notyf.trigger('Remarque ajoutée', 'success')
   } catch (e) {
     notyf.trigger(e.message || "Erreur lors de l'ajout de la remarque", 'error')
@@ -296,13 +418,28 @@ async function ajouterRemarqueEcart(module, numeroCompte) {
     ipeEtat.value = await ajouterRemarqueIpe(props.missionId, texte, {
       module,
       numeroCompte,
+      type: typesNouvellesRemarquesEcart.value[cle] || 'information',
       utilisateurId: utilisateurConnecte(),
     })
     nouvellesRemarquesEcart.value[cle] = ''
+    typesNouvellesRemarquesEcart.value[cle] = 'information'
     notyf.trigger('Remarque ajoutée', 'success')
   } catch (e) {
     notyf.trigger(e.message || "Erreur lors de l'ajout de la remarque", 'error')
   }
+}
+
+// Reflet de revue_ipe_service.refus_marquage_remarque : seul l'auteur
+// enregistré peut (dé)marquer, et "traitée" seulement après la réponse de
+// l'auditeur. TODO(décision) : en attendant les rôles.
+function raisonMarquageImpossible(remarque) {
+  if (remarque.utilisateur_id !== utilisateurConnecte()) {
+    return "Seul l'auteur de la remarque peut la marquer traitée ou la rouvrir."
+  }
+  if (!remarque.traitee && !remarque.reponse) {
+    return "La remarque ne peut être marquée traitée qu'après la réponse de l'auditeur."
+  }
+  return ''
 }
 
 async function envoyerReponse(remarque) {
@@ -326,6 +463,11 @@ async function envoyerReponse(remarque) {
 
 async function basculerTraitee(remarque) {
   if (remarqueActionEnCours.value) return
+  const raison = raisonMarquageImpossible(remarque)
+  if (raison) {
+    notyf.trigger(raison, 'warning')
+    return
+  }
   remarqueActionEnCours.value = remarque._id
   try {
     ipeEtat.value = await marquerRemarqueTraiteeIpe(props.missionId, remarque._id, !remarque.traitee, utilisateurConnecte())
@@ -504,7 +646,7 @@ function back() {
           <button
             class="px-5 py-2 rounded-lg bg-blue-ycube-3 text-white font-semibold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
             :disabled="soumissionEnCours || !peutSoumettre"
-            :title="ecartsNonQualifies.length ? 'Ajoutez une remarque sur chaque écart avant de soumettre (voir ci-dessous)' : ''"
+            :title="ecartsNonQualifies.length ? 'Qualifiez chaque écart (cause + commentaire) avant de soumettre (voir ci-dessous)' : ''"
             @click="soumettrePourRevue"
           >
             {{ soumissionEnCours ? 'Soumission en cours...' : 'Soumettre pour revue' }}
@@ -526,7 +668,7 @@ function back() {
           <button
             class="px-5 py-2 rounded-lg bg-green-ycube-2 text-white font-semibold hover:bg-green-ycube transition disabled:opacity-40 disabled:cursor-not-allowed"
             :disabled="ipeValidationEnCours || !peutValider"
-            :title="!peutValider ? 'Le contrôle doit être « Soumis pour revue » avant de pouvoir être validé' : ''"
+            :title="raisonValidationImpossible"
             @click="ouvrirConfirmationValidation"
           >
             Valider la fiabilité IPE
@@ -541,11 +683,22 @@ function back() {
             Invalider
           </button>
         </div>
-        <p v-if="ecartsNonQualifies.length" class="text-xs text-gray-500 italic">
-          Écart(s) sans remarque attachée (bloque la soumission) : {{ ecartsNonQualifies.join(', ') }}.
-          TODO(spec: CAC-IPE-01) — valeurs de qualification.etiquette non confirmées, la remarque
-          est le mécanisme de qualification retenu pour ce circuit.
-        </p>
+        <ul
+          v-if="ecartsNonQualifies.length || demandesCorrectionNonTraitees.length || modulesNonEvaluablesSansJustification.length"
+          class="text-xs text-gray-500 italic list-disc ml-5"
+        >
+          <li v-if="ecartsNonQualifies.length">
+            Écart(s) non qualifié(s) — cause + commentaire requis (bloque la soumission et la validation) :
+            {{ ecartsNonQualifies.join(', ') }}.
+          </li>
+          <li v-if="demandesCorrectionNonTraitees.length">
+            {{ demandesCorrectionNonTraitees.length }} demande(s) de correction non traitée(s) (bloque la validation).
+          </li>
+          <li v-if="modulesNonEvaluablesSansJustification.length">
+            Module(s) non évaluable(s) sans justification écrite (bloque la validation) :
+            {{ modulesNonEvaluablesSansJustification.map((m) => LIBELLES_MODULE[m] || m).join(', ') }}.
+          </li>
+        </ul>
         <!-- Validation/soumission/demande de correction enregistrées sans
              contrôle de rôle : aucun système d'authentification/droits
              n'existe sur les missions aujourd'hui (CLAUDE.md, point de
@@ -639,6 +792,35 @@ function back() {
                   ? 'aucun fichier complémentaire actif pour ce module.'
                   : 'aucun compte collectif trouvé dans la balance générale pour ce module.' }}
               </p>
+
+              <!-- Justification écrite exigée pour valider malgré un module non évaluable.
+                   Le traitement métier de ces modules reste TODO(spec: CAC-IPE-01). -->
+              <div v-if="module.statut === 'non_evaluable'" class="border border-gray-200 rounded-lg p-3 flex flex-col gap-2">
+                <p class="text-xs font-semibold text-gray-700">
+                  Justification (obligatoire pour valider)
+                  <span v-if="ipeEtat.justifications_non_evaluables?.[cle]" class="font-normal text-gray-500">
+                    — enregistrée par {{ ipeEtat.justifications_non_evaluables[cle].utilisateur_id || 'Non identifié' }},
+                    {{ formatHorodatage(ipeEtat.justifications_non_evaluables[cle].horodatage) }}
+                  </span>
+                </p>
+                <textarea
+                  v-model="justificationsEnCours[cle]"
+                  :disabled="!peutEditerAuditeur"
+                  rows="2"
+                  class="text-sm border border-gray-300 rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
+                  :placeholder="`Pourquoi valider sans ce module ? (au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères)`"
+                ></textarea>
+                <div>
+                  <button
+                    class="px-5 py-2 rounded-lg bg-blue-ycube text-white text-sm font-semibold hover:bg-blue-900 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    :disabled="!peutEditerAuditeur || justificationEnCours === cle"
+                    :title="!peutEditerAuditeur ? 'Modifiable uniquement « En cours » ou « En attente de correction »' : ''"
+                    @click="enregistrerJustification(cle)"
+                  >
+                    Enregistrer la justification
+                  </button>
+                </div>
+              </div>
               <p v-else class="text-sm">Écart global : <span class="font-mono font-semibold text-gray-800">{{ formatMontant(module.derniere_evaluation.ecart_global) }}</span></p>
 
               <table v-if="module.derniere_evaluation.detail_collectifs?.length" class="min-w-full text-sm">
@@ -668,63 +850,128 @@ function back() {
               </table>
               <p v-else-if="module.statut !== 'non_evaluable'" class="italic">Aucun compte collectif trouvé dans la balance générale pour ce module.</p>
 
-              <!-- Remarques sur un écart précis (par compte collectif) — niveau 2 des
-                   commentaires (docs/PLAN_verrou_IPE.md). Une remarque ici qualifie
-                   l'écart pour la soumission (ecartsNonQualifies). -->
+              <!-- Un bloc par écart réel (compte collectif) : qualification (cause +
+                   commentaire, exigée pour soumettre et valider) puis remarques de
+                   niveau 2 (docs/PLAN_verrou_IPE.md). -->
+              <template v-if="module.statut === 'ecart'">
               <div
                 v-for="c in (module.derniere_evaluation.detail_collectifs || []).filter((c) => !c.ok)"
-                :key="'remarques-' + c.numero_compte"
-                class="border border-gray-200 rounded-lg p-3 flex flex-col gap-2 text-xs"
+                :key="'ecart-' + c.numero_compte"
+                class="border border-gray-200 rounded-lg p-3 flex flex-col gap-3 text-xs"
               >
-                <p class="font-semibold text-gray-700">Remarques — collectif {{ c.numero_compte }}</p>
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                  <p class="font-semibold text-gray-700 text-sm">Écart — collectif {{ c.numero_compte }}</p>
+                  <span
+                    class="px-3 py-1 rounded-full text-xs font-semibold"
+                    :class="qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                  >
+                    {{ qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'Qualifié' : 'À qualifier' }}
+                  </span>
+                </div>
 
-                <p v-if="!remarquesPourCollectif(cle, c.numero_compte).length" class="text-gray-500 italic">
-                  Aucune remarque : la soumission pour revue est bloquée tant que cet écart n'en a pas.
-                </p>
-
-                <div v-for="r in remarquesPourCollectif(cle, c.numero_compte)" :key="r._id" class="border-t pt-2 flex flex-col gap-1">
-                  <p><span class="font-semibold">{{ r.utilisateur_id || 'Non identifié' }}</span> — {{ formatHorodatage(r.horodatage) }}</p>
-                  <p class="text-gray-700">{{ r.commentaire }}</p>
-                  <p v-if="r.reponse" class="ml-3 text-gray-600 italic">
-                    Réponse de {{ r.reponse.utilisateur_id || 'Non identifié' }} ({{ formatHorodatage(r.reponse.horodatage) }}) : {{ r.reponse.commentaire }}
-                  </p>
-                  <div class="flex items-center gap-2">
-                    <span
-                      class="px-2 py-0.5 rounded-full text-xs font-semibold"
-                      :class="r.traitee ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+                <!-- Qualification : cause choisie dans la liste provisoire (TODO(spec: CAC-IPE-01)) + commentaire -->
+                <div class="flex flex-col gap-2">
+                  <div class="flex flex-wrap gap-2 items-start">
+                    <select
+                      v-model="formulairesQualification[`${cle}:${c.numero_compte}`].cause"
+                      :disabled="!peutEditerAuditeur"
+                      class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
                     >
-                      {{ r.traitee ? 'Traitée' : 'Non traitée' }}
-                    </span>
-                    <button class="text-blue-ycube font-semibold hover:underline" @click="basculerTraitee(r)">
-                      {{ r.traitee ? 'Rouvrir' : 'Marquer traitée' }}
-                    </button>
+                      <option value="" disabled>Cause de l'écart...</option>
+                      <option v-for="cause in causesEcart" :key="cause" :value="cause">{{ cause }}</option>
+                    </select>
+                    <textarea
+                      v-model="formulairesQualification[`${cle}:${c.numero_compte}`].commentaire"
+                      :disabled="!peutEditerAuditeur"
+                      rows="2"
+                      class="flex-1 min-w-[16rem] text-sm border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
+                      :placeholder="`Commentaire (au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères)`"
+                    ></textarea>
                   </div>
-                  <div v-if="!r.reponse" class="flex gap-2 mt-1">
+                  <div class="flex items-center gap-3">
+                    <button
+                      class="px-5 py-2 rounded-lg bg-blue-ycube text-white text-sm font-semibold hover:bg-blue-900 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      :disabled="!peutEditerAuditeur || qualificationEnCours === `${cle}:${c.numero_compte}`"
+                      :title="!peutEditerAuditeur ? 'Modifiable uniquement « En cours » ou « En attente de correction »' : ''"
+                      @click="enregistrerQualification(cle, c.numero_compte)"
+                    >
+                      Enregistrer la qualification
+                    </button>
+                    <span v-if="qualificationPour(cle, c.numero_compte)" class="text-gray-500">
+                      Qualifié par {{ qualificationPour(cle, c.numero_compte).utilisateur_id || 'Non identifié' }},
+                      {{ formatHorodatage(qualificationPour(cle, c.numero_compte).horodatage) }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Remarques sur cet écart -->
+                <div class="border-t pt-2 flex flex-col gap-2">
+                  <p class="font-semibold text-gray-700">Remarques</p>
+                  <p v-if="!remarquesPourCollectif(cle, c.numero_compte).length" class="text-gray-500 italic">Aucune remarque.</p>
+
+                  <div v-for="r in remarquesPourCollectif(cle, c.numero_compte)" :key="r._id" class="border-t pt-2 flex flex-col gap-1">
+                    <div class="flex items-center gap-2">
+                      <span class="px-2 py-0.5 rounded-full text-xs font-semibold" :class="TYPE_REMARQUE_INFO[r.type]?.classe || TYPE_REMARQUE_INFO.information.classe">
+                        {{ TYPE_REMARQUE_INFO[r.type]?.label || 'Information' }}
+                      </span>
+                      <span><span class="font-semibold">{{ r.utilisateur_id || 'Non identifié' }}</span> — {{ formatHorodatage(r.horodatage) }}</span>
+                    </div>
+                    <p class="text-gray-700">{{ r.commentaire }}</p>
+                    <p v-if="r.reponse" class="ml-3 text-gray-600 italic">
+                      Réponse de {{ r.reponse.utilisateur_id || 'Non identifié' }} ({{ formatHorodatage(r.reponse.horodatage) }}) : {{ r.reponse.commentaire }}
+                    </p>
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                        :class="r.traitee ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+                      >
+                        {{ r.traitee ? 'Traitée' : 'Non traitée' }}
+                      </span>
+                      <button
+                        class="text-blue-ycube font-semibold hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
+                        :disabled="!!raisonMarquageImpossible(r)"
+                        :title="raisonMarquageImpossible(r)"
+                        @click="basculerTraitee(r)"
+                      >
+                        {{ r.traitee ? 'Rouvrir' : 'Marquer traitée' }}
+                      </button>
+                    </div>
+                    <div v-if="!r.reponse" class="flex gap-2 mt-1">
+                      <input
+                        v-model="reponsesEnCours[r._id]"
+                        type="text"
+                        placeholder="Répondre..."
+                        class="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+                      />
+                      <button class="text-blue-ycube font-semibold hover:underline" @click="envoyerReponse(r)">Répondre</button>
+                    </div>
+                  </div>
+
+                  <div class="flex gap-2 mt-1">
+                    <select
+                      :value="typesNouvellesRemarquesEcart[`${cle}:${c.numero_compte}`] || 'information'"
+                      @change="typesNouvellesRemarquesEcart[`${cle}:${c.numero_compte}`] = $event.target.value"
+                      class="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+                    >
+                      <option value="information">Information</option>
+                      <option value="demande_correction">Demande de correction</option>
+                    </select>
                     <input
-                      v-model="reponsesEnCours[r._id]"
+                      v-model="nouvellesRemarquesEcart[`${cle}:${c.numero_compte}`]"
                       type="text"
-                      placeholder="Répondre..."
+                      placeholder="Ajouter une remarque sur cet écart..."
                       class="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-ycube"
                     />
-                    <button class="text-blue-ycube font-semibold hover:underline" @click="envoyerReponse(r)">Répondre</button>
+                    <button
+                      class="px-3 py-1 rounded-lg bg-blue-ycube text-white text-xs font-semibold hover:bg-blue-900 transition"
+                      @click="ajouterRemarqueEcart(cle, c.numero_compte)"
+                    >
+                      Ajouter
+                    </button>
                   </div>
                 </div>
-
-                <div class="flex gap-2 mt-1">
-                  <input
-                    v-model="nouvellesRemarquesEcart[`${cle}:${c.numero_compte}`]"
-                    type="text"
-                    placeholder="Ajouter une remarque sur cet écart..."
-                    class="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-ycube"
-                  />
-                  <button
-                    class="px-3 py-1 rounded-lg bg-blue-ycube text-white text-xs font-semibold hover:bg-blue-900 transition"
-                    @click="ajouterRemarqueEcart(cle, c.numero_compte)"
-                  >
-                    Ajouter
-                  </button>
-                </div>
               </div>
+              </template>
 
               <p v-if="module.derniere_evaluation.tiers_orphelins?.balance_generale_seulement?.length" class="text-gray-500 text-sm">
                 Comptes collectifs sans tiers rattaché dans l'auxiliaire (TODO(spec: CAC-IPE-01) — traitement attendu non confirmé) :
@@ -753,7 +1000,12 @@ function back() {
         <p v-if="!remarquesGenerales.length" class="text-sm text-gray-500 italic">Aucun commentaire général.</p>
 
         <div v-for="r in remarquesGenerales" :key="r._id" class="border-t pt-3 flex flex-col gap-1 text-sm">
-          <p><span class="font-semibold">{{ r.utilisateur_id || 'Non identifié' }}</span> — {{ formatHorodatage(r.horodatage) }}</p>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold" :class="TYPE_REMARQUE_INFO[r.type]?.classe || TYPE_REMARQUE_INFO.information.classe">
+              {{ TYPE_REMARQUE_INFO[r.type]?.label || 'Information' }}
+            </span>
+            <span><span class="font-semibold">{{ r.utilisateur_id || 'Non identifié' }}</span> — {{ formatHorodatage(r.horodatage) }}</span>
+          </div>
           <p class="text-gray-700">{{ r.commentaire }}</p>
           <p v-if="r.reponse" class="ml-3 text-gray-600 italic">
             Réponse de {{ r.reponse.utilisateur_id || 'Non identifié' }} ({{ formatHorodatage(r.reponse.horodatage) }}) : {{ r.reponse.commentaire }}
@@ -765,7 +1017,12 @@ function back() {
             >
               {{ r.traitee ? 'Traitée' : 'Non traitée' }}
             </span>
-            <button class="text-blue-ycube font-semibold hover:underline text-xs" @click="basculerTraitee(r)">
+            <button
+              class="text-blue-ycube font-semibold hover:underline text-xs disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
+              :disabled="!!raisonMarquageImpossible(r)"
+              :title="raisonMarquageImpossible(r)"
+              @click="basculerTraitee(r)"
+            >
               {{ r.traitee ? 'Rouvrir' : 'Marquer traitée' }}
             </button>
           </div>
@@ -781,6 +1038,13 @@ function back() {
         </div>
 
         <div class="flex gap-2 pt-2">
+          <select
+            v-model="typeNouvelleRemarqueGenerale"
+            class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+          >
+            <option value="information">Information</option>
+            <option value="demande_correction">Demande de correction</option>
+          </select>
           <input
             v-model="nouvelleRemarqueGenerale"
             type="text"

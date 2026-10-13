@@ -80,6 +80,13 @@ class RemarqueCreationSchema(Schema):
     commentaire = fields.Str(required=True, validate=validate.Length(min=1, error="Le commentaire ne peut pas être vide."))
     module = fields.Str(required=False, allow_none=True, validate=validate.OneOf(MODULES_IPE))
     numero_compte = fields.Str(required=False, allow_none=True)
+    # "information" (par défaut) ou "demande_correction" : une demande de
+    # correction non traitée bloque la validation.
+    type = fields.Str(
+        required=False,
+        load_default="information",
+        validate=validate.OneOf(["information", "demande_correction"], error="Type de remarque inconnu."),
+    )
     utilisateur_id = fields.Str(required=False, allow_none=True)
 
 
@@ -91,9 +98,50 @@ class ReponseRemarqueSchema(Schema):
 
 
 class TraiterRemarqueSchema(Schema):
-    """Corps attendu pour PUT .../ipe/remarques/<id>/traitee — marque (ou démarque) une remarque comme traitée."""
+    """
+    Corps attendu pour PUT .../ipe/remarques/<id>/traitee — marque (ou
+    démarque) une remarque comme traitée. utilisateur_id sert à vérifier que
+    le demandeur est l'auteur de la remarque (TODO(décision) : en attendant
+    les rôles).
+    """
 
     traitee = fields.Bool(required=True)
+    utilisateur_id = fields.Str(required=False, allow_none=True)
+
+
+_MESSAGE_COMMENTAIRE_MIN = (
+    f"Le commentaire est obligatoire et doit contenir au moins {LONGUEUR_MIN_COMMENTAIRE_VALIDATION} caractères."
+)
+
+
+def _commentaire_obligatoire():
+    return fields.Str(
+        required=True,
+        error_messages={"required": _MESSAGE_COMMENTAIRE_MIN, "null": _MESSAGE_COMMENTAIRE_MIN},
+        validate=validate.Length(min=LONGUEUR_MIN_COMMENTAIRE_VALIDATION, error=_MESSAGE_COMMENTAIRE_MIN),
+    )
+
+
+class QualificationEcartSchema(Schema):
+    """
+    Corps attendu pour PUT /api/v1/missions/<id>/ipe/qualifications — cause
+    (vérifiée contre revue_ipe_service.CAUSES_ECART, liste provisoire
+    TODO(spec: CAC-IPE-01)) + commentaire obligatoire, par compte collectif.
+    """
+
+    module = fields.Str(required=True, validate=validate.OneOf(MODULES_IPE))
+    numero_compte = fields.Str(required=True, validate=validate.Length(min=1))
+    cause = fields.Str(required=True, error_messages={"required": "La cause de l'écart est obligatoire."})
+    commentaire = _commentaire_obligatoire()
+    utilisateur_id = fields.Str(required=False, allow_none=True)
+
+
+class JustificationNonEvaluableSchema(Schema):
+    """Corps attendu pour PUT /api/v1/missions/<id>/ipe/justifications-non-evaluables."""
+
+    module = fields.Str(required=True, validate=validate.OneOf(MODULES_IPE))
+    commentaire = _commentaire_obligatoire()
+    utilisateur_id = fields.Str(required=False, allow_none=True)
 
 
 def validate_ipe_data(data: Dict[str, Any], schema_class) -> Dict[str, Any]:

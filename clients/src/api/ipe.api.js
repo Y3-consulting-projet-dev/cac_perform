@@ -82,12 +82,47 @@ export async function demanderCorrectionIpe(missionId, commentaire, utilisateurI
   }
 }
 
-export async function ajouterRemarqueIpe(missionId, commentaire, { module = null, numeroCompte = null, utilisateurId = null } = {}) {
+export async function qualifierEcartIpe(missionId, module, numeroCompte, cause, commentaire, utilisateurId = null) {
+  try {
+    const { data } = await api.put(`/missions/${missionId}/ipe/qualifications`, {
+      module,
+      numero_compte: numeroCompte,
+      cause,
+      commentaire,
+      utilisateur_id: utilisateurId,
+    })
+    if (data?.success) return data.data
+    throw new Error(data?.error || "Erreur lors de la qualification de l'écart")
+  } catch (error) {
+    throw new Error(extraireMessageErreur(error, "Erreur lors de la qualification de l'écart"))
+  }
+}
+
+export async function justifierNonEvaluableIpe(missionId, module, commentaire, utilisateurId = null) {
+  try {
+    const { data } = await api.put(`/missions/${missionId}/ipe/justifications-non-evaluables`, {
+      module,
+      commentaire,
+      utilisateur_id: utilisateurId,
+    })
+    if (data?.success) return data.data
+    throw new Error(data?.error || 'Erreur lors de la justification du module')
+  } catch (error) {
+    throw new Error(extraireMessageErreur(error, 'Erreur lors de la justification du module'))
+  }
+}
+
+export async function ajouterRemarqueIpe(
+  missionId,
+  commentaire,
+  { module = null, numeroCompte = null, type = 'information', utilisateurId = null } = {}
+) {
   try {
     const { data } = await api.post(`/missions/${missionId}/ipe/remarques`, {
       commentaire,
       module,
       numero_compte: numeroCompte,
+      type,
       utilisateur_id: utilisateurId,
     })
     if (data?.success) return data.data
