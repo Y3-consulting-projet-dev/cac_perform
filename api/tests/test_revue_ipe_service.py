@@ -157,3 +157,43 @@ def test_validation_refusee_si_module_non_evaluable_non_justifie():
     etat = _etat_validable()
     etat["justifications_non_evaluables"] = {}
     assert "ipe_1_clients" in service.refus_validation(etat)
+
+
+# ---------------------------------------------------------------------------
+# Décisions du 2026-10-13 : utilisateur identifié, justification dès la soumission
+# ---------------------------------------------------------------------------
+
+def test_marquage_refuse_a_un_utilisateur_non_identifie():
+    """Plus de règle « traitable seulement par un non identifié »."""
+    remarque_sans_auteur = {"utilisateur_id": None, "reponse": {"commentaire": "Corrigé."}}
+    assert service.refus_marquage_remarque(remarque_sans_auteur, None, True) is not None
+    assert service.refus_marquage_remarque(remarque_sans_auteur, None, False) is not None
+    remarque = {"utilisateur_id": "Awa Koné", "reponse": {"commentaire": "Corrigé."}}
+    assert service.refus_marquage_remarque(remarque, None, True) is not None
+
+
+def test_demande_de_correction_exige_un_utilisateur_identifie():
+    assert service.refus_demande_correction_sans_auteur(None) is not None
+    assert service.refus_demande_correction_sans_auteur("") is not None
+    assert service.refus_demande_correction_sans_auteur("Manager M") is None
+
+
+def test_soumission_exige_la_justification_des_modules_non_evaluables():
+    etat = _etat_validable()
+    assert service.refus_soumission(etat) is None
+    etat["justifications_non_evaluables"] = {}
+    assert "ipe_1_clients" in service.refus_soumission(etat)
+
+
+def test_soumission_exige_toujours_la_qualification_des_ecarts():
+    etat = _etat_validable()
+    etat["qualifications_ecarts"] = []
+    assert "non qualifié" in service.refus_soumission(etat)
+
+
+def test_soumission_ne_depend_pas_des_demandes_de_correction():
+    """Une demande non traitée bloque la validation, pas la re-soumission (l'auditeur re-soumet après correction)."""
+    etat = _etat_validable()
+    etat["remarques"] = [{"type": "demande_correction", "traitee": False}]
+    assert service.refus_soumission(etat) is None
+    assert service.refus_validation(etat) is not None

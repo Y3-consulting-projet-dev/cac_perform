@@ -149,19 +149,51 @@ def refus_marquage_remarque(
 ) -> Optional[str]:
     """
     Fonction pure : message de refus, ou None si le (dé)marquage est permis.
-    - Seul l'auteur enregistré de la remarque peut la marquer traitée ou la
-      rouvrir. TODO(décision) : en attendant les rôles, la vérification
-      porte sur l'utilisateur enregistré côté frontend ; une remarque dont
-      l'auteur n'a pas été identifié ne peut être (dé)marquée que par un
-      utilisateur lui aussi non identifié — limite assumée, pas un contrôle
-      d'accès.
+    - Le demandeur doit être identifié, et être l'auteur enregistré de la
+      remarque. TODO(décision) : en attendant les rôles, la vérification
+      porte sur l'utilisateur enregistré côté frontend — pas un contrôle
+      d'accès. Une remarque d'auteur non identifié ne peut donc être
+      (dé)marquée par personne ; seules les remarques informatives peuvent
+      être dans ce cas (une demande de correction exige un auteur
+      identifié, voir ajouter_remarque/demander_correction) et elles ne
+      bloquent rien.
     - Une remarque ne peut être marquée traitée qu'après la réponse de
       l'auditeur.
     """
+    if not utilisateur_id:
+        return "Utilisateur non identifié : impossible de marquer une remarque traitée ou de la rouvrir."
     if remarque.get("utilisateur_id") != utilisateur_id:
         return "Seul l'auteur de la remarque peut la marquer traitée ou la rouvrir."
     if traitee and not remarque.get("reponse"):
         return "La remarque ne peut être marquée traitée qu'après la réponse de l'auditeur."
+    return None
+
+
+def refus_soumission(etat: Dict[str, Any]) -> Optional[str]:
+    """
+    Fonction pure : message de refus de « Soumettre pour revue », ou None.
+    Exige chaque écart qualifié et chaque module non évaluable justifié
+    (le statut source est contrôlé à part par soumettre_pour_revue).
+    """
+    manquants = ecarts_non_qualifies(etat.get("modules"), etat.get("qualifications_ecarts"))
+    if manquants:
+        return "Soumission refusée : écart(s) non qualifié(s) (cause + commentaire) : " + ", ".join(manquants) + "."
+
+    sans_justification = modules_non_evaluables_sans_justification(
+        etat.get("modules"), etat.get("justifications_non_evaluables")
+    )
+    if sans_justification:
+        return (
+            "Soumission refusée : module(s) non évaluable(s) sans justification écrite : "
+            + ", ".join(sans_justification) + "."
+        )
+    return None
+
+
+def refus_demande_correction_sans_auteur(utilisateur_id: Optional[str]) -> Optional[str]:
+    """Fonction pure : une demande de correction exige un utilisateur identifié (elle doit pouvoir être marquée traitée par son auteur)."""
+    if not utilisateur_id:
+        return "Utilisateur non identifié : impossible de créer une demande de correction."
     return None
 
 
@@ -214,7 +246,8 @@ def soumettre_pour_revue(
     """
     Action auditeur : "en_cours" ou "en_attente_correction" -> "soumis_pour_revue".
     Refusée (ValueError, rien écrit) si le statut actuel ne le permet pas,
-    ou si un écart réel n'est pas qualifié (cause + commentaire).
+    si un écart réel n'est pas qualifié (cause + commentaire), ou si un
+    module non évaluable n'a pas de justification écrite (refus_soumission).
     TODO(décision) : qui a le droit de soumettre n'est pas vérifié.
     """
     etat = verrou_ipe_service.lire_etat_ipe(mission_id)
@@ -226,12 +259,9 @@ def soumettre_pour_revue(
             f"correction » (statut actuel : {statut_actuel})."
         )
 
-    manquants = ecarts_non_qualifies(etat.get("modules"), etat.get("qualifications_ecarts"))
-    if manquants:
-        raise ValueError(
-            "Soumission refusée : écart(s) non qualifié(s) (cause + commentaire) : "
-            + ", ".join(manquants) + "."
-        )
+    refus = refus_soumission(etat)
+    if refus:
+        raise ValueError(refus)
 
     historique_entree = {
         "horodatage": _maintenant(),
@@ -261,9 +291,15 @@ def demander_correction(
     remarque générale de type "demande_correction" (auteur = demandeur) :
     elle bloque la validation tant que son auteur ne l'a pas marquée
     traitée après la réponse de l'auditeur.
+    Refusée sans utilisateur identifié (sinon la demande ne pourrait jamais
+    être marquée traitée par son auteur).
     TODO(décision) : qui a le droit de demander une correction n'est pas
     vérifié.
     """
+    refus = refus_demande_correction_sans_auteur(utilisateur_id)
+    if refus:
+        raise ValueError(refus)
+
     etat = verrou_ipe_service.lire_etat_ipe(mission_id)
     statut_actuel = etat.get("statut_circuit") or "en_cours"
 
@@ -362,7 +398,8 @@ def justifier_module_non_evaluable(
     utilisateur_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Justification écrite d'un module "non_evaluable", exigée pour valider.
+    Justification écrite d'un module "non_evaluable", exigée pour soumettre
+    pour revue et pour valider.
     Refusée si le module n'est pas non évaluable ou si le contrôle est
     soumis ou validé.
     """
@@ -428,6 +465,10 @@ def ajouter_remarque(
     """
     if type_remarque not in TYPES_REMARQUE:
         raise ValueError(f"Type de remarque inconnu : « {type_remarque} ».")
+    if type_remarque == "demande_correction":
+        refus = refus_demande_correction_sans_auteur(utilisateur_id)
+        if refus:
+            raise ValueError(refus)
 
     horodatage = _maintenant()
     remarque = _nouvelle_remarque(horodatage, commentaire, utilisateur_id, module, numero_compte, type_remarque)

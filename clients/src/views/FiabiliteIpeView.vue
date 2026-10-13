@@ -226,8 +226,19 @@ const modulesNonEvaluablesSansJustification = computed(() =>
     .map(([cle]) => cle)
 )
 
-const peutSoumettre = computed(() => peutEditerAuditeur.value && ecartsNonQualifies.value.length === 0)
-const peutDemanderCorrection = computed(() => statutCircuit.value === 'soumis_pour_revue')
+// Reflet de revue_ipe_service.refus_soumission : qualification des écarts ET
+// justification des modules non évaluables, dès la soumission.
+const peutSoumettre = computed(
+  () =>
+    peutEditerAuditeur.value &&
+    ecartsNonQualifies.value.length === 0 &&
+    modulesNonEvaluablesSansJustification.value.length === 0
+)
+
+// Une demande de correction exige un utilisateur identifié (sinon personne ne
+// pourrait la marquer traitée) — même règle que le backend.
+const utilisateurIdentifie = computed(() => !!utilisateurConnecte())
+const peutDemanderCorrection = computed(() => statutCircuit.value === 'soumis_pour_revue' && utilisateurIdentifie.value)
 const peutValider = computed(
   () =>
     statutCircuit.value === 'soumis_pour_revue' &&
@@ -433,6 +444,9 @@ async function ajouterRemarqueEcart(module, numeroCompte) {
 // enregistré peut (dé)marquer, et "traitée" seulement après la réponse de
 // l'auditeur. TODO(décision) : en attendant les rôles.
 function raisonMarquageImpossible(remarque) {
+  if (!utilisateurConnecte()) {
+    return 'Utilisateur non identifié : impossible de marquer une remarque traitée ou de la rouvrir.'
+  }
   if (remarque.utilisateur_id !== utilisateurConnecte()) {
     return "Seul l'auteur de la remarque peut la marquer traitée ou la rouvrir."
   }
@@ -646,7 +660,9 @@ function back() {
           <button
             class="px-5 py-2 rounded-lg bg-blue-ycube-3 text-white font-semibold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
             :disabled="soumissionEnCours || !peutSoumettre"
-            :title="ecartsNonQualifies.length ? 'Qualifiez chaque écart (cause + commentaire) avant de soumettre (voir ci-dessous)' : ''"
+            :title="ecartsNonQualifies.length || modulesNonEvaluablesSansJustification.length
+              ? 'Qualifiez chaque écart (cause + commentaire) et justifiez chaque module non évaluable avant de soumettre'
+              : ''"
             @click="soumettrePourRevue"
           >
             {{ soumissionEnCours ? 'Soumission en cours...' : 'Soumettre pour revue' }}
@@ -658,6 +674,7 @@ function back() {
           <button
             class="px-5 py-2 rounded-lg border border-red-300 text-red-700 font-semibold hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
             :disabled="!peutDemanderCorrection"
+            :title="!utilisateurIdentifie ? 'Utilisateur non identifié : impossible de créer une demande de correction' : ''"
             @click="ouvrirDemandeCorrection"
           >
             Demander une correction
@@ -695,7 +712,7 @@ function back() {
             {{ demandesCorrectionNonTraitees.length }} demande(s) de correction non traitée(s) (bloque la validation).
           </li>
           <li v-if="modulesNonEvaluablesSansJustification.length">
-            Module(s) non évaluable(s) sans justification écrite (bloque la validation) :
+            Module(s) non évaluable(s) sans justification écrite (bloque la soumission et la validation) :
             {{ modulesNonEvaluablesSansJustification.map((m) => LIBELLES_MODULE[m] || m).join(', ') }}.
           </li>
         </ul>
@@ -797,7 +814,7 @@ function back() {
                    Le traitement métier de ces modules reste TODO(spec: CAC-IPE-01). -->
               <div v-if="module.statut === 'non_evaluable'" class="border border-gray-200 rounded-lg p-3 flex flex-col gap-2">
                 <p class="text-xs font-semibold text-gray-700">
-                  Justification (obligatoire pour valider)
+                  Justification (obligatoire pour soumettre et valider)
                   <span v-if="ipeEtat.justifications_non_evaluables?.[cle]" class="font-normal text-gray-500">
                     — enregistrée par {{ ipeEtat.justifications_non_evaluables[cle].utilisateur_id || 'Non identifié' }},
                     {{ formatHorodatage(ipeEtat.justifications_non_evaluables[cle].horodatage) }}
@@ -954,7 +971,7 @@ function back() {
                       class="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-ycube"
                     >
                       <option value="information">Information</option>
-                      <option value="demande_correction">Demande de correction</option>
+                      <option value="demande_correction" :disabled="!utilisateurIdentifie">Demande de correction</option>
                     </select>
                     <input
                       v-model="nouvellesRemarquesEcart[`${cle}:${c.numero_compte}`]"
@@ -1043,7 +1060,7 @@ function back() {
             class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-ycube"
           >
             <option value="information">Information</option>
-            <option value="demande_correction">Demande de correction</option>
+            <option value="demande_correction" :disabled="!utilisateurIdentifie">Demande de correction</option>
           </select>
           <input
             v-model="nouvelleRemarqueGenerale"
