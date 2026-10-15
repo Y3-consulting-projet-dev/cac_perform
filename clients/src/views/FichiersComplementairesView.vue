@@ -11,7 +11,7 @@
 // Le rapprochement IPE (Module 1, CAC-IPE-01) ne vit plus ici : écran dédié
 // FiabiliteIpeView.vue, pour ne plus confondre les deux entrées de la barre
 // latérale de GroupingAnalyse.vue (docs/PLAN_verrou_IPE.md §6).
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import router from '@/router'
 import { useNotyf } from '@/composables/useNotyf'
 import {
@@ -25,6 +25,10 @@ import {
   retirerFichierComplementaire,
 } from '@/api/imports.api'
 import { formatDateHeureFr } from '@/utils/formatDate'
+import {
+  controlesLisibles, nombreAlertes, phraseSynthese, totauxLisibles, colonnesComptes,
+  LIBELLES_DONNEES, libellePerimetre, formatMontant, estImmobilisations,
+} from '@/utils/lectureFichierComplementaire'
 
 // `integre` : écran affiché dans la zone principale de GroupingAnalyse.vue,
 // sous la barre latérale bleue (qui porte déjà le « Retour »).
@@ -43,6 +47,9 @@ const fichiers = ref({ auxiliaire_client: [], auxiliaire_fournisseur: [], immobi
 // Versions archivées (actif=false) par type : un remplacement ne supprime rien.
 const archives = ref({ auxiliaire_client: [], auxiliaire_fournisseur: [], immobilisations: [] })
 const detailOuvert = ref(null)
+// Nombre d'alertes des contrôles par fichier actif (badge de la carte) :
+// null = résultat indisponible. Lu dans le détail existant, aucun nouvel endpoint.
+const alertesParFichier = ref({})
 const loading = ref(false)
 const importingType = ref(null)
 
@@ -78,12 +85,35 @@ async function chargerFichiers() {
     archives.value = Object.fromEntries(
       Object.keys(LIBELLES_TYPE).map((type, i) => [type, historiques[i].filter((f) => !f.actif)]),
     )
+    await chargerResultatsControles()
   } catch (e) {
     notyf.trigger(e.message || 'Erreur lors du chargement des fichiers', 'error')
   } finally {
     loading.value = false
   }
 }
+
+async function chargerResultatsControles() {
+  const actifs = Object.values(fichiers.value).flat()
+  const resultats = await Promise.all(actifs.map(async (f) => {
+    try {
+      return [f._id, nombreAlertes(await detailFichierComplementaire(props.missionId, f._id))]
+    } catch {
+      return [f._id, null]
+    }
+  }))
+  alertesParFichier.value = Object.fromEntries(resultats)
+}
+
+// Fenêtre de détail : présentation lisible (lectureFichierComplementaire.js).
+const controlesDetail = computed(() => (detailOuvert.value ? controlesLisibles(detailOuvert.value) : []))
+const alertesDetail = computed(() => controlesDetail.value.filter((c) => c.statut === 'alerte').length)
+const syntheseDetail = computed(() => (detailOuvert.value ? phraseSynthese(detailOuvert.value) : ''))
+const totauxDetail = computed(() => (detailOuvert.value ? totauxLisibles(detailOuvert.value) : { lignes: [] }))
+const colonnesDetail = computed(() => (detailOuvert.value ? colonnesComptes(detailOuvert.value) : []))
+const lignesTotalEnEcart = computed(() =>
+  (detailOuvert.value?.controles_preliminaires?.bouclage_total?.resultats || []).filter((r) => !r.ok),
+)
 
 async function voirDetail(fichierId) {
   try {
@@ -273,21 +303,43 @@ function back() {
           </div>
 
           <div v-for="f in fichiers[type]" :key="f._id"
-            class="border rounded-lg p-3 flex flex-col gap-1 cursor-pointer hover:bg-gray-50"
+            class="border rounded-lg p-3 flex flex-col gap-2 cursor-pointer hover:bg-gray-50"
             @click="voirDetail(f._id)">
             <div class="flex items-center justify-between gap-2">
               <span class="text-sm font-semibold truncate">{{ f.nom_fichier || 'Fichier sans nom' }}</span>
               <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
             </div>
-            <span class="text-xs text-gray-500">Importé le {{ formatDateHeureFr(f.date_import) }}</span>
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs text-gray-500">{{ f.nb_lignes }} lignes · version {{ f.version }}</span>
+            <span class="text-xs text-gray-500">Importé le {{ formatDateHeureFr(f.date_import) }} · {{ f.nb_lignes }} lignes · version {{ f.version }}</span>
+
+            <!-- Résultat des contrôles faits à l'import -->
+            <div>
+              <span v-if="!(f._id in alertesParFichier)" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                Contrôles…
+              </span>
+              <span v-else-if="alertesParFichier[f._id] === null" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                Contrôles indisponibles
+              </span>
+              <span v-else-if="alertesParFichier[f._id] === 0" class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                <i class="fa-solid fa-check mr-1"></i>Contrôles OK
+              </span>
+              <span v-else class="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ alertesParFichier[f._id] }} {{ alertesParFichier[f._id] > 1 ? 'alertes' : 'alerte' }}
+              </span>
+            </div>
+
+            <div class="flex items-center justify-end gap-2">
               <button
                 class="px-3 py-1 text-xs border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 transition"
                 title="Désactiver ce fichier importé par erreur (archivé, rien n'est supprimé)"
                 @click.stop="ouvrirRetrait(f)"
               >
                 Retirer
+              </button>
+              <button
+                class="px-3 py-1 text-xs border border-blue-ycube text-blue-ycube font-semibold rounded-lg hover:bg-blue-ycube hover:text-white transition"
+                @click.stop="voirDetail(f._id)"
+              >
+                Voir le détail
               </button>
             </div>
           </div>
@@ -307,6 +359,9 @@ function back() {
               <span v-if="f.retrait" class="text-xs">
                 Retirée le {{ formatDateHeureFr(f.retrait.horodatage) }} par {{ f.retrait.utilisateur_id }} : « {{ f.retrait.commentaire }} »
               </span>
+              <div class="flex justify-end">
+                <button class="text-xs text-blue-ycube font-semibold hover:underline" @click.stop="voirDetail(f._id)">Voir le détail</button>
+              </div>
             </div>
           </div>
 
@@ -425,109 +480,157 @@ function back() {
           </button>
         </div>
 
-        <!-- Totaux par paire (ouverture, mouvements, solde mouvement, solde final)
-             quand le fichier fournit des colonnes débit/crédit séparées ; sinon
-             repli "montant unique" (voir fichiers_complementaires_service.py). -->
-        <div v-if="detailOuvert.totaux?.totaux && Object.keys(detailOuvert.totaux.totaux).length" class="text-sm">
-          <table class="text-xs">
-            <thead>
-              <tr class="text-gray-500 text-left">
-                <th class="pr-4"></th>
-                <th class="pr-4">Débit</th>
-                <th>Crédit</th>
+        <!-- a) Synthèse en une phrase -->
+        <div
+          class="rounded-lg p-3 text-sm font-semibold border-l-4"
+          :class="alertesDetail ? 'bg-orange-50 border-orange-500 text-orange-700' : 'bg-green-50 border-green-500 text-green-700'"
+        >
+          <i class="fa-solid mr-2" :class="alertesDetail ? 'fa-triangle-exclamation' : 'fa-circle-check'"></i>{{ syntheseDetail }}
+        </div>
+
+        <!-- b) Contrôles faits à l'import -->
+        <div v-if="controlesDetail.length" class="flex flex-col gap-2">
+          <h4 class="font-semibold text-sm uppercase text-blue-ycube">Contrôles</h4>
+          <ul class="flex flex-col gap-2 text-sm">
+            <li v-for="c in controlesDetail" :key="c.cle" class="flex items-start gap-2">
+              <i
+                class="fa-solid mt-0.5"
+                :class="{
+                  'fa-circle-check text-green-600': c.statut === 'ok',
+                  'fa-triangle-exclamation text-orange-500': c.statut === 'alerte',
+                  'fa-circle-minus text-gray-400': c.statut === 'non_applicable',
+                }"
+              ></i>
+              <div>
+                <p :class="c.statut === 'non_applicable' ? 'text-gray-500' : 'text-gray-800'">{{ c.libelle }}</p>
+                <p v-if="c.aVerifier" class="text-xs" :class="c.statut === 'alerte' ? 'text-orange-700' : 'text-gray-500'">
+                  {{ c.statut === 'alerte' ? 'À vérifier : ' : '' }}{{ c.aVerifier }}
+                </p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- c) Totaux du fichier -->
+        <div v-if="totauxDetail.lignes.length" class="flex flex-col gap-2">
+          <h4 class="font-semibold text-sm uppercase text-blue-ycube">Totaux du fichier</h4>
+          <table class="min-w-full text-sm">
+            <thead class="bg-blue-ycube text-white h-10 text-left">
+              <tr v-if="totauxDetail.mode === 'montants'">
+                <th class="px-3"></th>
+                <th class="px-3 text-right">Montant</th>
+              </tr>
+              <tr v-else>
+                <th class="px-3"></th>
+                <th class="px-3 text-right">Débit</th>
+                <th class="px-3 text-right">Crédit</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(valeurs, libelle) in detailOuvert.totaux.totaux" :key="libelle">
-                <td class="pr-4 font-semibold capitalize">{{ libelle }}</td>
-                <td class="pr-4">{{ valeurs.debit }}</td>
-                <td>{{ valeurs.credit }}</td>
+              <tr v-for="t in totauxDetail.lignes" :key="t.libelle" class="h-10 border-b">
+                <td class="px-3 font-semibold text-gray-800">{{ t.libelle }}</td>
+                <td v-if="totauxDetail.mode === 'montants'" class="px-3 text-right font-mono whitespace-nowrap">{{ t.montant }}</td>
+                <template v-else>
+                  <td class="px-3 text-right font-mono whitespace-nowrap">{{ t.debit }}</td>
+                  <td class="px-3 text-right font-mono whitespace-nowrap">{{ t.credit }}</td>
+                </template>
               </tr>
             </tbody>
           </table>
-          <p v-if="detailOuvert.totaux.mode === 'montant_signe'" class="text-xs text-gray-500 italic mt-1">
-            Fichier à montant unique : convention positif = débit, négatif = crédit (TODO spec CAC-IPE-01).
+          <p v-if="totauxDetail.montantSigne" class="text-xs text-gray-500 italic">
+            Fichier à montant unique : un montant positif est lu comme un débit, un montant négatif comme un crédit (convention à confirmer).
           </p>
         </div>
 
-        <div v-if="detailOuvert.mapping_utilise" class="text-xs text-gray-500">
-          Mapping utilisé :
-          <span v-for="(colonne, champ) in detailOuvert.mapping_utilise" :key="champ" class="mr-2">
-            {{ champ }} = « {{ colonne }} »
-          </span>
-        </div>
-
-        <div v-if="detailOuvert.controles_preliminaires" class="text-xs flex flex-col gap-2">
-          <p :class="detailOuvert.controles_preliminaires.integrite?.ok ? 'text-green-ycube' : 'text-red-500'">
-            Intégrité : {{ detailOuvert.controles_preliminaires.integrite?.ok ? 'OK' : (detailOuvert.controles_preliminaires.integrite?.erreurs || []).join(', ') }}
-          </p>
-          <p :class="detailOuvert.controles_preliminaires.doublons?.ok ? 'text-green-ycube' : 'text-red-500'">
-            Doublons : {{ detailOuvert.controles_preliminaires.doublons?.ok ? 'OK' : 'détectés : ' + (detailOuvert.controles_preliminaires.doublons?.doublons || []).join(', ') }}
-          </p>
-
-          <!-- Lignes écartées (sans numéro de compte, ex. lignes de total Excel) :
-               traçabilité, jamais une suppression silencieuse. -->
-          <div v-if="detailOuvert.controles_preliminaires.lignes_ecartees" class="text-gray-600">
-            <p>{{ detailOuvert.controles_preliminaires.lignes_ecartees.nb }} ligne(s) écartée(s) : sans numéro de compte.</p>
-            <ul v-if="detailOuvert.controles_preliminaires.lignes_ecartees.nb" class="list-disc ml-4 mt-1">
-              <li v-for="e in detailOuvert.controles_preliminaires.lignes_ecartees.lignes" :key="e.ligne_excel">
-                Ligne Excel {{ e.ligne_excel }} : {{ e.contenu.code_entite || e.contenu.libelle_compte || '(vide)' }}
-              </li>
-            </ul>
+        <!-- d) Comptes importés : en-tête fixe au défilement -->
+        <div class="flex flex-col gap-2">
+          <h4 class="font-semibold text-sm uppercase text-blue-ycube">
+            {{ estImmobilisations(detailOuvert) ? 'Biens importés' : 'Comptes importés' }}
+          </h4>
+          <p v-if="!detailOuvert.lignes || detailOuvert.lignes.length === 0" class="text-sm text-gray-500 italic">Aucune ligne.</p>
+          <div v-else class="max-h-96 overflow-y-auto border rounded-lg">
+            <table class="w-full text-xs">
+              <thead class="bg-blue-ycube text-white text-left sticky top-0">
+                <tr class="h-10">
+                  <th v-for="col in colonnesDetail" :key="col.titre" class="px-2" :class="col.montant ? 'text-right whitespace-nowrap' : ''">
+                    {{ col.titre }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(ligne, i) in detailOuvert.lignes" :key="i" class="border-b hover:bg-gray-50">
+                  <td
+                    v-for="col in colonnesDetail"
+                    :key="col.titre"
+                    class="px-2 py-1.5"
+                    :class="col.montant ? 'text-right font-mono whitespace-nowrap' : (col.large ? 'break-words' : 'whitespace-nowrap')"
+                    :title="col.infobulle ? col.infobulle(ligne) : null"
+                  >
+                    {{ col.valeur(ligne) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+          <p class="text-xs text-gray-500">D = solde débiteur, C = solde créditeur.</p>
+        </div>
 
-          <!-- Bouclage des totaux Excel (si le fichier en fournit) : comparé à 3
-               périmètres (toutes les lignes, comptes de bilan, comptes de gestion),
-               jamais sur le libellé de la ligne de total. OK si un périmètre colle. -->
-          <div v-if="detailOuvert.controles_preliminaires.bouclage_total?.nb_lignes_de_total_detectees" class="text-gray-600">
-            <p class="font-semibold">Bouclage avec les lignes de total du fichier :</p>
-            <div v-for="r in detailOuvert.controles_preliminaires.bouclage_total.resultats" :key="r.ligne_excel" class="ml-2 mt-1">
-              <p :class="r.ok ? 'text-green-ycube' : 'text-red-500'">
-                Ligne Excel {{ r.ligne_excel }} ({{ r.libelle }}) :
-                {{ r.ok ? 'OK — périmètre ' + r.perimetre_correspondant : 'écart (aucun périmètre ne correspond)' }}
-              </p>
-              <ul v-if="!r.ok" class="ml-4">
-                <li v-for="(resultatPerimetre, nomPerimetre) in r.par_perimetre" :key="nomPerimetre">
-                  {{ nomPerimetre }} :
-                  <span v-for="(c, champ) in resultatPerimetre.comparaisons" :key="champ"
-                    :class="c.ok ? 'text-green-ycube' : 'text-red-500'" class="mr-2">
-                    {{ champ }}={{ c.ok ? 'OK' : c.valeur_fichier + '≠' + c.somme_calculee }}
-                  </span>
-                </li>
-              </ul>
+        <!-- e) Détail technique, replié -->
+        <details class="border-t pt-3 text-xs text-gray-600">
+          <summary class="cursor-pointer font-semibold text-blue-ycube">Afficher le détail technique</summary>
+          <div class="flex flex-col gap-4 mt-3">
+            <div>
+              <p class="font-semibold text-gray-700">Lignes écartées</p>
+              <p v-if="!detailOuvert.controles_preliminaires?.lignes_ecartees?.nb" class="text-gray-500">Aucune ligne écartée.</p>
+              <template v-else>
+                <p>Lignes de total du fichier (ou lignes sans numéro), écartées car ce ne sont pas des comptes :</p>
+                <ul class="list-disc ml-4 mt-1">
+                  <li v-for="e in detailOuvert.controles_preliminaires.lignes_ecartees.lignes" :key="e.ligne_excel">
+                    Ligne Excel {{ e.ligne_excel }} : {{ e.contenu?.code_entite || e.contenu?.libelle_compte || e.contenu?.libelle || '(sans libellé)' }}
+                  </li>
+                </ul>
+              </template>
+            </div>
+
+            <div v-if="lignesTotalEnEcart.length">
+              <p class="font-semibold text-gray-700">Comparaison des lignes de total en écart</p>
+              <div v-for="r in lignesTotalEnEcart" :key="r.ligne_excel" class="mt-1">
+                <p>Ligne Excel {{ r.ligne_excel }} ({{ r.libelle || 'sans libellé' }}) :</p>
+                <ul class="ml-4">
+                  <li v-for="(res, perimetre) in r.par_perimetre" :key="perimetre">
+                    Comparée à {{ libellePerimetre(perimetre) }} :
+                    <span v-for="(c, champ) in res.comparaisons" :key="champ" class="mr-2" :class="c.ok ? 'text-green-700' : 'text-red-600'">
+                      {{ LIBELLES_DONNEES[champ] || champ }} {{ c.ok ? 'OK' : formatMontant(c.valeur_fichier) + ' ≠ ' + formatMontant(c.somme_calculee) }}
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div v-if="detailOuvert.mapping_utilise">
+              <p class="font-semibold text-gray-700 mb-1">Correspondance des colonnes</p>
+              <table class="min-w-full text-xs">
+                <thead class="bg-blue-ycube text-white text-left">
+                  <tr class="h-8">
+                    <th class="px-2">Colonne du fichier</th>
+                    <th class="px-2"></th>
+                    <th class="px-2">Donnée</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(colonne, champ) in detailOuvert.mapping_utilise" :key="champ" class="border-b h-8">
+                    <td class="px-2">{{ colonne }}</td>
+                    <td class="px-2 text-gray-400">→</td>
+                    <td class="px-2">
+                      {{ LIBELLES_DONNEES[champ] || champ }}
+                      <span class="text-gray-400 font-mono">({{ champ }})</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-
-          <!-- Contrôle arithmétique ligne par ligne : ouv + mvt - final = 0 -->
-          <div v-if="detailOuvert.controles_preliminaires.bouclage_ligne?.applicable" class="text-gray-600">
-            <p :class="detailOuvert.controles_preliminaires.bouclage_ligne.nb_lignes_en_ecart ? 'text-red-500' : 'text-green-ycube'">
-              Bouclage ligne par ligne (ouv + mvt = final) : {{ detailOuvert.controles_preliminaires.bouclage_ligne.nb_lignes_en_ecart ? detailOuvert.controles_preliminaires.bouclage_ligne.nb_lignes_en_ecart + ' ligne(s) en écart' : 'OK' }}
-            </p>
-            <ul v-if="detailOuvert.controles_preliminaires.bouclage_ligne.nb_lignes_en_ecart" class="list-disc ml-4 mt-1 text-red-500">
-              <li v-for="e in detailOuvert.controles_preliminaires.bouclage_ligne.lignes_en_ecart" :key="e.ligne_excel">
-                Ligne Excel {{ e.ligne_excel }} — {{ e.numero_compte }} {{ e.libelle_compte }} : écart = {{ e.ecart }}
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="overflow-x-auto border-t pt-3">
-          <p v-if="!detailOuvert.lignes || detailOuvert.lignes.length === 0" class="text-xs text-gray-500 italic">
-            Aucune ligne.
-          </p>
-          <table v-else class="min-w-full text-xs">
-            <thead>
-              <tr class="text-left text-gray-500">
-                <th v-for="col in Object.keys(detailOuvert.lignes[0])" :key="col" class="px-2 py-1">{{ col }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(ligne, i) in detailOuvert.lignes" :key="i" class="border-t">
-                <td v-for="col in Object.keys(ligne)" :key="col" class="px-2 py-1">{{ ligne[col] }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        </details>
       </div>
     </div>
   </div>
