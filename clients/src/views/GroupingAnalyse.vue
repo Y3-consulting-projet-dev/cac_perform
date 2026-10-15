@@ -998,7 +998,12 @@ function showComponent(type, options = {}) {
   }
 
   if (type === ECRAN_FICHIERS_COMPLEMENTAIRES) {
-    renderComponent.value = h(FichiersComplementairesView, { missionId: props.missionId, integre: true });
+    renderComponent.value = h(FichiersComplementairesView, {
+      missionId: props.missionId,
+      integre: true,
+      // Lien « Voir le rapprochement IPE » : même chemin que le bouton « Détail » de la barre latérale.
+      onOuvrirEcran: (ecran) => { if (ECRANS_HORS_ETAPES.has(ecran)) showComponent(ecran); },
+    });
     return;
   }
 

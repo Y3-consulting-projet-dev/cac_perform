@@ -33,6 +33,11 @@ import {
 // `integre` : écran affiché dans la zone principale de GroupingAnalyse.vue,
 // sous la barre latérale bleue (qui porte déjà le « Retour »).
 const props = defineProps({ missionId: String, integre: Boolean })
+// Intégré : demande l'écran à GroupingAnalyse.vue, exactement comme le
+// bouton « Détail » de la barre latérale (showComponent), sans passer par
+// l'adresse — qui ferait perdre ses autres paramètres (?annee=) et ajouterait
+// une entrée d'historique au « Retour ».
+const emit = defineEmits(['ouvrir-ecran'])
 const notyf = useNotyf()
 
 const LIBELLES_TYPE = {
@@ -235,6 +240,10 @@ async function confirmerRetrait() {
 }
 
 function allerVersFiabiliteIpe() {
+  if (props.integre) {
+    emit('ouvrir-ecran', 'fiabilite_ipe')
+    return
+  }
   router.push({ path: `/grouping-analyse/${props.missionId}`, query: { step: 'fiabilite_ipe' } })
 }
 
