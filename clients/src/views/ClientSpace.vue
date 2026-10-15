@@ -2,6 +2,7 @@
 import { ref, inject, onMounted, computed } from 'vue';
 import router from "@/router";
 import { useNotyf } from '@/composables/useNotyf'
+import { avertissementNumeroCc, formatCapital } from '@/utils/client'
 
 
 const axios = inject('axios');
@@ -60,7 +61,11 @@ async function updateClient() {
         originalInfos.value = { ...infos.value }
         editMode.value = false
     } catch (e) {
-        notyf.trigger("Echec de la mise à jour", 'error')
+        const donnees = e?.response?.data
+        const details = donnees?.errors
+            ? Object.values(donnees.errors).flat().join(' ')
+            : (donnees?.message || e?.message || '')
+        notyf.trigger(`Echec de la mise à jour${details ? ' : ' + details : ''}`, 'error', { duration: 6000 })
     }
 }
 
@@ -233,11 +238,27 @@ company_name
         </div>
 
         <div>
-          <label class="text-gray-500 text-sm">N°CC</label>
+          <label class="text-gray-500 text-sm">RCCM</label>
           <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.RCCM
  }}</p>
           <input v-else v-model="infos.RCCM
 " class="border p-2 rounded w-full" />
+        </div>
+
+        <!-- Champs facultatifs V2 : N°CC (compte contribuable) et capital social -->
+        <div>
+          <label class="text-gray-500 text-sm">N°CC</label>
+          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ infos.numero_cc || '-' }}</p>
+          <template v-else>
+            <input v-model="infos.numero_cc" placeholder="ex. 1512345 A" class="border p-2 rounded w-full" />
+            <p v-if="avertissementNumeroCc(infos.numero_cc)" class="text-xs text-orange-600 mt-1">{{ avertissementNumeroCc(infos.numero_cc) }}</p>
+          </template>
+        </div>
+
+        <div>
+          <label class="text-gray-500 text-sm">Capital social (FCFA)</label>
+          <p v-if="!editMode" class="font-semibold text-blue-ycube">{{ formatCapital(infos.capital_social) }}</p>
+          <input v-else v-model="infos.capital_social" inputmode="numeric" placeholder="ex. 100 000 000" class="border p-2 rounded w-full" />
         </div>
 
         <div>

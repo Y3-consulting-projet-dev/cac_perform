@@ -212,6 +212,19 @@
               <input v-else v-model="selectedClient.RCCM" class="border p-2 rounded w-full" />
             </div>
             <div>
+              <p class="text-gray-500">N°CC</p>
+              <p v-if="!editMode" class="font-semibold text-gray-800">{{ selectedClient.numero_cc || '-' }}</p>
+              <template v-else>
+                <input v-model="selectedClient.numero_cc" placeholder="ex. 1512345 A" class="border p-2 rounded w-full" />
+                <p v-if="avertissementNumeroCc(selectedClient.numero_cc)" class="text-xs text-orange-600 mt-1">{{ avertissementNumeroCc(selectedClient.numero_cc) }}</p>
+              </template>
+            </div>
+            <div>
+              <p class="text-gray-500">Capital social (FCFA)</p>
+              <p v-if="!editMode" class="font-semibold text-gray-800">{{ formatCapital(selectedClient.capital_social) }}</p>
+              <input v-else v-model="selectedClient.capital_social" inputmode="numeric" placeholder="ex. 100 000 000" class="border p-2 rounded w-full" />
+            </div>
+            <div>
               <p class="text-gray-500">Forme legale</p>
               <p v-if="!editMode" class="font-semibold text-gray-800">{{ selectedClient.legal_form || '-' }}</p>
               <input v-else v-model="selectedClient.legal_form" class="border p-2 rounded w-full" />
@@ -249,6 +262,7 @@ import { ref, computed, inject, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import router from '@/router'
 import { useNotyf } from '@/composables/useNotyf'
+import { avertissementNumeroCc, formatCapital } from '@/utils/client'
 import Header from '@/components/Header.vue'
 
 const axios = inject('axios')
@@ -291,7 +305,9 @@ function normalizeClient(raw) {
     RCCM: raw.RCCM || '',
     legal_form: raw.legal_form || '',
     creation_date: raw.creation_date || '',
-    country: raw.country || ''
+    country: raw.country || '',
+    numero_cc: raw.numero_cc || '',
+    capital_social: raw.capital_social ?? ''
   }
 }
 
@@ -399,7 +415,11 @@ async function updateClient() {
     notyf.trigger('Client mis à jour', 'success')
     editMode.value = false
   } catch (e) {
-    notyf.trigger("Echec de la mise à jour", 'error')
+    const donnees = e?.response?.data
+    const details = donnees?.errors
+      ? Object.values(donnees.errors).flat().join(' ')
+      : (donnees?.message || e?.message || '')
+    notyf.trigger(`Echec de la mise à jour${details ? ' : ' + details : ''}`, 'error', { duration: 6000 })
   }
 }
 

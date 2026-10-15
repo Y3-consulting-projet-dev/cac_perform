@@ -3,6 +3,7 @@ import { ref, inject } from 'vue';
 const axios = inject('axios')
 import { useNotyf } from '../composables/useNotyf';
 import router from '@/router';
+import { avertissementNumeroCc } from '@/utils/client';
 
 const notyf = useNotyf();
 
@@ -17,8 +18,13 @@ const field = ref({
     responsable_function: "",
     RCCM: "",
     country: "",
-    creation_date: ""
+    creation_date: "",
+    numero_cc: "",
+    capital_social: ""
 });
+
+// Champs facultatifs (les clients existants ne les ont pas).
+const CHAMPS_FACULTATIFS = new Set(['numero_cc', 'capital_social']);
 
 // Libellés affichés dans les messages d'erreur (mêmes que le formulaire).
 const LIBELLES = {
@@ -26,7 +32,9 @@ const LIBELLES = {
     responsable_name: 'Nom et prénom(s) du responsable',
     civility: 'Civilité',
     responsable_function: 'Fonction du responsable',
-    RCCM: 'N°CC',
+    RCCM: 'RCCM',
+    numero_cc: 'N°CC',
+    capital_social: 'Capital social (FCFA)',
     legal_form: 'Forme juridique',
     address: 'Adresse',
     country: 'Pays',
@@ -44,10 +52,14 @@ const enCours = ref(false);
 function validerFormulaire() {
     const e = {};
     for (const [cle, valeur] of Object.entries(field.value)) {
-        if (!String(valeur || '').trim()) e[cle] = 'Champ obligatoire.';
+        if (!CHAMPS_FACULTATIFS.has(cle) && !String(valeur || '').trim()) e[cle] = 'Champ obligatoire.';
     }
     for (const cle of ['company_name', 'responsable_name', 'responsable_function', 'RCCM', 'legal_form', 'address', 'country', 'sector']) {
         if (!e[cle] && field.value[cle].trim().length < 2) e[cle] = 'Au moins 2 caractères.';
+    }
+    const capital = String(field.value.capital_social || '').replace(/[\s\u202f\u00a0]/g, '');
+    if (capital && (Number.isNaN(Number(capital)) || Number(capital) < 0)) {
+        e.capital_social = 'Nombre positif attendu (ex. 100 000 000).';
     }
     if (!e.creation_date && field.value.creation_date > new Date().toISOString().slice(0, 10)) {
         e.creation_date = 'La date de création ne peut pas être dans le futur.';
@@ -153,7 +165,7 @@ function back() {
 
                 <div class="flex space-x-6">
                     <div class="w-1/2">
-                        <label for="" class="text-xs uppercase font-bold">N°CC</label>
+                        <label for="" class="text-xs uppercase font-bold">RCCM</label>
                         <input v-model="field.RCCM" type="text" :class="erreurs['RCCM'] ? 'border-red-500' : 'border-blue-ycube'" class="w-full border-2 rounded-lg pl-2 focus:outline-none focus:ring-0 h-10">
                         <p v-if="erreurs.RCCM" class="text-xs text-red-600 mt-1">{{ erreurs.RCCM }}</p>
                     </div>
@@ -190,6 +202,19 @@ function back() {
                             <option value="SYSCOHADA">SYSCOHADA</option>
                         </select>
                         <p v-if="erreurs.referentiel" class="text-xs text-red-600 mt-1">{{ erreurs.referentiel }}</p>
+                    </div>
+                </div>
+
+                <div class="flex space-x-6">
+                    <div class="w-1/2">
+                        <label for="" class="text-xs uppercase font-bold">N°CC <span class="normal-case font-normal text-gray-500">(facultatif)</span></label>
+                        <input v-model="field.numero_cc" type="text" placeholder="ex. 1512345 A" class="w-full border-2 border-blue-ycube rounded-lg pl-2 focus:outline-none focus:ring-0 h-10">
+                        <p v-if="avertissementNumeroCc(field.numero_cc)" class="text-xs text-orange-600 mt-1">{{ avertissementNumeroCc(field.numero_cc) }}</p>
+                    </div>
+                    <div class="w-1/2">
+                        <label for="" class="text-xs uppercase font-bold">Capital social (FCFA) <span class="normal-case font-normal text-gray-500">(facultatif)</span></label>
+                        <input v-model="field.capital_social" type="text" inputmode="numeric" placeholder="ex. 100 000 000" :class="erreurs['capital_social'] ? 'border-red-500' : 'border-blue-ycube'" class="w-full border-2 rounded-lg pl-2 focus:outline-none focus:ring-0 h-10">
+                        <p v-if="erreurs.capital_social" class="text-xs text-red-600 mt-1">{{ erreurs.capital_social }}</p>
                     </div>
                 </div>
 

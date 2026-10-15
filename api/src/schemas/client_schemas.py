@@ -76,6 +76,16 @@ class ClientCreateSchema(Schema):
         },
     )
 
+    # Champs facultatifs ajoutés en V2 : les clients existants (qui ne les
+    # ont pas) restent valides. Le format du N°CC n'est PAS contrôlé ici :
+    # simple avertissement côté écran (TODO(décision) : format officiel).
+    numero_cc = fields.Str(required=False, allow_none=True, validate=validate.Length(max=30))
+    capital_social = fields.Float(
+        required=False, allow_none=True,
+        validate=validate.Range(min=0, error="Le capital social ne peut pas être négatif."),
+        error_messages={"invalid": "Le capital social doit être un nombre (FCFA)."},
+    )
+
     @validates("referentiel")
     def _normalize_referentiel(self, value: str) -> None:
         # Marshmallow validates after load; rely on allowed upper-case values.
@@ -101,6 +111,12 @@ class ClientUpdateSchema(Schema):
     RCCM = fields.Str(required=False, validate=validate.Length(min=2, max=80))
     country = fields.Str(required=False, validate=validate.Length(min=2, max=120))
     creation_date = fields.Date(required=False, format="%Y-%m-%d", allow_none=True)
+    numero_cc = fields.Str(required=False, allow_none=True, validate=validate.Length(max=30))
+    capital_social = fields.Float(
+        required=False, allow_none=True,
+        validate=validate.Range(min=0, error="Le capital social ne peut pas être négatif."),
+        error_messages={"invalid": "Le capital social doit être un nombre (FCFA)."},
+    )
 
 
 class ClientResponseSchema(Schema):
@@ -121,6 +137,8 @@ class ClientResponseSchema(Schema):
     RCCM = fields.Str(required=False, allow_none=True)
     country = fields.Str(required=False, allow_none=True)
     creation_date = fields.Str(required=False, allow_none=True)
+    numero_cc = fields.Str(required=False, allow_none=True)
+    capital_social = fields.Float(required=False, allow_none=True)
 
 
 class ClientListResponseSchema(Schema):
@@ -152,6 +170,17 @@ def validate_client_data(data: Dict[str, Any], schema_class: Schema) -> Dict[str
                         break
                     except ValueError:
                         continue
+        # Champs facultatifs : vide -> absent (jamais d'écrasement par du vide) ;
+        # capital saisi avec des espaces de milliers (« 100 000 000 ») -> nombre.
+        for cle in ("numero_cc", "capital_social"):
+            valeur = normalized.get(cle)
+            if isinstance(valeur, str):
+                valeur = valeur.strip()
+                if cle == "capital_social":
+                    valeur = valeur.replace(" ", "").replace(" ", "").replace(" ", "")
+                normalized[cle] = valeur
+            if normalized.get(cle) in ("", None) and cle in normalized:
+                del normalized[cle]
         loaded = schema.load(normalized)
         if isinstance(loaded.get("creation_date"), (date, datetime)):
             loaded["creation_date"] = loaded["creation_date"].strftime("%Y-%m-%d")
