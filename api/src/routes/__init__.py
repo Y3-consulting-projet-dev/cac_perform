@@ -142,6 +142,11 @@ def register_routes(app):
         """POST /api/v1/missions/<id>/balance-generale - Remplace la balance générale N (import V2)"""
         return ImportResource.importer_balance_generale(mission_id)
 
+    @mission_bp.route('/<mission_id>/balance-generale/fraicheur', methods=['GET'])
+    def fraicheur_donnees_v1(mission_id):
+        """GET /api/v1/missions/<id>/balance-generale/fraicheur - Étapes V1 calculées sur une version précédente de la balance"""
+        return ImportResource.fraicheur_donnees_v1(mission_id)
+
     @mission_bp.route('/<mission_id>/balance-generale/<balance_id>', methods=['GET'])
     def detail_balance_generale(mission_id, balance_id):
         """GET /api/v1/missions/<id>/balance-generale/<balance_id> - Détail d'une balance générale"""

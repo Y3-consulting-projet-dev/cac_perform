@@ -30,7 +30,7 @@ import {
 import { formatDateHeureFr } from '@/utils/formatDate'
 import {
   controlesLisibles, nombreAlertes, phraseSynthese, totauxLisibles, colonnesComptes,
-  LIBELLES_DONNEES, libellePerimetre, formatMontant, estImmobilisations,
+  LIBELLES_DONNEES, libellePerimetre, formatMontant, estImmobilisations, formatSens,
 } from '@/utils/lectureFichierComplementaire'
 
 // `integre` : écran affiché dans la zone principale de GroupingAnalyse.vue,
@@ -170,7 +170,35 @@ function fermerDetail() {
 // Import en deux temps : contrôles (type de comptes, exercice) PUIS
 // enregistrement. En cas d'alerte, rien n'est enregistré tant que
 // l'utilisateur n'a pas choisi « Importer quand même ».
-const importEnAttente = ref(null) // { fichier, type, verification }
+const importEnAttente = ref(null) // { fichier, type, verification, decisions }
+const reverificationEnCours = ref(false)
+
+// Balance générale : lignes qui ont la forme d'un sous-total sans
+// correspondre à leurs comptes. L'auditeur choisit « Écarter » ou
+// « Garder » ; chaque choix relance la vérification (le parent d'une
+// ligne peut changer de statut selon ce choix). Rien n'est enregistré
+// tant qu'une ligne n'a pas de décision.
+const lignesAmbigues = computed(() => importEnAttente.value?.verification?.analyse_balance?.sous_totaux_ambigus?.lignes || [])
+const decisionsManquantes = computed(() => lignesAmbigues.value.filter((l) => !l.decision).length)
+const alertesAffichees = computed(() =>
+  (importEnAttente.value?.verification?.alertes || []).filter((a) => a.code !== 'sous_total_ambigu'),
+)
+const LIBELLES_ALERTE = { type_incoherent: 'Type de fichier', exercice_incoherent: 'Exercice', desequilibre: 'Balance non équilibrée' }
+const LIBELLES_PAIRE = { ouverture: "Solde d'ouverture", mouvements: 'Mouvements', solde_final: 'Solde final' }
+
+async function deciderSousTotal(numeroCompte, decision) {
+  const attente = importEnAttente.value
+  const decisions = { ...(attente.decisions || {}), [numeroCompte]: decision }
+  reverificationEnCours.value = true
+  try {
+    const verification = await verifierFichierComplementaire(props.missionId, attente.fichier, attente.type, decisions)
+    importEnAttente.value = { ...attente, verification, decisions }
+  } catch (e) {
+    notyf.trigger(e.message || 'Erreur lors de la vérification', 'error')
+  } finally {
+    reverificationEnCours.value = false
+  }
+}
 
 async function onImporter(event, type) {
   const fichier = event.target.files[0]
@@ -204,10 +232,10 @@ function annulerImport() {
 }
 
 async function confirmerImport() {
-  const { fichier, type } = importEnAttente.value
+  const { fichier, type, decisions } = importEnAttente.value
   importEnAttente.value = null
   try {
-    await enregistrerImport(fichier, type)
+    await enregistrerImport(fichier, type, decisions)
   } catch (e) {
     notyf.trigger(e.message || "Erreur lors de l'import", 'error')
   } finally {
@@ -215,11 +243,11 @@ async function confirmerImport() {
   }
 }
 
-async function enregistrerImport(fichier, type) {
+async function enregistrerImport(fichier, type, decisions = null) {
   const idClient = infoMission.value.id_client
   const annee = infoMission.value.annee_auditee
   if (type === TYPE_BALANCE_GENERALE) {
-    const resultat = await importerBalanceGenerale(props.missionId, fichier, utilisateurConnecte())
+    const resultat = await importerBalanceGenerale(props.missionId, fichier, utilisateurConnecte(), decisions)
     notyf.trigger(
       `Balance générale remplacée : ${resultat.nb_lignes} comptes, ${resultat.nb_sous_totaux_ecartes} ligne(s) de sous-total écartée(s). L'ancienne version reste dans l'historique.`,
       'success', { duration: 6000 },
@@ -393,6 +421,15 @@ function back() {
             </div>
           </div>
 
+          <div v-if="balanceGenerale.remplacements?.length" class="flex flex-col gap-1 text-xs text-gray-600">
+            <p class="text-gray-500">Historique des remplacements</p>
+            <p v-for="r in [...balanceGenerale.remplacements].reverse()" :key="r.nouvelle_balance_id">
+              {{ formatDateHeureFr(r.horodatage) }} — version {{ r.version_remplacee }} remplacée par la version {{ r.nouvelle_version }}
+              ({{ r.nom_fichier || 'fichier sans nom' }}) par {{ r.utilisateur_id || 'Non identifié' }}<template v-if="r.decisions_sous_totaux?.length"> ;
+                lignes tranchées : {{ r.decisions_sous_totaux.map((d) => `${d.numero_compte} ${d.decision === 'ecarter' ? 'écartée' : 'gardée'}`).join(', ') }}</template>.
+            </p>
+          </div>
+
           <div v-if="balanceGenerale.historique.length" class="flex flex-col gap-1">
             <p class="text-xs text-gray-500">Versions précédentes</p>
             <div v-for="b in balanceGenerale.historique" :key="b._id"
@@ -515,14 +552,64 @@ function back() {
           </p>
         </div>
         <div
-          v-for="alerte in importEnAttente.verification.alertes"
+          v-for="alerte in alertesAffichees"
           :key="alerte.code"
           class="border-l-4 border-orange-500 bg-orange-50 rounded-lg p-3 text-sm text-gray-800"
         >
-          <p class="font-semibold text-orange-700">
-            {{ alerte.code === 'type_incoherent' ? 'Type de fichier' : 'Exercice' }}
-          </p>
+          <p class="font-semibold text-orange-700">{{ LIBELLES_ALERTE[alerte.code] || 'Alerte' }}</p>
           <p>{{ alerte.message }}</p>
+        </div>
+
+        <!-- Lignes en forme de sous-total qui ne correspondent pas à leurs comptes : choix de l'auditeur -->
+        <div v-if="lignesAmbigues.length" class="border-l-4 border-orange-500 bg-orange-50 rounded-lg p-3 text-sm text-gray-800 flex flex-col gap-3">
+          <div>
+            <p class="font-semibold text-orange-700">Lignes à trancher</p>
+            <p>
+              Ces lignes ont la forme d'un sous-total (d'autres comptes du fichier commencent par leur numéro), mais leurs
+              montants ne correspondent pas à la somme de ces comptes. Écarter : c'est un sous-total, il n'est pas importé.
+              Garder : c'est un compte, il est importé. Votre choix est enregistré avec votre nom.
+            </p>
+          </div>
+          <div v-for="l in lignesAmbigues" :key="l.numero_compte" class="bg-white rounded-lg border p-3 flex flex-col gap-2">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <p class="font-semibold text-gray-800">
+                {{ l.numero_compte }} « {{ l.libelle || 'sans libellé' }} »
+                <span class="font-normal text-gray-500">— {{ l.nb_comptes_detail }} {{ l.nb_comptes_detail > 1 ? 'comptes' : 'compte' }} dessous<template v-if="l.ligne_excel">, ligne Excel {{ l.ligne_excel }}</template></span>
+              </p>
+              <div class="flex gap-2">
+                <button
+                  class="px-3 py-1 text-xs rounded-lg font-semibold transition disabled:opacity-40"
+                  :class="l.decision === 'ecarter' ? 'bg-blue-ycube text-white' : 'border border-blue-ycube text-blue-ycube hover:bg-blue-ycube hover:text-white'"
+                  :disabled="reverificationEnCours"
+                  @click="deciderSousTotal(l.numero_compte, 'ecarter')"
+                >Écarter</button>
+                <button
+                  class="px-3 py-1 text-xs rounded-lg font-semibold transition disabled:opacity-40"
+                  :class="l.decision === 'garder' ? 'bg-blue-ycube text-white' : 'border border-blue-ycube text-blue-ycube hover:bg-blue-ycube hover:text-white'"
+                  :disabled="reverificationEnCours"
+                  @click="deciderSousTotal(l.numero_compte, 'garder')"
+                >Garder</button>
+              </div>
+            </div>
+            <table class="min-w-full text-xs">
+              <thead class="bg-blue-ycube text-white text-left">
+                <tr class="h-8">
+                  <th class="px-2"></th>
+                  <th class="px-2 text-right">Ligne du fichier</th>
+                  <th class="px-2 text-right">Somme de ses comptes</th>
+                  <th class="px-2 text-right">Écart</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(e, paire) in l.ecarts" :key="paire" class="border-b h-8" :class="e.correspond ? 'text-gray-500' : 'text-orange-700'">
+                  <td class="px-2">{{ LIBELLES_PAIRE[paire] }}</td>
+                  <td class="px-2 text-right font-mono whitespace-nowrap">{{ formatSens(e.ligne_debit, e.ligne_credit) }}</td>
+                  <td class="px-2 text-right font-mono whitespace-nowrap">{{ formatSens(e.somme_debit, e.somme_credit) }}</td>
+                  <td class="px-2 text-right font-mono whitespace-nowrap">{{ e.correspond ? 'correspond' : formatSens(Math.max(e.ecart_net, 0), Math.max(-e.ecart_net, 0)) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div
           v-if="importEnAttente.type === TYPE_BALANCE_GENERALE"
@@ -538,7 +625,10 @@ function back() {
           <p>Les lignes de sous-total du fichier seront écartées et visibles dans le détail. L'ancienne balance reste dans l'historique.</p>
         </div>
         <p v-for="info in importEnAttente.verification.informations" :key="info" class="text-xs text-gray-500">{{ info }}</p>
-        <p class="text-sm text-gray-700">Rien n'est enregistré tant que vous n'avez pas choisi.</p>
+        <p class="text-sm text-gray-700">
+          Rien n'est enregistré tant que vous n'avez pas choisi.
+          <span v-if="decisionsManquantes" class="font-semibold text-orange-700">Encore {{ decisionsManquantes }} ligne(s) à trancher.</span>
+        </p>
         <div class="flex justify-end gap-3">
           <button
             class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition"
@@ -547,7 +637,9 @@ function back() {
             Annuler
           </button>
           <button
-            class="px-5 py-2 rounded-lg bg-blue-ycube text-white font-semibold hover:bg-blue-900 transition"
+            class="px-5 py-2 rounded-lg bg-blue-ycube text-white font-semibold hover:bg-blue-900 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="decisionsManquantes > 0 || reverificationEnCours"
+            :title="decisionsManquantes ? `Encore ${decisionsManquantes} ligne(s) à trancher` : ''"
             @click="confirmerImport"
           >
             {{ importEnAttente.type === TYPE_BALANCE_GENERALE ? 'Remplacer la balance générale' : 'Importer quand même' }}
@@ -731,9 +823,9 @@ function back() {
                 <ul class="list-disc ml-4 mt-1">
                   <li v-for="e in detailOuvert.controles_preliminaires.lignes_ecartees.lignes" :key="e.ligne_excel">
                     Ligne Excel {{ e.ligne_excel }} :
-                    <template v-if="e.motif === 'sous_total'">
+                    <template v-if="e.motif === 'sous_total' || e.motif === 'sous_total_ecarte_par_l_auditeur'">
                       sous-total {{ e.contenu?.numero_compte }} « {{ e.contenu?.libelle || 'sans libellé' }} »
-                      (résume {{ e.contenu?.nb_comptes_detail }} comptes du fichier)
+                      (résume {{ e.contenu?.nb_comptes_detail }} comptes du fichier{{ e.motif === 'sous_total_ecarte_par_l_auditeur' ? ', écarté sur décision de l\'auditeur' : '' }})
                     </template>
                     <template v-else>{{ e.contenu?.code_entite || e.contenu?.libelle_compte || e.contenu?.libelle || '(sans libellé)' }}</template>
                   </li>

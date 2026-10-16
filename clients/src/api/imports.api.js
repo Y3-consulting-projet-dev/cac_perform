@@ -112,10 +112,11 @@ export async function listerFichiersComplementaires(missionId) {
 
 // Contrôles avant enregistrement (type de comptes, exercice) : renvoie des
 // alertes, n'écrit rien en base.
-export async function verifierFichierComplementaire(missionId, fichier, typeFichier) {
+export async function verifierFichierComplementaire(missionId, fichier, typeFichier, decisionsSousTotaux = null) {
   const formData = new FormData()
   formData.append('fichier', fichier)
   formData.append('type', typeFichier)
+  if (decisionsSousTotaux) formData.append('decisions_sous_totaux', JSON.stringify(decisionsSousTotaux))
   let data
   try {
     ({ data } = await axios.post(`${BASE_URL}/missions/${missionId}/fichiers-complementaires/verification`, formData))
@@ -178,10 +179,11 @@ export async function detailBalanceGenerale(missionId, balanceId) {
   throw new Error(data?.error || 'Erreur lors du chargement du détail de la balance générale')
 }
 
-export async function importerBalanceGenerale(missionId, fichier, utilisateurId) {
+export async function importerBalanceGenerale(missionId, fichier, utilisateurId, decisionsSousTotaux = null) {
   const formData = new FormData()
   formData.append('fichier', fichier)
   if (utilisateurId) formData.append('utilisateur_id', utilisateurId)
+  if (decisionsSousTotaux) formData.append('decisions_sous_totaux', JSON.stringify(decisionsSousTotaux))
   let data
   try {
     ({ data } = await axios.post(`${BASE_URL}/missions/${missionId}/balance-generale`, formData))
@@ -190,4 +192,17 @@ export async function importerBalanceGenerale(missionId, fichier, utilisateurId)
   }
   if (data?.success) return data.data
   throw new Error(data?.error || "Erreur lors de l'import de la balance générale")
+}
+
+// Étapes V1 calculées sur une version précédente de la balance générale
+// (bandeau dans GroupingAnalyse.vue) : { cle_etape: null | { version, remplacee_le } }.
+export async function fraicheurDonneesV1(missionId) {
+  let data
+  try {
+    ({ data } = await api.get(`/missions/${missionId}/balance-generale/fraicheur`))
+  } catch (e) {
+    throw new Error(messageErreur(e, 'Erreur lors du contrôle de fraîcheur des étapes'))
+  }
+  if (data?.success) return data.data
+  throw new Error(data?.error || 'Erreur lors du contrôle de fraîcheur des étapes')
 }

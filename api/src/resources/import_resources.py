@@ -4,6 +4,7 @@ auxiliaires/immobilisations). Nouveau périmètre V2 — voir
 docs/PLAN_import_refonte.md §3. Ne touche pas aux ressources mission/client
 existantes.
 """
+import io
 import json
 
 from flask import request, jsonify, make_response
@@ -42,6 +43,23 @@ def _lire_mapping_optionnel():
         return valeur if isinstance(valeur, dict) else None
     except (TypeError, ValueError):
         return None
+
+
+def _lire_decisions_sous_totaux():
+    """
+    Choix de l'auditeur sur les lignes ambiguës (champ de formulaire
+    `decisions_sous_totaux`, JSON {numero_compte: "ecarter" | "garder"}).
+    """
+    brut = request.form.get("decisions_sous_totaux")
+    if not brut:
+        return {}
+    try:
+        valeur = json.loads(brut)
+    except (TypeError, ValueError):
+        raise ValueError("Décisions sur les sous-totaux illisibles")
+    if not isinstance(valeur, dict) or any(v not in balance_generale_service.DECISIONS_POSSIBLES for v in valeur.values()):
+        raise ValueError("Décision sur un sous-total invalide : « ecarter » ou « garder » attendu")
+    return {str(k): v for k, v in valeur.items()}
 
 
 class ImportResource:
@@ -232,6 +250,16 @@ class ImportResource:
             return make_response(jsonify({"success": False, "error": f"Erreur serveur: {str(e)}"}), 500)
 
     @staticmethod
+    def fraicheur_donnees_v1(mission_id: str):
+        """GET /api/v1/missions/<id>/balance-generale/fraicheur — étapes V1 calculées sur une version précédente."""
+        try:
+            return make_response(jsonify({"success": True, "data": balance_generale_service.lire_fraicheur(mission_id)}), 200)
+        except ValueError as e:
+            return make_response(jsonify({"success": False, "error": str(e)}), 400)
+        except Exception as e:
+            return make_response(jsonify({"success": False, "error": f"Erreur serveur: {str(e)}"}), 500)
+
+    @staticmethod
     def detail_balance_generale(mission_id: str, balance_id: str):
         """GET /api/v1/missions/<id>/balance-generale/<balance_id> — détail (lecture seule)."""
         try:
@@ -259,6 +287,7 @@ class ImportResource:
                 utilisateur_id=request.form.get("utilisateur_id") or None,
                 logiciel_comptable=request.form.get("logiciel_comptable") or None,
                 mapping=_lire_mapping_optionnel(),
+                decisions=_lire_decisions_sous_totaux(),
             )
             return make_response(jsonify({"success": True, "data": resultat}), 201)
         except ValueError as e:
@@ -297,8 +326,22 @@ class ImportResource:
                     "success": False,
                     "error": "Aucun fichier reçu (champ attendu : 'fichier')"
                 }), 400)
+            type_fichier = request.form.get("type", "")
+            contenu = fichier.read()
+            fichier.seek(0)
             annee = verification_fichier_service.annee_auditee_de_la_mission(mission_id)
-            resultat = verification_fichier_service.verifier_fichier(fichier, request.form.get("type", ""), annee)
+            resultat = verification_fichier_service.verifier_fichier(fichier, type_fichier, annee)
+            if type_fichier == balance_generale_service.TYPE_FICHIER:
+                # Balance générale : lignes ambiguës (forme de sous-total) et
+                # équilibre, réévalués à chaque décision de l'auditeur.
+                tampon = io.BytesIO(contenu)
+                tampon.filename = fichier.filename
+                analyse = balance_generale_service.analyser_fichier(
+                    tampon, balance_generale_service.id_client_de_la_mission(mission_id),
+                    decisions=_lire_decisions_sous_totaux(),
+                )
+                resultat["analyse_balance"] = balance_generale_service.resume_analyse(analyse)
+                resultat["alertes"] += balance_generale_service.alertes_analyse(analyse)
             return make_response(jsonify({"success": True, "data": resultat}), 200)
         except ValueError as e:
             return make_response(jsonify({"success": False, "error": str(e)}), 400)

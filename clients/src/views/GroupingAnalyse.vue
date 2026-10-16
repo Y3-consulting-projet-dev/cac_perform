@@ -7,6 +7,8 @@ import router from "@/router";
 import { useNotyf } from '@/composables/useNotyf';
 import * as XLSX from 'xlsx';
 import { obtenirEtatIpe } from '@/api/ipe.api';
+import { fraicheurDonneesV1 } from '@/api/imports.api';
+import { formatDateHeureFr } from '@/utils/formatDate';
 import FiabiliteIpeView from '@/views/FiabiliteIpeView.vue';
 import FichiersComplementairesView from '@/views/FichiersComplementairesView.vue';
 
@@ -716,7 +718,26 @@ onMounted(async () => {
   showComponent(initialStep);
 
   chargerEtatIpe();
+  chargerFraicheur();
 });
+
+/* ================================
+   FRAÎCHEUR DES ÉTAPES V1 après remplacement de la balance générale N
+   (api/src/services/balance_generale_service.py, fraicheur_par_etape) :
+   bandeau sur chaque étape qui utilise des données calculées sur une
+   version précédente. Aucun recalcul automatique — TODO(décision).
+================================ */
+const fraicheur = ref({}); // { cle_etape: null | { version, remplacee_le } }
+
+async function chargerFraicheur() {
+  try {
+    fraicheur.value = await fraicheurDonneesV1(props.missionId);
+  } catch (e) {
+    console.error('Erreur chargement fraîcheur des étapes', e);
+  }
+}
+
+const bandeauFraicheur = computed(() => fraicheur.value?.[componentKey.value] || null);
 
 watch(
   () => infoMission.value,
@@ -985,6 +1006,7 @@ function showComponent(type, options = {}) {
   const subProps = { data: infoMission.value };
   selectBtn.value = type;     // <- ACTIVE LA NOUVELLE SIDEBAR
   componentKey.value = type;  // <- Gère l’affichage composant
+  chargerFraicheur(); // la balance générale a pu être remplacée depuis l'écran Fichiers complémentaires
 
   console.log("➡️ Navigation vers composant :", type);
 
@@ -2567,7 +2589,24 @@ function formatAmount(value) {
 
 
     <!-- Main Body -->
-    <div class="flex-auto flex overflow-auto p-4">
+    <div class="flex-auto flex flex-col overflow-auto p-4">
+      <!-- Étape calculée sur une version précédente de la balance générale N -->
+      <div
+        v-if="bandeauFraicheur"
+        class="mb-4 border-l-4 border-orange-500 bg-orange-50 rounded-lg p-3 text-sm text-orange-800 flex items-start gap-2"
+      >
+        <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+        <div>
+          <p class="font-semibold">
+            Calculée sur une version précédente de la balance générale (version {{ bandeauFraicheur.version }},
+            remplacée le {{ formatDateHeureFr(bandeauFraicheur.remplacee_le) }}).
+          </p>
+          <p class="text-xs text-gray-700">
+            Les montants de cette étape n'ont pas été recalculés avec la balance en vigueur. Le recalcul automatique
+            n'est pas encore décidé.
+          </p>
+        </div>
+      </div>
       <!-- Rendu historique par composant -->
       <component :is="renderComponent" :key="componentKey" v-if="renderComponent" />
 

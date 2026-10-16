@@ -151,6 +151,31 @@ export function controlesLisibles(detail) {
     })
   }
 
+  if (cp.sous_totaux_ambigus?.nb) {
+    const lignes = cp.sous_totaux_ambigus.lignes
+    const libelleDecision = (l) => (l.decision === 'ecarter' ? 'écartée' : 'gardée')
+    controles.push({
+      cle: 'sous_totaux_ambigus',
+      libelle: 'Lignes tranchées par l\'auditeur',
+      statut: 'ok',
+      aVerifier: `${pluriel(lignes.length, 'ligne avait', 'lignes avaient')} la forme d'un sous-total sans correspondre à ses comptes : `
+        + lignes.map((l) => `${l.numero_compte} ${libelleDecision(l)}${l.utilisateur_id ? ' par ' + l.utilisateur_id : ''}`).join(', ') + '.',
+    })
+  }
+
+  if (cp.equilibre) {
+    const enEcart = Object.entries(cp.equilibre.paires || {}).filter(([, p]) => !p.ok)
+    const LIBELLES = { ouverture: "solde d'ouverture", mouvements: 'mouvements', solde_final: 'solde final' }
+    controles.push({
+      cle: 'equilibre',
+      libelle: enEcart.length ? 'La balance n\'est pas équilibrée' : 'La balance est équilibrée (total débit = total crédit)',
+      statut: enEcart.length ? 'alerte' : 'ok',
+      aVerifier: enEcart.length
+        ? `Après retrait des sous-totaux, débit et crédit diffèrent : ${enEcart.map(([cle, p]) => `${LIBELLES[cle]} (débit ${formatMontant(p.total_debit)}, crédit ${formatMontant(p.total_credit)}, écart ${formatMontant(p.ecart)})`).join(' ; ')}. Vérifiez que l'export de la balance est complet.`
+        : '',
+    })
+  }
+
   const bl = cp.bouclage_ligne
   if (bl) {
     const enEcart = bl.lignes_en_ecart || []
