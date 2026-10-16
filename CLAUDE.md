@@ -94,6 +94,10 @@ Relevée sur le code réel de `ClientSpace.vue`, `ClientsView.vue`, `MissionsVie
 
 **Mise en page/défilement** : toute vue rendue par `pageLayout.vue` porte sa propre hauteur et son propre défilement à la racine — `h-full w-full overflow-y-auto` (jamais `h-screen`/`min-h-screen`, qui dépasse la hauteur réellement allouée dès que le `Header` est affiché, et rend le bas de l'écran inaccessible).
 
+## Test de parcours de l'interface
+
+**Après chaque lot qui touche au frontend, lancer le test de parcours** : `npm run test:parcours` depuis `clients/` (API Flask et Vite démarrés). Il clique sur les boutons de navigation principaux (liste des clients, fiche client, liste des missions, barre latérale, Fichiers complémentaires) et vérifie l'écran ouvert et l'absence d'erreur en console. Il crée puis supprime un client et une mission fictifs (`api/parcours_donnees_test.py`, marqueur `test_parcours`). Captures dans `clients/tests/parcours/captures/` (non commitées). Ajouter une étape au parcours pour tout nouveau bouton de navigation.
+
 ## Point de sécurité connu (à garder en tête, pas à régler maintenant)
 
 Aujourd'hui, **aucune authentification ni cloisonnement par mission** ne s'applique aux clients et aux missions (voir `RECAP_V1_CAC_PERFORM.md`, section 5). Ce chantier ne refait pas l'authentification. On pose seulement, dans le nouveau code, les bases d'un filtrage par mission (ex. prévoir un champ/paramètre de mission dans les nouveaux services), sans l'appliquer rétroactivement à l'existant.

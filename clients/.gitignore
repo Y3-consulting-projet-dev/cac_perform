@@ -28,3 +28,6 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# Captures du test de parcours
+tests/parcours/captures/
