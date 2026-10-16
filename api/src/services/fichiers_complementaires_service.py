@@ -149,6 +149,11 @@ PAIRES_DEBIT_CREDIT = [
     ("mouvement_debit", "mouvement_credit", "mouvements"),
     ("solde_mouvement_debit", "solde_mouvement_credit", "solde_mouvement"),
     ("solde_final_debit", "solde_final_credit", "solde_final"),
+    # Forme des balances générales (import V1 et balance_generale_service) :
+    # absente des fichiers complémentaires, sans effet sur eux.
+    ("debit_initial", "credit_initial", "ouverture"),
+    ("debit_mvt", "credit_mvt", "mouvements"),
+    ("debit_fin", "credit_fin", "solde_final"),
 ]
 
 

@@ -132,6 +132,21 @@ def register_routes(app):
         """POST /api/v1/missions/<id>/immobilisations - Importe le fichier des immobilisations"""
         return ImportResource.importer_immobilisations(mission_id)
 
+    @mission_bp.route('/<mission_id>/balance-generale', methods=['GET'])
+    def lire_balance_generale(mission_id):
+        """GET /api/v1/missions/<id>/balance-generale - Balance générale N en vigueur et versions précédentes"""
+        return ImportResource.lire_balance_generale(mission_id)
+
+    @mission_bp.route('/<mission_id>/balance-generale', methods=['POST'])
+    def importer_balance_generale(mission_id):
+        """POST /api/v1/missions/<id>/balance-generale - Remplace la balance générale N (import V2)"""
+        return ImportResource.importer_balance_generale(mission_id)
+
+    @mission_bp.route('/<mission_id>/balance-generale/<balance_id>', methods=['GET'])
+    def detail_balance_generale(mission_id, balance_id):
+        """GET /api/v1/missions/<id>/balance-generale/<balance_id> - Détail d'une balance générale"""
+        return ImportResource.detail_balance_generale(mission_id, balance_id)
+
     @mission_bp.route('/<mission_id>/fichiers-complementaires', methods=['GET'])
     def lister_fichiers_complementaires(mission_id):
         """GET /api/v1/missions/<id>/fichiers-complementaires - Liste les fichiers complémentaires (lecture seule)"""

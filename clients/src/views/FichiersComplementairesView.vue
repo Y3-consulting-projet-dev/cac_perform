@@ -23,6 +23,9 @@ import {
   importerImmobilisations,
   verifierFichierComplementaire,
   retirerFichierComplementaire,
+  lireBalanceGenerale,
+  detailBalanceGenerale,
+  importerBalanceGenerale,
 } from '@/api/imports.api'
 import { formatDateHeureFr } from '@/utils/formatDate'
 import {
@@ -90,7 +93,7 @@ async function chargerFichiers() {
     archives.value = Object.fromEntries(
       Object.keys(LIBELLES_TYPE).map((type, i) => [type, historiques[i].filter((f) => !f.actif)]),
     )
-    await chargerResultatsControles()
+    await Promise.all([chargerResultatsControles(), chargerBalanceGenerale()])
   } catch (e) {
     notyf.trigger(e.message || 'Erreur lors du chargement des fichiers', 'error')
   } finally {
@@ -108,6 +111,38 @@ async function chargerResultatsControles() {
     }
   }))
   alertesParFichier.value = Object.fromEntries(resultats)
+}
+
+// Balance générale N : remplaçable ici par l'import V2 (balance_generale_service.py).
+// La création de mission reste sur l'import V1.
+const TYPE_BALANCE_GENERALE = 'balance_generale'
+const balanceGenerale = ref(null) // { active, historique } ; null = non chargée
+const erreurBalanceGenerale = ref(null)
+const alertesBalanceGenerale = ref(undefined) // undefined = en cours, null = indisponible
+
+async function chargerBalanceGenerale() {
+  erreurBalanceGenerale.value = null
+  alertesBalanceGenerale.value = undefined
+  try {
+    balanceGenerale.value = await lireBalanceGenerale(props.missionId)
+  } catch (e) {
+    balanceGenerale.value = null
+    erreurBalanceGenerale.value = e.message
+    return
+  }
+  try {
+    alertesBalanceGenerale.value = nombreAlertes(await detailBalanceGenerale(props.missionId, balanceGenerale.value.active._id))
+  } catch {
+    alertesBalanceGenerale.value = null
+  }
+}
+
+async function voirDetailBalanceGenerale(balanceId) {
+  try {
+    detailOuvert.value = await detailBalanceGenerale(props.missionId, balanceId)
+  } catch (e) {
+    notyf.trigger(e.message || 'Erreur lors du chargement du détail', 'error')
+  }
 }
 
 // Fenêtre de détail : présentation lisible (lectureFichierComplementaire.js).
@@ -150,7 +185,7 @@ async function onImporter(event, type) {
   importingType.value = type
   try {
     const verification = await verifierFichierComplementaire(props.missionId, fichier, type)
-    if (verification.alertes.length) {
+    if (verification.alertes.length || type === TYPE_BALANCE_GENERALE) {
       importEnAttente.value = { fichier, type, verification }
       return
     }
@@ -183,6 +218,15 @@ async function confirmerImport() {
 async function enregistrerImport(fichier, type) {
   const idClient = infoMission.value.id_client
   const annee = infoMission.value.annee_auditee
+  if (type === TYPE_BALANCE_GENERALE) {
+    const resultat = await importerBalanceGenerale(props.missionId, fichier, utilisateurConnecte())
+    notyf.trigger(
+      `Balance générale remplacée : ${resultat.nb_lignes} comptes, ${resultat.nb_sous_totaux_ecartes} ligne(s) de sous-total écartée(s). L'ancienne version reste dans l'historique.`,
+      'success', { duration: 6000 },
+    )
+    await chargerBalanceGenerale()
+    return
+  }
   if (type === 'immobilisations') {
     await importerImmobilisations(props.missionId, fichier, idClient, annee)
   } else {
@@ -262,7 +306,7 @@ function back() {
       <div v-else class="w-20"></div>
       <div class="text-center">
         <h1 class="text-xl font-bold text-blue-ycube">Fichiers complémentaires</h1>
-        <p class="text-sm text-gray-500">Import, consultation et remplacement des balances auxiliaires</p>
+        <p class="text-sm text-gray-500">Balance générale, balances auxiliaires et fichier des immobilisations : import, contrôles et remplacement</p>
       </div>
       <div class="w-20"></div>
     </div>
@@ -298,6 +342,81 @@ function back() {
         >
           Voir le rapprochement IPE
         </button>
+      </div>
+
+      <!-- Balance générale N : remplaçable par l'import V2 (en-tête détecté,
+           correspondance des colonnes, sous-totaux écartés). -->
+      <div class="bg-white rounded-xl shadow p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h2 class="font-bold text-sm uppercase text-blue-ycube">
+            Balance générale{{ infoMission ? ' ' + infoMission.annee_auditee : '' }}
+          </h2>
+          <span class="text-xs text-gray-500">Balance de l'exercice audité, utilisée par le rapprochement IPE</span>
+        </div>
+
+        <p v-if="erreurBalanceGenerale" class="text-sm text-red-700">{{ erreurBalanceGenerale }}</p>
+
+        <template v-else-if="balanceGenerale">
+          <div class="border rounded-lg p-3 flex flex-col gap-2 cursor-pointer hover:bg-gray-50"
+            @click="voirDetailBalanceGenerale(balanceGenerale.active._id)">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm font-semibold truncate">
+                {{ balanceGenerale.active.nom_fichier || (balanceGenerale.active.origine === 'import_v1' ? 'Import à la création de la mission' : 'Fichier sans nom') }}
+              </span>
+              <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
+            </div>
+            <span class="text-xs text-gray-500">
+              <template v-if="balanceGenerale.active.date_import">Importée le {{ formatDateHeureFr(balanceGenerale.active.date_import) }} · </template>
+              {{ balanceGenerale.active.nb_lignes }} comptes · version {{ balanceGenerale.active.version }}
+              · {{ balanceGenerale.active.origine === 'import_v1' ? 'import d\'origine (création de la mission)' : 'import V2' }}
+            </span>
+            <div>
+              <span v-if="alertesBalanceGenerale === undefined" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">Contrôles…</span>
+              <span v-else-if="balanceGenerale.active.origine === 'import_v1'" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                Non contrôlée (import d'origine)
+              </span>
+              <span v-else-if="alertesBalanceGenerale === null" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">Contrôles indisponibles</span>
+              <span v-else-if="alertesBalanceGenerale === 0" class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                <i class="fa-solid fa-check mr-1"></i>Contrôles OK
+              </span>
+              <span v-else class="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ alertesBalanceGenerale }} {{ alertesBalanceGenerale > 1 ? 'alertes' : 'alerte' }}
+              </span>
+            </div>
+            <div class="flex items-center justify-end gap-2">
+              <button
+                class="px-3 py-1 text-xs border border-blue-ycube text-blue-ycube font-semibold rounded-lg hover:bg-blue-ycube hover:text-white transition"
+                @click.stop="voirDetailBalanceGenerale(balanceGenerale.active._id)"
+              >
+                Voir le détail
+              </button>
+            </div>
+          </div>
+
+          <div v-if="balanceGenerale.historique.length" class="flex flex-col gap-1">
+            <p class="text-xs text-gray-500">Versions précédentes</p>
+            <div v-for="b in balanceGenerale.historique" :key="b._id"
+              class="border rounded-lg p-2 flex items-center justify-between gap-2 text-gray-500 text-xs">
+              <span class="truncate">
+                v{{ b.version }} · {{ b.nom_fichier || (b.origine === 'import_v1' ? 'import à la création de la mission' : 'fichier sans nom') }}
+                · {{ b.nb_lignes }} lignes<template v-if="b.date_import"> · {{ formatDateHeureFr(b.date_import) }}</template>
+              </span>
+              <span class="flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">Remplacée</span>
+                <button class="text-blue-ycube font-semibold hover:underline" @click="voirDetailBalanceGenerale(b._id)">Voir le détail</button>
+              </span>
+            </div>
+          </div>
+        </template>
+
+        <p v-else class="text-sm text-gray-500">Chargement…</p>
+
+        <label
+          class="text-xs text-center border-2 border-dashed border-blue-ycube rounded-lg py-2 cursor-pointer hover:bg-blue-50">
+          <input type="file" accept=".xlsx" class="sr-only" :disabled="importingType === TYPE_BALANCE_GENERALE"
+            @change="(e) => onImporter(e, TYPE_BALANCE_GENERALE)">
+          {{ importingType === TYPE_BALANCE_GENERALE ? 'Import en cours...' : 'Remplacer la balance générale' }}
+        </label>
       </div>
 
       <div v-if="loading" class="text-gray-500">Chargement...</div>
@@ -392,7 +511,7 @@ function back() {
         <div>
           <h3 class="text-xl font-bold text-blue-ycube">Vérifier avant d'importer</h3>
           <p class="text-sm text-gray-500">
-            {{ importEnAttente.fichier.name }} → {{ LIBELLES_TYPE[importEnAttente.type] }}
+            {{ importEnAttente.fichier.name }} → {{ LIBELLES_TYPE[importEnAttente.type] || 'Balance générale (exercice audité)' }}
           </p>
         </div>
         <div
@@ -404,6 +523,19 @@ function back() {
             {{ alerte.code === 'type_incoherent' ? 'Type de fichier' : 'Exercice' }}
           </p>
           <p>{{ alerte.message }}</p>
+        </div>
+        <div
+          v-if="importEnAttente.type === TYPE_BALANCE_GENERALE"
+          class="border-l-4 border-orange-500 bg-orange-50 rounded-lg p-3 text-sm text-gray-800 flex flex-col gap-1"
+        >
+          <p class="font-semibold text-orange-700">Remplacement de la balance générale</p>
+          <p>Le rapprochement IPE utilisera la nouvelle balance, et une validation IPE déjà donnée sera invalidée.</p>
+          <p>
+            Les données que les étapes de l'audit ont calculées à la création de la mission (variations N/N-1,
+            préparation des leads, états financiers) <span class="font-semibold">ne sont pas recalculées</span> :
+            elles restent basées sur l'ancienne balance.
+          </p>
+          <p>Les lignes de sous-total du fichier seront écartées et visibles dans le détail. L'ancienne balance reste dans l'historique.</p>
         </div>
         <p v-for="info in importEnAttente.verification.informations" :key="info" class="text-xs text-gray-500">{{ info }}</p>
         <p class="text-sm text-gray-700">Rien n'est enregistré tant que vous n'avez pas choisi.</p>
@@ -418,7 +550,7 @@ function back() {
             class="px-5 py-2 rounded-lg bg-blue-ycube text-white font-semibold hover:bg-blue-900 transition"
             @click="confirmerImport"
           >
-            Importer quand même
+            {{ importEnAttente.type === TYPE_BALANCE_GENERALE ? 'Remplacer la balance générale' : 'Importer quand même' }}
           </button>
         </div>
       </div>
@@ -474,9 +606,11 @@ function back() {
       <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-auto p-6 relative flex flex-col gap-4">
         <div class="flex justify-between items-start">
           <div>
-            <h3 class="font-bold text-blue-ycube">{{ detailOuvert.nom_fichier || 'Fichier sans nom' }}</h3>
+            <h3 class="font-bold text-blue-ycube">
+              {{ detailOuvert.nom_fichier || (detailOuvert.origine === 'import_v1' ? 'Balance générale — import à la création de la mission' : 'Fichier sans nom') }}
+            </h3>
             <p class="text-xs text-gray-500">
-              Importé le {{ formatDateHeureFr(detailOuvert.date_import) }} · version {{ detailOuvert.version }}
+              <template v-if="detailOuvert.date_import">Importé le {{ formatDateHeureFr(detailOuvert.date_import) }} · </template>version {{ detailOuvert.version }}
               · {{ detailOuvert.actif ? 'active' : (detailOuvert.retrait ? 'retirée' : 'remplacée') }}
             </p>
             <p v-if="detailOuvert.retrait" class="text-xs text-gray-500">
@@ -492,9 +626,10 @@ function back() {
         <!-- a) Synthèse en une phrase -->
         <div
           class="rounded-lg p-3 text-sm font-semibold border-l-4"
-          :class="alertesDetail ? 'bg-orange-50 border-orange-500 text-orange-700' : 'bg-green-50 border-green-500 text-green-700'"
+          :class="!detailOuvert.controles_preliminaires ? 'bg-gray-50 border-gray-400 text-gray-700'
+            : (alertesDetail ? 'bg-orange-50 border-orange-500 text-orange-700' : 'bg-green-50 border-green-500 text-green-700')"
         >
-          <i class="fa-solid mr-2" :class="alertesDetail ? 'fa-triangle-exclamation' : 'fa-circle-check'"></i>{{ syntheseDetail }}
+          <i class="fa-solid mr-2" :class="!detailOuvert.controles_preliminaires ? 'fa-circle-info' : (alertesDetail ? 'fa-triangle-exclamation' : 'fa-circle-check')"></i>{{ syntheseDetail }}
         </div>
 
         <!-- b) Contrôles faits à l'import -->
@@ -592,10 +727,15 @@ function back() {
               <p class="font-semibold text-gray-700">Lignes écartées</p>
               <p v-if="!detailOuvert.controles_preliminaires?.lignes_ecartees?.nb" class="text-gray-500">Aucune ligne écartée.</p>
               <template v-else>
-                <p>Lignes de total du fichier (ou lignes sans numéro), écartées car ce ne sont pas des comptes :</p>
+                <p>Lignes de total ou de sous-total du fichier (ou lignes sans numéro), écartées car ce ne sont pas des comptes :</p>
                 <ul class="list-disc ml-4 mt-1">
                   <li v-for="e in detailOuvert.controles_preliminaires.lignes_ecartees.lignes" :key="e.ligne_excel">
-                    Ligne Excel {{ e.ligne_excel }} : {{ e.contenu?.code_entite || e.contenu?.libelle_compte || e.contenu?.libelle || '(sans libellé)' }}
+                    Ligne Excel {{ e.ligne_excel }} :
+                    <template v-if="e.motif === 'sous_total'">
+                      sous-total {{ e.contenu?.numero_compte }} « {{ e.contenu?.libelle || 'sans libellé' }} »
+                      (résume {{ e.contenu?.nb_comptes_detail }} comptes du fichier)
+                    </template>
+                    <template v-else>{{ e.contenu?.code_entite || e.contenu?.libelle_compte || e.contenu?.libelle || '(sans libellé)' }}</template>
                   </li>
                 </ul>
               </template>

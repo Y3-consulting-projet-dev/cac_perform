@@ -15,6 +15,7 @@ from src.services import balance_auxiliaire_service
 from src.services import immobilisation_service
 from src.services import controle_preliminaire_service
 from src.services import fichiers_complementaires_service
+from src.services import balance_generale_service
 from src.services import verification_fichier_service
 from src.schemas.import_schemas import MappingImportCreateSchema, RetraitFichierSchema, validate_import_data
 
@@ -219,6 +220,51 @@ class ImportResource:
                 "success": False,
                 "error": f"Erreur serveur: {str(e)}"
             }), 500)
+
+    @staticmethod
+    def lire_balance_generale(mission_id: str):
+        """GET /api/v1/missions/<id>/balance-generale — balance N en vigueur + versions précédentes."""
+        try:
+            return make_response(jsonify({"success": True, "data": balance_generale_service.lire_balance_generale(mission_id)}), 200)
+        except ValueError as e:
+            return make_response(jsonify({"success": False, "error": str(e)}), 400)
+        except Exception as e:
+            return make_response(jsonify({"success": False, "error": f"Erreur serveur: {str(e)}"}), 500)
+
+    @staticmethod
+    def detail_balance_generale(mission_id: str, balance_id: str):
+        """GET /api/v1/missions/<id>/balance-generale/<balance_id> — détail (lecture seule)."""
+        try:
+            detail = balance_generale_service.lire_detail(mission_id, balance_id)
+            if detail is None:
+                return make_response(jsonify({"success": False, "error": "Balance générale introuvable pour cette mission"}), 404)
+            return make_response(jsonify({"success": True, "data": detail}), 200)
+        except ValueError as e:
+            return make_response(jsonify({"success": False, "error": str(e)}), 400)
+        except Exception as e:
+            return make_response(jsonify({"success": False, "error": f"Erreur serveur: {str(e)}"}), 500)
+
+    @staticmethod
+    def importer_balance_generale(mission_id: str):
+        """POST /api/v1/missions/<id>/balance-generale — remplace la balance générale N (import V2)."""
+        try:
+            fichier = _get_uploaded_file("fichier")
+            if not fichier:
+                return make_response(jsonify({
+                    "success": False,
+                    "error": "Aucun fichier reçu (champ attendu : 'fichier')"
+                }), 400)
+            resultat = balance_generale_service.importer_balance_generale(
+                fichier, mission_id,
+                utilisateur_id=request.form.get("utilisateur_id") or None,
+                logiciel_comptable=request.form.get("logiciel_comptable") or None,
+                mapping=_lire_mapping_optionnel(),
+            )
+            return make_response(jsonify({"success": True, "data": resultat}), 201)
+        except ValueError as e:
+            return make_response(jsonify({"success": False, "error": str(e)}), 400)
+        except Exception as e:
+            return make_response(jsonify({"success": False, "error": f"Erreur serveur: {str(e)}"}), 500)
 
     @staticmethod
     def lister_fichiers_complementaires(mission_id: str):

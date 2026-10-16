@@ -153,3 +153,41 @@ export async function detailFichierComplementaire(missionId, fichierId) {
   if (data?.success) return data.data
   throw new Error(data?.error || 'Erreur lors de la récupération du détail du fichier')
 }
+
+// --- Balance générale N (import V2, remplacement depuis Fichiers complémentaires) ---
+
+export async function lireBalanceGenerale(missionId) {
+  let data
+  try {
+    ({ data } = await api.get(`/missions/${missionId}/balance-generale`))
+  } catch (e) {
+    throw new Error(messageErreur(e, 'Erreur lors du chargement de la balance générale'))
+  }
+  if (data?.success) return data.data
+  throw new Error(data?.error || 'Erreur lors du chargement de la balance générale')
+}
+
+export async function detailBalanceGenerale(missionId, balanceId) {
+  let data
+  try {
+    ({ data } = await api.get(`/missions/${missionId}/balance-generale/${balanceId}`))
+  } catch (e) {
+    throw new Error(messageErreur(e, 'Erreur lors du chargement du détail de la balance générale'))
+  }
+  if (data?.success) return data.data
+  throw new Error(data?.error || 'Erreur lors du chargement du détail de la balance générale')
+}
+
+export async function importerBalanceGenerale(missionId, fichier, utilisateurId) {
+  const formData = new FormData()
+  formData.append('fichier', fichier)
+  if (utilisateurId) formData.append('utilisateur_id', utilisateurId)
+  let data
+  try {
+    ({ data } = await axios.post(`${BASE_URL}/missions/${missionId}/balance-generale`, formData))
+  } catch (e) {
+    throw new Error(messageErreur(e, "Erreur lors de l'import de la balance générale"))
+  }
+  if (data?.success) return data.data
+  throw new Error(data?.error || "Erreur lors de l'import de la balance générale")
+}

@@ -107,7 +107,13 @@ def test_verifier_fichier_coherent_sans_alerte():
 
 def test_verifier_fichier_type_inconnu():
     with pytest.raises(ValueError):
-        verif.verifier_fichier(_fichier_y3("x.xlsx", ["411001"], ""), "balance_generale", "2025")
+        verif.verifier_fichier(_fichier_y3("x.xlsx", ["411001"], ""), "type_inconnu", "2025")
+
+
+def test_balance_generale_seul_l_exercice_est_verifie():
+    # Une balance générale contient toutes les classes : pas d'alerte de type.
+    resultat = verif.verifier_fichier(_fichier_y3("bg_2024.xlsx", ["411001", "601000"], ""), "balance_generale", "2025")
+    assert [a["code"] for a in resultat["alertes"]] == ["exercice_incoherent"]
 
 
 # --- Action « Retirer » --------------------------------------------------------

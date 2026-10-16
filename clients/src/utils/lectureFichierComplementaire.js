@@ -42,6 +42,12 @@ export const LIBELLES_DONNEES = {
   solde_mouvement_credit: 'Solde des mouvements — crédit',
   solde_final_debit: 'Solde final — débit',
   solde_final_credit: 'Solde final — crédit',
+  debit_initial: "Solde d'ouverture — débit",
+  credit_initial: "Solde d'ouverture — crédit",
+  debit_mvt: 'Mouvements — débit',
+  credit_mvt: 'Mouvements — crédit',
+  debit_fin: 'Solde final — débit',
+  credit_fin: 'Solde final — crédit',
   code_bien: 'Code du bien',
   libelle_bien: 'Désignation du bien',
   categorie: 'Catégorie',
@@ -133,6 +139,18 @@ export function controlesLisibles(detail) {
     })
   }
 
+  if (cp.sous_totaux) {
+    const st = cp.sous_totaux
+    controles.push({
+      cle: 'sous_totaux',
+      libelle: st.nb ? 'Lignes de sous-total écartées' : 'Aucune ligne de sous-total',
+      statut: 'ok',
+      aVerifier: st.nb
+        ? `${pluriel(st.nb, 'ligne résume', 'lignes résument')} d'autres comptes du fichier et ${st.nb > 1 ? 'ont été écartées' : 'a été écartée'} pour ne pas les compter deux fois : ${listeCourte(st.lignes.map((l) => l.numero_compte))}.`
+        : '',
+    })
+  }
+
   const bl = cp.bouclage_ligne
   if (bl) {
     const enEcart = bl.lignes_en_ecart || []
@@ -163,14 +181,21 @@ export function phraseSynthese(detail) {
   const nbLignes = (detail?.lignes || []).length
   const nbEcartees = cp.lignes_ecartees?.nb || 0
   const nbTotaux = cp.bouclage_total?.nb_lignes_de_total_detectees || 0
-  const nbAutres = Math.max(nbEcartees - nbTotaux, 0)
+  const nbSousTotaux = cp.sous_totaux?.nb || 0
+  const nbAutres = Math.max(nbEcartees - nbTotaux - nbSousTotaux, 0)
   const alertes = nombreAlertes(detail)
 
   const morceaux = [pluriel(nbLignes, estImmobilisations(detail) ? 'bien importé' : 'compte importé',
     estImmobilisations(detail) ? 'biens importés' : 'comptes importés')]
+  if (nbSousTotaux) morceaux.push(pluriel(nbSousTotaux, 'ligne de sous-total écartée', 'lignes de sous-total écartées'))
   if (nbTotaux) morceaux.push(pluriel(nbTotaux, 'ligne de total écartée', 'lignes de total écartées'))
   if (nbAutres) morceaux.push(pluriel(nbAutres, 'autre ligne sans numéro écartée', 'autres lignes sans numéro écartées'))
-  morceaux.push(alertes ? `${pluriel(alertes, 'alerte', 'alertes')} à vérifier` : 'tous les contrôles sont OK')
+  if (!detail?.controles_preliminaires) {
+    // Balance de l'import d'origine (V1) : aucun contrôle n'a été enregistré.
+    morceaux.push("import d'origine, aucun contrôle enregistré")
+  } else {
+    morceaux.push(alertes ? `${pluriel(alertes, 'alerte', 'alertes')} à vérifier` : 'tous les contrôles sont OK')
+  }
   return `${morceaux.join(', ')}.`
 }
 
@@ -207,6 +232,22 @@ export function colonnesComptes(detail) {
       { titre: 'Amortissements', valeur: (l) => formatMontant(l.amortissements_cumules), montant: true },
       a('valeur_nette') && { titre: 'Valeur nette', valeur: (l) => formatMontant(l.valeur_nette), montant: true },
     ].filter(Boolean)
+  }
+
+  // Forme des balances générales (import V1 et import V2 de la balance générale).
+  if (a('debit_initial') || a('debit_fin')) {
+    return [
+      { titre: 'Compte', valeur: (l) => l.numero_compte ?? '—' },
+      { titre: 'Libellé', valeur: (l) => l.libelle || '—', large: true },
+      { titre: "Solde d'ouverture", valeur: (l) => formatSens(l.debit_initial, l.credit_initial), montant: true },
+      {
+        titre: 'Mouvements',
+        valeur: (l) => formatSens(l.debit_mvt, l.credit_mvt),
+        infobulle: (l) => `Débit ${formatMontant(l.debit_mvt)} — Crédit ${formatMontant(l.credit_mvt)}`,
+        montant: true,
+      },
+      { titre: 'Solde final', valeur: (l) => formatSens(l.debit_fin, l.credit_fin), montant: true },
+    ]
   }
 
   const finale = paire('solde_final') ? 'solde_final' : (paire('solde_mouvement') ? 'solde_mouvement' : null)

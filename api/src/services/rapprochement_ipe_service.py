@@ -56,9 +56,21 @@ COLLECTION_BALANCE = "Balance"
 # - "immobilisations" (IPE-3) : un fichier de BIENS, sans tiers — valeurs
 #   brutes contre comptes 20 à 27, amortissements cumulés contre comptes 28
 #   (rapprocher_immobilisations).
+# Racines des comptes collectifs rapprochés des balances auxiliaires — SEUL
+# endroit où elles sont définies. Valeurs provisoires = paramètre par défaut
+# du cahier des charges §2.4 (« 41 » clients, « 40 » fournisseurs) : une
+# racine « 411 » seule ne trouvait pas le collectif clients d'un plan de
+# comptes en 410000.
+# TODO(spec: CAC-IPE-01 §2) : racines définitives, et exclusion éventuelle
+# de sous-comptes (ex. 416 clients douteux, 419 avances reçues, 409).
+RACINES_COLLECTIFS = {
+    "clients": "41",
+    "fournisseurs": "40",
+}
+
 FAMILLES_IPE: Dict[str, Dict[str, str]] = {
-    "ipe_1_clients": {"nature": "tiers", "racine_collectif": "411", "type_auxiliaire": "auxiliaire_client"},
-    "ipe_2_fournisseurs": {"nature": "tiers", "racine_collectif": "40", "type_auxiliaire": "auxiliaire_fournisseur"},
+    "ipe_1_clients": {"nature": "tiers", "racine_collectif": RACINES_COLLECTIFS["clients"], "type_auxiliaire": "auxiliaire_client"},
+    "ipe_2_fournisseurs": {"nature": "tiers", "racine_collectif": RACINES_COLLECTIFS["fournisseurs"], "type_auxiliaire": "auxiliaire_fournisseur"},
     "ipe_3_immobilisations": {"nature": "immobilisations", "type_auxiliaire": "immobilisations"},
 }
 

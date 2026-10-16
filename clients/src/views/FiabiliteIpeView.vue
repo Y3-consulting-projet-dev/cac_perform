@@ -31,7 +31,7 @@ const emit = defineEmits(['etat-ipe'])
 const notyf = useNotyf()
 
 const LIBELLES_MODULE = {
-  ipe_1_clients: 'IPE-1 — Clients (compte 411)',
+  ipe_1_clients: 'IPE-1 — Clients (comptes 41x)',
   ipe_2_fournisseurs: 'IPE-2 — Fournisseurs (comptes 40x)',
   ipe_3_immobilisations: 'IPE-3 — Immobilisations (comptes 20 à 28)',
 }
@@ -93,6 +93,15 @@ const NATURE_LIGNE_IMMO = {
 
 function estImmobilisations(module) {
   return module.derniere_evaluation?.nature === 'immobilisations'
+}
+
+// IPE-3 : les amortissements (28) sont comparés en valeur positive alors
+// qu'ils sont CRÉDITEURS — on les affiche avec le sens C (une valeur
+// négative = débiteur). Le contrôle de valeur nette n'a pas de sens D/C.
+function montantImmo(ligne, valeur) {
+  if (valeur === null || valeur === undefined) return '—'
+  if (ligne.nature === 'controle_vnc') return new Intl.NumberFormat('fr-FR').format(Math.round(valeur))
+  return formatMontant(ligne.nature === 'amortissements' ? -valeur : valeur)
 }
 
 function libelleLigneEcart(module, ligne) {
@@ -893,10 +902,10 @@ function back() {
                   >
                     <td class="px-3">{{ c.nature === 'controle_vnc' ? '—' : c.numero_compte }}</td>
                     <td class="px-3">{{ NATURE_LIGNE_IMMO[c.nature] || c.nature }}</td>
-                    <td class="px-3 text-right font-mono">{{ c.solde_balance_generale === null ? '—' : formatMontant(c.solde_balance_generale) }}</td>
-                    <td class="px-3 text-right font-mono">{{ c.montant_fichier === null ? '—' : formatMontant(c.montant_fichier) }}</td>
+                    <td class="px-3 text-right font-mono">{{ montantImmo(c, c.solde_balance_generale) }}</td>
+                    <td class="px-3 text-right font-mono">{{ montantImmo(c, c.montant_fichier) }}</td>
                     <td class="px-3 text-right">{{ c.nb_biens }}</td>
-                    <td class="px-3 text-right font-mono">{{ formatMontant(c.ecart) }}</td>
+                    <td class="px-3 text-right font-mono">{{ montantImmo(c, c.ecart) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -906,8 +915,8 @@ function back() {
                   <span class="font-mono">{{ formatMontant(module.derniere_evaluation.totaux.valeur_brute.solde_balance_generale) }}</span>,
                   fichier <span class="font-mono">{{ formatMontant(module.derniere_evaluation.totaux.valeur_brute.montant_fichier) }}</span> ;
                   amortissements : balance générale
-                  <span class="font-mono">{{ formatMontant(module.derniere_evaluation.totaux.amortissements.solde_balance_generale) }}</span>,
-                  fichier <span class="font-mono">{{ formatMontant(module.derniere_evaluation.totaux.amortissements.montant_fichier) }}</span>.
+                  <span class="font-mono">{{ montantImmo(module.derniere_evaluation.totaux.amortissements, module.derniere_evaluation.totaux.amortissements.solde_balance_generale) }}</span>,
+                  fichier <span class="font-mono">{{ montantImmo(module.derniere_evaluation.totaux.amortissements, module.derniere_evaluation.totaux.amortissements.montant_fichier) }}</span>.
                 </p>
                 <p v-if="!module.derniere_evaluation.controle_vnc?.applicable" class="text-gray-500">
                   Contrôle de la valeur nette non effectué : le fichier ne fournit pas de valeur nette.

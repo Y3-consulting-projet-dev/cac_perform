@@ -40,8 +40,8 @@ import → contrôle IPE / rapprochements → ouverture des cycles → sélectio
 Le Module 1 est une **nouvelle brique**, pas un détournement de l'étape 3 existante (« Contrôle de cohérence »), qui reste un contrôle **arithmétique sur une seule balance** (débit = crédit) et n'est pas modifiée par ce chantier.
 
 Règles connues :
-- **IPE-1** : clients ↔ compte `411`
-- **IPE-2** : fournisseurs ↔ comptes `40x`
+- **IPE-1** : clients ↔ comptes `41x` (racine provisoire « 41 », paramètre par défaut du cahier des charges §2.4 — `RACINES_COLLECTIFS` dans `rapprochement_ipe_service.py`, `TODO(spec: CAC-IPE-01 §2)`)
+- **IPE-2** : fournisseurs ↔ comptes `40x` (racine « 40 », même paramètre)
 - **IPE-3** : immobilisations ↔ comptes `2xxx`
 - **R4 croisé** : à arbitrer — **ne pas développer** tant que ce n'est pas tranché.
 - **IPE-GLOBAL-01** : si `ipe_fiabilite_validee = FALSE`, le cycle est **bloqué**.
@@ -104,6 +104,10 @@ Aujourd'hui, **aucune authentification ni cloisonnement par mission** ne s'appli
 - **Collection `MappingImport`** : conçue librement côté développement, avec deux contraintes imposées — un mapping est identifié par `(id_client, logiciel_comptable)`, et chaque sauvegarde crée une nouvelle version horodatée (`version`, `created_at`) plutôt que d'écraser la précédente.
 - **Contrôles avant import d'un fichier complémentaire** (`api/src/services/verification_fichier_service.py`) — provisoires : ce sont des **alertes**, jamais un refus (l'utilisateur annule ou importe quand même). Type : alerte si moins de la moitié des comptes reconnus relèvent de la famille attendue (41x clients, 40x fournisseurs, 2x immobilisations) — seuil `TODO(décision)` ; codes tiers alphanumériques = non vérifiable, pas d'alerte. Exercice : alerte si des années sont lues (nom du fichier, lignes de titre) et qu'aucune n'est l'exercice audité — tolérance exacte `TODO(spec)`.
 - **Action « Retirer »** : archive la version active (`actif=False` + `retrait` {utilisateur, commentaire ≥ 15 caractères, horodatage}), rien n'est supprimé ; utilisateur identifié obligatoire. La version précédente n'est **pas** réactivée. Si le fichier avait servi à une validation IPE positive, celle-ci est invalidée automatiquement (comme un remplacement).
+
+- **Balance générale N — import V2** (`api/src/services/balance_generale_service.py`, `POST /api/v1/missions/<id>/balance-generale`, carte « Balance générale » de Fichiers complémentaires) : remplacement de la balance N d'une mission **existante** ; la création de mission reste sur l'import V1. Document `Balance` de **même forme** que l'import V1 (lu par `model.py` sans changement), remplacé à la **même position** dans `Mission1.balances` (la V1 lit N en `[0]`, N-1 en `[1]`) ; l'ancien document n'est jamais supprimé (`remplace_balance_id`). Invalide une validation IPE positive.
+- **Sous-totaux d'une balance générale** (règle validée) : une ligne est écartée si son numéro est le préfixe d'autres comptes du fichier **et** si chacun de ses montants (ouverture, mouvements, solde final, débit et crédit) égale la somme de ces comptes ; numéros les plus longs d'abord (pas de double comptage) ; **jamais de lecture du libellé** ; lignes écartées tracées et visibles. Limite constatée : un sous-total présenté en solde net (débit et crédit compensés) n'est pas reconnu — à trancher.
+- **Données V1 dérivées non recalculées** au remplacement de la balance N (`balance_variation`, `grouping`, `efi`) — `TODO(décision)`, signalé à l'écran avant confirmation.
 
 ## Décisions prises durant le développement (verrou IPE) — provisoires, à documenter/réviser avec CAC-IPE-01
 

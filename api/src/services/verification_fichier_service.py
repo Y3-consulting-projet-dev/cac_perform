@@ -172,7 +172,9 @@ def verifier_fichier(fichier, type_fichier: str, annee_auditee: Optional[str]) -
     Lit le fichier (même mapping automatique que l'import) et renvoie
     {alertes: [...], informations: [...], repartition_comptes, annees_detectees}.
     """
-    if type_fichier not in FAMILLES_COMPTES:
+    # Balance générale : toutes les classes de comptes y figurent, seul
+    # l'exercice est vérifié.
+    if type_fichier not in FAMILLES_COMPTES and type_fichier != "balance_generale":
         raise ValueError(f"Type de fichier inconnu : '{type_fichier}'")
 
     contenu = fichier.read()
@@ -180,7 +182,8 @@ def verifier_fichier(fichier, type_fichier: str, annee_auditee: Optional[str]) -
     lignes = apercu_service.lire_lignes_selon_mapping(io.BytesIO(contenu), apercu["mapping_propose"])
     numeros = [l.get("numero_compte") or l.get("numero") or l.get("categorie") for l in lignes]
 
-    type_ok = controler_type(type_fichier, numeros)
+    type_ok = (controler_type(type_fichier, numeros) if type_fichier in FAMILLES_COMPTES
+               else {"repartition_comptes": {}, "alerte": None, "information": None})
     exercice = controler_exercice(
         annee_auditee,
         annees_detectees(getattr(fichier, "filename", None), _lignes_titre(contenu)),
