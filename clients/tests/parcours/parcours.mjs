@@ -174,6 +174,11 @@ async function parcours(navigateur, d) {
     { url: /step=fichiers_complementaires/, barre: true })
   await etape(navigateur, 'Barre latérale : Fiabilité IPE (Détail)', () => cliquer(navigateur, 'Détail'),
     { url: /step=fiabilite_ipe/, texte: 'Lancer le rapprochement', barre: true })
+  // Fiabilité IPE (docs/PLAN_ecrans_lot1.md §2.1) : circuit en quatre étapes, action attendue, lien vers les commentaires généraux.
+  await etape(navigateur, 'Fiabilité IPE : circuit de revue en quatre étapes', async () => {},
+    { url: /step=fiabilite_ipe/, texte: '4 · Validé', barre: true })
+  await etape(navigateur, 'Fiabilité IPE : « Commentaires généraux (0) » -> section', () => cliquer(navigateur, 'Commentaires généraux (0)'),
+    { url: /step=fiabilite_ipe/, texte: 'Aucun commentaire général.', barre: true })
   await etape(navigateur, 'Barre latérale : étape « Contrôle d’intangibilité »', () => navigateur.evaluer(`(() => {
       const el = [...document.querySelectorAll('span')].find((s) => s.textContent.trim().startsWith('Contrôle d') && s.textContent.includes('intangibilit'));
       if (!el) throw new Error('étape introuvable'); el.closest('div[class*=rounded-lg]').click() })()`),

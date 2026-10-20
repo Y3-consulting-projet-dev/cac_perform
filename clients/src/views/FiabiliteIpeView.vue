@@ -22,6 +22,7 @@ import {
   qualifierEcartIpe,
   justifierNonEvaluableIpe,
 } from '@/api/ipe.api'
+import { obtenirMission, obtenirClient } from '@/api/imports.api'
 
 // `integre` : écran affiché dans la zone principale de GroupingAnalyse.vue,
 // sous la barre latérale bleue (qui porte déjà le « Retour »).
@@ -167,8 +168,29 @@ const confirmationInvalidationOuverte = ref(false)
 const commentaireInvalidation = ref('')
 
 onMounted(async () => {
+  chargerEnTete()
   await chargerEtatIpe()
 })
+
+// En-tête (maquette 1_Fiabilite_IPE) : « [client] · exercice audité [année] ».
+// Échec de chargement : sous-titre sans ces informations, jamais bloquant.
+const enTete = ref({ client: null, annee: null })
+
+async function chargerEnTete() {
+  try {
+    const mission = await obtenirMission(props.missionId)
+    enTete.value.annee = mission.annee_auditee || null
+    if (mission.id_client) enTete.value.client = (await obtenirClient(mission.id_client)).company_name || null
+  } catch (e) {
+    console.warn("En-tête Fiabilité IPE : informations de mission indisponibles", e)
+  }
+}
+
+const sousTitreEnTete = computed(() => [
+  enTete.value.client,
+  enTete.value.annee ? `exercice audité ${enTete.value.annee}` : null,
+  "rapprochement des informations produites par l'entité",
+].filter(Boolean).join(' · '))
 
 async function chargerEtatIpe() {
   try {
@@ -201,6 +223,44 @@ const syntheseModules = computed(() => {
     ecartGlobal: modules[cle]?.derniere_evaluation?.ecart_global ?? null,
   }))
 })
+
+/* --- Circuit de revue en quatre étapes (docs/PLAN_ecrans_lot1.md §2.1) --- */
+const ETAPES_CIRCUIT = [
+  { cle: 'en_cours', libelle: 'En cours' },
+  { cle: 'soumis_pour_revue', libelle: 'Soumis pour revue' },
+  { cle: 'en_attente_correction', libelle: 'En attente de correction' },
+  { cle: 'valide', libelle: 'Validé' },
+]
+
+// Étapes déjà franchies, lues dans l'historique (une soumission, une demande
+// de correction, une validation) : marquées d'une coche, l'étape en cours
+// restant seule mise en avant.
+const etapesFranchies = computed(() => {
+  const actions = new Set((ipeEtat.value?.historique || []).map((h) => h.action))
+  const franchies = new Set()
+  if (statutCircuit.value !== 'en_cours' || actions.has('soumission_revue')) franchies.add('en_cours')
+  if (actions.has('soumission_revue')) franchies.add('soumis_pour_revue')
+  if (actions.has('demande_correction')) franchies.add('en_attente_correction')
+  franchies.delete(statutCircuit.value)
+  return franchies
+})
+
+const rapprochementLance = computed(() => Object.keys(ipeEtat.value?.modules || {}).length > 0)
+
+// Raison du blocage, écrite à côté de l'action attendue (maquette :
+// « Avant de soumettre : 1 écart à qualifier, 2 justifications à écrire »).
+const raisonSoumission = computed(() => {
+  const blocages = circuit.phraseBlocages(ipeEtat.value)
+  return blocages ? `Avant de soumettre : ${blocages}` : ''
+})
+const raisonValidation = computed(() => {
+  const blocages = circuit.phraseBlocages(ipeEtat.value, { avecDemandes: true })
+  return blocages ? `Avant de valider : ${blocages}` : ''
+})
+
+function allerAuxCommentairesGeneraux() {
+  document.getElementById('commentaires-generaux')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 // Historique le plus récent en premier (le backend pousse en ordre chronologique).
 const historiqueRecent = computed(() => {
@@ -259,14 +319,6 @@ const peutValider = computed(
     demandesCorrectionNonTraitees.value.length === 0 &&
     modulesNonEvaluablesSansJustification.value.length === 0
 )
-
-const raisonValidationImpossible = computed(() => {
-  if (statutCircuit.value !== 'soumis_pour_revue') return 'Le contrôle doit être « Soumis pour revue ».'
-  if (ecartsNonQualifies.value.length) return 'Chaque écart doit être qualifié (cause + commentaire).'
-  if (demandesCorrectionNonTraitees.value.length) return 'Des demandes de correction ne sont pas traitées.'
-  if (modulesNonEvaluablesSansJustification.value.length) return 'Chaque module non évaluable doit être justifié.'
-  return ''
-})
 
 /* --- Qualification d'un écart (cause + commentaire, par compte collectif) --- */
 
@@ -609,127 +661,107 @@ function back() {
       <div v-else class="w-20"></div>
       <div class="text-center">
         <h1 class="text-xl font-bold text-blue-ycube">Fiabilité IPE</h1>
-        <p class="text-sm text-gray-500">Rapprochement IPE-1/2/3, qualification, validation et historique</p>
+        <p class="text-sm text-gray-500">{{ sousTitreEnTete }}</p>
       </div>
       <div class="w-20"></div>
     </div>
 
     <div class="p-6 flex flex-col gap-6">
 
-      <!-- Rapprochement IPE (Module 1, CAC-IPE-01) — docs/PLAN_verrou_IPE.md §4/§5. -->
+      <!-- Circuit de revue (maquette 1_Fiabilite_IPE, docs/PLAN_ecrans_lot1.md §2.1) :
+           quatre étapes, l'étape en cours mise en avant ; seules les actions du statut
+           courant sont affichées, l'action attendue reste visible avec la raison du
+           blocage à côté. Le serveur reste juge (revue_ipe_service). -->
       <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-4 w-full" v-if="ipeEtat">
         <div class="flex items-center justify-between flex-wrap gap-2">
-          <h2 class="font-bold text-sm uppercase text-blue-ycube">Rapprochement IPE</h2>
+          <h2 class="font-bold text-sm uppercase text-blue-ycube">Circuit de revue</h2>
           <span
             class="text-xs font-semibold px-3 py-1 rounded-full"
             :class="ipeEtat.verrou_applicable ? (STATUT_CIRCUIT_INFO[statutCircuit]?.classe || 'bg-gray-100 text-gray-700') : 'bg-gray-100 text-gray-700'"
+            :title="ipeEtat.verrou_applicable ? '' : 'Mission antérieure à l\'activation du verrou IPE : jamais bloquée, ce rapprochement reste informatif.'"
           >
             {{ IPE_STATUT_LABELS[ipeEtat.statut_affiche] || 'Non commencé' }}
           </span>
         </div>
 
+        <ol class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <li
+            v-for="(etape, i) in ETAPES_CIRCUIT"
+            :key="etape.cle"
+            class="rounded-lg px-4 py-3 text-sm flex items-center gap-2"
+            :class="statutCircuit === etape.cle ? 'bg-blue-ycube text-white font-bold' : 'bg-gray-100 text-gray-600 font-semibold'"
+            :aria-current="statutCircuit === etape.cle ? 'step' : null"
+          >
+            <i v-if="etapesFranchies.has(etape.cle)" class="fa-solid fa-check text-green-ycube"></i>
+            {{ i + 1 }} · {{ etape.libelle }}
+          </li>
+        </ol>
+
         <p v-if="!ipeEtat.verrou_applicable" class="text-xs text-gray-500 italic">
           Mission antérieure à l'activation du verrou IPE : jamais bloquée, ce rapprochement reste informatif.
         </p>
 
-        <!-- Synthèse : une ligne par module, statut + écart global.
-             Tableau à en-tête bleu marine (ClientSpace.vue) — charte CLAUDE.md. -->
-        <table class="min-w-full text-sm">
-          <thead class="bg-blue-ycube text-white h-12 text-left">
-            <tr>
-              <th class="px-3">Module</th>
-              <th class="px-3">Statut</th>
-              <th class="px-3 text-right">Écart global</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="ligne in syntheseModules" :key="ligne.cle" class="h-12 border-b">
-              <td class="px-3">{{ ligne.libelle }}</td>
-              <td class="px-3">
-                <span
-                  class="px-3 py-1 rounded-full text-xs font-semibold"
-                  :class="ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.classe : 'bg-gray-100 text-gray-700'"
-                >
-                  {{ ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.label : 'Non évalué' }}
-                </span>
-              </td>
-              <td class="px-3 text-right font-mono">{{ formatMontant(ligne.ecartGlobal) }}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Boutons : primaire plein (recette ClientSpace.vue), secondaire en contour — charte CLAUDE.md -->
+        <!-- Actions du statut courant. Boutons : primaire plein, secondaire en contour — charte CLAUDE.md.
+             TODO(décision) : qui peut soumettre, valider et demander une correction n'est pas vérifié. -->
         <div class="flex flex-wrap items-center gap-3">
-          <button
-            class="px-5 py-2 rounded-lg bg-blue-ycube text-white font-semibold hover:bg-blue-900 transition disabled:opacity-50"
-            :disabled="ipeEvaluationEnCours"
-            @click="lancerEvaluationIpe"
-          >
-            {{ ipeEvaluationEnCours ? 'Rapprochement en cours...' : 'Lancer le rapprochement IPE-1/2/3' }}
-          </button>
+          <template v-if="statutCircuit === 'en_cours' || statutCircuit === 'en_attente_correction'">
+            <button
+              class="px-5 py-2 rounded-lg bg-blue-ycube text-white font-semibold hover:bg-blue-900 transition disabled:opacity-50"
+              :disabled="ipeEvaluationEnCours"
+              @click="lancerEvaluationIpe"
+            >
+              {{ ipeEvaluationEnCours ? 'Rapprochement en cours...' : (rapprochementLance ? 'Relancer le rapprochement' : 'Lancer le rapprochement') }}
+            </button>
+            <button
+              class="px-5 py-2 rounded-lg bg-blue-ycube-3 text-white font-semibold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              :disabled="soumissionEnCours || !peutSoumettre"
+              @click="soumettrePourRevue"
+            >
+              {{ soumissionEnCours ? 'Soumission en cours...' : 'Soumettre pour revue' }}
+            </button>
+            <span v-if="raisonSoumission" class="text-sm text-orange-800 bg-orange-50 px-3 py-2 rounded-lg">{{ raisonSoumission }}</span>
+          </template>
 
-          <!-- Action auditeur : désactivée tant qu'un écart réel n'a aucune remarque attachée,
-               ou si le statut actuel ne permet pas de soumettre. TODO(décision) : qui a le
-               droit de soumettre n'est pas vérifié aujourd'hui. -->
-          <button
-            class="px-5 py-2 rounded-lg bg-blue-ycube-3 text-white font-semibold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
-            :disabled="soumissionEnCours || !peutSoumettre"
-            :title="ecartsNonQualifies.length || modulesNonEvaluablesSansJustification.length
-              ? 'Qualifiez chaque écart (cause + commentaire) et justifiez chaque module non évaluable avant de soumettre'
-              : ''"
-            @click="soumettrePourRevue"
-          >
-            {{ soumissionEnCours ? 'Soumission en cours...' : 'Soumettre pour revue' }}
-          </button>
+          <template v-else-if="statutCircuit === 'soumis_pour_revue'">
+            <button
+              class="px-5 py-2 rounded-lg border border-red-300 text-red-700 font-semibold hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              :disabled="!peutDemanderCorrection"
+              :title="!utilisateurIdentifie ? 'Utilisateur non identifié : impossible de créer une demande de correction' : ''"
+              @click="ouvrirDemandeCorrection"
+            >
+              Demander une correction
+            </button>
+            <button
+              class="px-5 py-2 rounded-lg bg-green-ycube-2 text-white font-semibold hover:bg-green-ycube transition disabled:opacity-40 disabled:cursor-not-allowed"
+              :disabled="ipeValidationEnCours || !peutValider"
+              @click="ouvrirConfirmationValidation"
+            >
+              Valider la fiabilité IPE
+            </button>
+            <span v-if="raisonValidation" class="text-sm text-orange-800 bg-orange-50 px-3 py-2 rounded-lg">{{ raisonValidation }}</span>
+            <span v-if="!utilisateurIdentifie" class="text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-lg">
+              Connectez-vous pour demander une correction
+            </span>
+          </template>
 
-          <!-- Action manager : possible seulement depuis "Soumis pour revue". Ne valide ni
-               n'invalide — TODO(décision) : qui a le droit de demander une correction n'est
-               pas vérifié aujourd'hui. -->
-          <button
-            class="px-5 py-2 rounded-lg border border-red-300 text-red-700 font-semibold hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
-            :disabled="!peutDemanderCorrection"
-            :title="!utilisateurIdentifie ? 'Utilisateur non identifié : impossible de créer une demande de correction' : ''"
-            @click="ouvrirDemandeCorrection"
-          >
-            Demander une correction
-          </button>
+          <template v-else-if="statutCircuit === 'valide'">
+            <button
+              class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition disabled:opacity-40"
+              :disabled="ipeValidationEnCours"
+              @click="ouvrirConfirmationInvalidation"
+            >
+              Invalider
+            </button>
+          </template>
 
-          <!-- Action manager : possible seulement depuis "Soumis pour revue".
-               TODO(décision) : qui a le droit de valider n'est pas vérifié aujourd'hui. -->
-          <button
-            class="px-5 py-2 rounded-lg bg-green-ycube-2 text-white font-semibold hover:bg-green-ycube transition disabled:opacity-40 disabled:cursor-not-allowed"
-            :disabled="ipeValidationEnCours || !peutValider"
-            :title="raisonValidationImpossible"
-            @click="ouvrirConfirmationValidation"
+          <a
+            href="#commentaires-generaux"
+            class="ml-auto text-sm font-semibold text-blue-ycube hover:underline"
+            @click.prevent="allerAuxCommentairesGeneraux"
           >
-            Valider la fiabilité IPE
-          </button>
-
-          <!-- Bouton secondaire, volontairement moins mis en avant -->
-          <button
-            class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition disabled:opacity-40"
-            :disabled="ipeValidationEnCours"
-            @click="ouvrirConfirmationInvalidation"
-          >
-            Invalider
-          </button>
+            Commentaires généraux ({{ remarquesGenerales.length }})
+          </a>
         </div>
-        <ul
-          v-if="ecartsNonQualifies.length || demandesCorrectionNonTraitees.length || modulesNonEvaluablesSansJustification.length"
-          class="text-xs text-gray-500 italic list-disc ml-5"
-        >
-          <li v-if="ecartsNonQualifies.length">
-            Écart(s) non qualifié(s) — cause + commentaire requis (bloque la soumission et la validation) :
-            {{ ecartsNonQualifies.join(', ') }}.
-          </li>
-          <li v-if="demandesCorrectionNonTraitees.length">
-            {{ demandesCorrectionNonTraitees.length }} demande(s) de correction non traitée(s) (bloque la validation).
-          </li>
-          <li v-if="modulesNonEvaluablesSansJustification.length">
-            Module(s) non évaluable(s) sans justification écrite (bloque la soumission et la validation) :
-            {{ modulesNonEvaluablesSansJustification.map((m) => LIBELLES_MODULE[m] || m).join(', ') }}.
-          </li>
-        </ul>
         <!-- Validation/soumission/demande de correction enregistrées sans
              contrôle de rôle : aucun système d'authentification/droits
              n'existe sur les missions aujourd'hui (CLAUDE.md, point de
@@ -804,6 +836,36 @@ function back() {
             </button>
           </div>
         </div>
+
+      </div>
+
+      <!-- Synthèse, puis détail des modules (refonte au prochain incrément, docs/PLAN_ecrans_lot1.md §2.2-2.3).
+           Tableau à en-tête bleu marine (ClientSpace.vue) — charte CLAUDE.md. -->
+      <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-4 w-full" v-if="ipeEtat">
+        <h2 class="font-bold text-sm uppercase text-blue-ycube">Synthèse</h2>
+        <table class="min-w-full text-sm">
+          <thead class="bg-blue-ycube text-white h-12 text-left">
+            <tr>
+              <th class="px-3">Module</th>
+              <th class="px-3">Statut</th>
+              <th class="px-3 text-right">Écart global</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="ligne in syntheseModules" :key="ligne.cle" class="h-12 border-b">
+              <td class="px-3">{{ ligne.libelle }}</td>
+              <td class="px-3">
+                <span
+                  class="px-3 py-1 rounded-full text-xs font-semibold"
+                  :class="ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.classe : 'bg-gray-100 text-gray-700'"
+                >
+                  {{ ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.label : 'Non évalué' }}
+                </span>
+              </td>
+              <td class="px-3 text-right font-mono">{{ formatMontant(ligne.ecartGlobal) }}</td>
+            </tr>
+          </tbody>
+        </table>
 
         <div v-if="ipeEtat.modules && Object.keys(ipeEtat.modules).length" class="flex flex-col gap-4 mt-2">
           <div v-for="(module, cle) in ipeEtat.modules" :key="cle" class="border border-gray-200 rounded-lg p-4 text-sm">
@@ -1093,7 +1155,7 @@ function back() {
 
       <!-- Commentaire général — niveau 1 des remarques (docs/PLAN_verrou_IPE.md),
            sur le contrôle dans son ensemble, pas sur un écart précis. -->
-      <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-3 w-full" v-if="ipeEtat">
+      <div id="commentaires-generaux" class="bg-white rounded-xl shadow p-6 flex flex-col gap-3 w-full scroll-mt-4" v-if="ipeEtat">
         <h2 class="font-bold text-sm uppercase text-blue-ycube">Commentaires généraux</h2>
 
         <p v-if="!remarquesGenerales.length" class="text-sm text-gray-500 italic">Aucun commentaire général.</p>

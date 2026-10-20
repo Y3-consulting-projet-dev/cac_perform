@@ -21,6 +21,18 @@ function messageErreur(e, defaut) {
 // Informations de la mission (id_client, annee_auditee...) via /api/v1 —
 // remplace la lecture de /cors/mission/affichage_infos_mission, dont la
 // réponse n'a pas de clé `response` (l'écran restait sans mission chargée).
+// Fiche client (nom, etc.) : GET /api/v1/clients/<id> -> { response: { info, missions } }.
+export async function obtenirClient(clientId) {
+  let data
+  try {
+    ({ data } = await api.get(`/clients/${clientId}`))
+  } catch (e) {
+    throw new Error(messageErreur(e, 'Client non chargé'))
+  }
+  if (data?.response?.info) return data.response.info
+  throw new Error('Client non chargé : réponse inattendue du serveur')
+}
+
 export async function obtenirMission(missionId) {
   let data
   try {
