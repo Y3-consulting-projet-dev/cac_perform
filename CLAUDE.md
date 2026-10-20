@@ -98,6 +98,10 @@ Relevée sur le code réel de `ClientSpace.vue`, `ClientsView.vue`, `MissionsVie
 
 **Après chaque lot qui touche au frontend, lancer le test de parcours** : `npm run test:parcours` depuis `clients/` (API Flask et Vite démarrés). Il clique sur les boutons de navigation principaux (liste des clients, fiche client, liste des missions, barre latérale, Fichiers complémentaires) et vérifie l'écran ouvert et l'absence d'erreur en console. Il crée puis supprime un client et une mission fictifs (`api/parcours_donnees_test.py`, marqueur `test_parcours`). Captures dans `clients/tests/parcours/captures/` (non commitées). Ajouter une étape au parcours pour tout nouveau bouton de navigation.
 
+## Fins de ligne
+
+**Ne jamais modifier les fins de ligne d'un fichier. Avant chaque commit, vérifier `git diff --stat` : un nombre de lignes anormalement élevé signale un problème de fins de ligne.** Ce dépôt a `core.autocrlf=true` et des fichiers enregistrés en CRLF (ex. `GroupingAnalyse.vue`) comme en LF : une réécriture complète d'un fichier peut convertir toutes ses lignes. Contrôle : `git diff --stat` comparé à `git diff --stat --ignore-cr-at-eol` (les deux doivent donner le même nombre de lignes). Pour enregistrer un fichier CRLF tel quel : `git -c core.autocrlf=false add <fichier>`.
+
 ## Point de sécurité connu (à garder en tête, pas à régler maintenant)
 
 Aujourd'hui, **aucune authentification ni cloisonnement par mission** ne s'applique aux clients et aux missions (voir `RECAP_V1_CAC_PERFORM.md`, section 5). Ce chantier ne refait pas l'authentification. On pose seulement, dans le nouveau code, les bases d'un filtrage par mission (ex. prévoir un champ/paramètre de mission dans les nouveaux services), sans l'appliquer rétroactivement à l'existant.
