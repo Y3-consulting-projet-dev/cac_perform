@@ -115,7 +115,7 @@ function montantImmo(ligne, valeur) {
 }
 
 function libelleLigneEcart(module, ligne) {
-  if (!estImmobilisations(module)) return `collectif ${ligne.numero_compte}`
+  if (!estImmobilisations(module)) return `compte ${ligne.numero_compte}`
   if (ligne.nature === 'controle_vnc') return 'contrôle valeur nette (bien par bien)'
   return `${NATURE_LIGNE_IMMO[ligne.nature] || ligne.nature} — compte ${ligne.numero_compte}`
 }
@@ -220,10 +220,32 @@ function ouvrirFichiersComplementaires() {
 // Traitement attendu : TODO(spec: CAC-IPE-01).
 const listeOrphelinsOuverte = ref(false)
 
-// « Commenter » : mène au bloc de l'écart (panneau latéral à l'incrément suivant).
-function allerALecart(cle, numeroCompte) {
-  document.getElementById(`ecart-${cle}-${numeroCompte}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+// Panneau latéral d'un compte en écart (maquette 1_Fiabilite_IPE, docs/PLAN_ecrans_lot1.md §2.4) :
+// qualification + fil des remarques. Ouvert par « Commenter » ou un clic sur la ligne ; un seul à la fois.
+const panneau = ref(null) // { cle, numeroCompte }
+
+function ouvrirPanneau(cle, numeroCompte) {
+  panneau.value = { cle, numeroCompte }
 }
+
+function fermerPanneau() {
+  panneau.value = null
+}
+
+const lignePanneau = computed(() => {
+  if (!panneau.value) return null
+  const module = ipeEtat.value?.modules?.[panneau.value.cle]
+  const ligne = (module?.derniere_evaluation?.detail_collectifs || []).find((c) => c.numero_compte === panneau.value.numeroCompte)
+  return module && ligne && !ligne.ok ? { cle: panneau.value.cle, module, ligne } : null
+})
+
+// Changer de module dans la synthèse ferme le panneau d'un compte d'un autre module.
+watch(cleModuleAffiche, (cle) => {
+  if (panneau.value && panneau.value.cle !== cle) fermerPanneau()
+})
+
+// Modules non évaluables : justifications regroupées dans une seule carte (§2.5).
+const modulesNonEvaluables = computed(() => ORDRE_MODULES.filter((cle) => ipeEtat.value?.modules?.[cle]?.statut === 'non_evaluable'))
 
 // En-tête (maquette 1_Fiabilite_IPE) : « [client] · exercice audité [année] ».
 // Échec de chargement : sous-titre sans ces informations, jamais bloquant.
@@ -899,9 +921,13 @@ function back() {
 
       </div>
 
+      <!-- Deux colonnes (maquette) : synthèse, détail et justifications à gauche ; panneau du compte à droite. -->
+      <div v-if="ipeEtat" class="flex flex-col lg:flex-row gap-6 items-start">
+      <div class="flex-1 min-w-0 w-full flex flex-col gap-6">
+
       <!-- Synthèse (maquette 1_Fiabilite_IPE, docs/PLAN_ecrans_lot1.md §2.2) : un clic sur
            une ligne choisit le module affiché en détail. En-tête bleu marine — charte CLAUDE.md. -->
-      <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-4 w-full" v-if="ipeEtat">
+      <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-4 w-full">
         <h2 class="font-bold text-sm uppercase text-blue-ycube">Synthèse</h2>
         <table class="min-w-full text-sm">
           <thead class="bg-blue-ycube text-white h-12 text-left">
@@ -928,13 +954,13 @@ function back() {
               <td class="px-3 text-gray-500 font-normal">{{ fichierDuModule(ligne.cle) }}</td>
               <td class="px-3">
                 <span
-                  class="px-3 py-1 rounded-full text-xs font-semibold"
+                  class="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
                   :class="ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.classe : 'bg-gray-100 text-gray-700'"
                 >
                   {{ ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.label : 'Non évalué' }}
                 </span>
               </td>
-              <td class="px-3 text-right font-mono">{{ formatMontant(ligne.ecartGlobal) }}</td>
+              <td class="px-3 text-right font-mono whitespace-nowrap">{{ formatMontant(ligne.ecartGlobal) }}</td>
             </tr>
           </tbody>
         </table>
@@ -942,7 +968,7 @@ function back() {
       </div>
 
       <!-- Détail du module choisi (docs/PLAN_ecrans_lot1.md §2.3) -->
-      <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-4 w-full" v-if="ipeEtat">
+      <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-4 w-full">
         <div v-if="ipeEtat.modules && Object.keys(ipeEtat.modules).length" class="flex flex-col gap-4">
           <div v-for="(module, cle) in modulesAffiches" :key="cle" class="text-sm flex flex-col gap-1">
             <div class="flex items-center justify-between flex-wrap gap-2">
@@ -973,34 +999,6 @@ function back() {
                   : (estImmobilisations(module) ? 'aucun compte d\'immobilisation trouvé dans la balance générale.' : 'aucun compte collectif trouvé dans la balance générale pour ce module.') }}
               </p>
 
-              <!-- Justification écrite exigée pour valider malgré un module non évaluable.
-                   Le traitement métier de ces modules reste TODO(spec: CAC-IPE-01). -->
-              <div v-if="module.statut === 'non_evaluable'" class="border border-gray-200 rounded-lg p-3 flex flex-col gap-2">
-                <p class="text-xs font-semibold text-gray-700">
-                  Justification (obligatoire pour soumettre et valider)
-                  <span v-if="ipeEtat.justifications_non_evaluables?.[cle]" class="font-normal text-gray-500">
-                    — enregistrée par {{ ipeEtat.justifications_non_evaluables[cle].utilisateur_id || 'Non identifié' }},
-                    {{ formatHorodatage(ipeEtat.justifications_non_evaluables[cle].horodatage) }}
-                  </span>
-                </p>
-                <textarea
-                  v-model="justificationsEnCours[cle]"
-                  :disabled="!peutEditerAuditeur"
-                  rows="2"
-                  class="text-sm border border-gray-300 rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
-                  :placeholder="`Pourquoi valider sans ce module ? (au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères)`"
-                ></textarea>
-                <div>
-                  <button
-                    class="px-5 py-2 rounded-lg bg-blue-ycube text-white text-sm font-semibold hover:bg-blue-900 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                    :disabled="!peutEditerAuditeur || justificationEnCours === cle"
-                    :title="!peutEditerAuditeur ? 'Modifiable uniquement « En cours » ou « En attente de correction »' : ''"
-                    @click="enregistrerJustification(cle)"
-                  >
-                    Enregistrer la justification
-                  </button>
-                </div>
-              </div>
               <p v-else-if="estImmobilisations(module)" class="text-sm">
                 {{ estImmobilisations(module) ? 'Écart global sur les valeurs brutes' : 'Écart global' }} :
                 <span class="font-mono font-semibold text-gray-800">{{ formatMontant(module.derniere_evaluation.ecart_global) }}</span>
@@ -1011,7 +1009,8 @@ function back() {
 
               <!-- IPE-3 : biens vs comptes 20 à 27 (valeur brute) et 28 (amortissements).
                    Granularité, tolérance, dépréciations (29) : TODO(spec: CAC-IPE-01 §3). -->
-              <table v-if="estImmobilisations(module) && module.derniere_evaluation.detail_collectifs?.length" class="min-w-full text-sm">
+              <div v-if="estImmobilisations(module) && module.derniere_evaluation.detail_collectifs?.length" class="overflow-x-auto">
+              <table class="min-w-full text-sm">
                 <thead class="bg-blue-ycube text-white h-12 text-left">
                   <tr>
                     <th class="px-3">Compte</th>
@@ -1029,7 +1028,11 @@ function back() {
                     v-for="c in module.derniere_evaluation.detail_collectifs"
                     :key="c.numero_compte"
                     class="h-12 border-b"
-                    :class="module.statut !== 'ecart' ? 'text-gray-500' : (c.ok ? 'text-green-700' : 'text-red-700')"
+                    :class="[
+                      module.statut !== 'ecart' ? 'text-gray-500' : (c.ok ? 'text-green-700' : 'text-red-700 cursor-pointer hover:bg-gray-50'),
+                      panneau?.cle === cle && panneau?.numeroCompte === c.numero_compte ? '!bg-blue-50' : '',
+                    ]"
+                    @click="!c.ok && module.statut === 'ecart' && ouvrirPanneau(cle, c.numero_compte)"
                   >
                     <td class="px-3">{{ c.nature === 'controle_vnc' ? '—' : c.numero_compte }}</td>
                     <td class="px-3">{{ NATURE_LIGNE_IMMO[c.nature] || c.nature }}</td>
@@ -1041,7 +1044,7 @@ function back() {
                       <span v-if="c.ok || module.statut !== 'ecart'" class="text-gray-400">—</span>
                       <span
                         v-else
-                        class="px-3 py-1 rounded-full text-xs font-semibold"
+                        class="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
                         :class="qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
                       >
                         {{ qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'Qualifiée' : 'À qualifier' }}
@@ -1051,7 +1054,7 @@ function back() {
                       <button
                         v-if="!c.ok && module.statut === 'ecart'"
                         class="px-3 py-1 rounded-lg border border-blue-ycube text-blue-ycube text-xs font-semibold hover:bg-blue-ycube hover:text-white transition inline-flex items-center gap-1 whitespace-nowrap"
-                        @click="allerALecart(cle, c.numero_compte)"
+                        @click.stop="ouvrirPanneau(cle, c.numero_compte)"
                       >
                         <i class="fa-regular fa-comment"></i> Commenter · {{ remarquesPourCollectif(cle, c.numero_compte).length }}
                       </button>
@@ -1059,6 +1062,7 @@ function back() {
                   </tr>
                 </tbody>
               </table>
+              </div>
               <div v-if="estImmobilisations(module) && module.statut !== 'non_evaluable'" class="flex flex-col gap-1 text-sm">
                 <p v-if="module.derniere_evaluation.mode_comparaison === 'par_compte' && module.derniere_evaluation.totaux">
                   Totaux — valeurs brutes : balance générale
@@ -1091,16 +1095,17 @@ function back() {
                 <p class="text-gray-500">Dépréciations (comptes 29) non prises en compte — TODO(spec: CAC-IPE-01 §3).</p>
               </div>
 
-              <table v-if="!estImmobilisations(module) && module.derniere_evaluation.detail_collectifs?.length" class="min-w-full text-sm">
+              <div v-if="!estImmobilisations(module) && module.derniere_evaluation.detail_collectifs?.length" class="overflow-x-auto">
+              <table class="min-w-full text-sm">
                 <thead class="bg-blue-ycube text-white h-12 text-left">
                   <tr>
-                    <th class="px-3">Compte</th>
-                    <th class="px-3 text-right">Balance générale</th>
-                    <th class="px-3 text-right">Auxiliaire</th>
-                    <th class="px-3 text-right">Tiers</th>
-                    <th class="px-3 text-right">Écart</th>
-                    <th class="px-3">Qualification</th>
-                    <th class="px-3">Remarques</th>
+                    <th class="px-2">Compte</th>
+                    <th class="px-2 text-right">Balance générale</th>
+                    <th class="px-2 text-right">Auxiliaire</th>
+                    <th class="px-2 text-right">Tiers</th>
+                    <th class="px-2 text-right">Écart</th>
+                    <th class="px-2">Qualification</th>
+                    <th class="px-2">Remarques</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1108,27 +1113,32 @@ function back() {
                     v-for="c in module.derniere_evaluation.detail_collectifs"
                     :key="c.numero_compte"
                     class="h-12 border-b text-gray-800"
+                    :class="[
+                      !c.ok && module.statut === 'ecart' ? 'cursor-pointer hover:bg-gray-50' : '',
+                      panneau?.cle === cle && panneau?.numeroCompte === c.numero_compte ? '!bg-blue-50' : '',
+                    ]"
+                    @click="!c.ok && module.statut === 'ecart' && ouvrirPanneau(cle, c.numero_compte)"
                   >
-                    <td class="px-3 font-semibold">{{ c.numero_compte }}</td>
-                    <td class="px-3 text-right font-mono">{{ formatMontant(c.solde_balance_generale) }}</td>
-                    <td class="px-3 text-right font-mono">{{ formatMontant(c.solde_auxiliaire) }}</td>
-                    <td class="px-3 text-right">{{ c.nb_tiers_rattaches }}</td>
-                    <td class="px-3 text-right font-mono" :class="!c.ok && module.statut === 'ecart' ? 'font-bold text-red-700' : 'text-gray-500'">{{ formatMontant(c.ecart) }}</td>
-                    <td class="px-3">
+                    <td class="px-2 font-semibold">{{ c.numero_compte }}</td>
+                    <td class="px-2 text-right font-mono whitespace-nowrap">{{ formatMontant(c.solde_balance_generale) }}</td>
+                    <td class="px-2 text-right font-mono whitespace-nowrap">{{ formatMontant(c.solde_auxiliaire) }}</td>
+                    <td class="px-2 text-right">{{ c.nb_tiers_rattaches }}</td>
+                    <td class="px-2 text-right font-mono whitespace-nowrap" :class="!c.ok && module.statut === 'ecart' ? 'font-bold text-red-700' : 'text-gray-500'">{{ formatMontant(c.ecart) }}</td>
+                    <td class="px-2">
                       <span v-if="c.ok || module.statut !== 'ecart'" class="text-gray-400">—</span>
                       <span
                         v-else
-                        class="px-3 py-1 rounded-full text-xs font-semibold"
+                        class="px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
                         :class="qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
                       >
                         {{ qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'Qualifiée' : 'À qualifier' }}
                       </span>
                     </td>
-                    <td class="px-3">
+                    <td class="px-2">
                       <button
                         v-if="!c.ok && module.statut === 'ecart'"
-                        class="px-3 py-1 rounded-lg border border-blue-ycube text-blue-ycube text-xs font-semibold hover:bg-blue-ycube hover:text-white transition inline-flex items-center gap-1 whitespace-nowrap"
-                        @click="allerALecart(cle, c.numero_compte)"
+                        class="px-2 py-1 rounded-lg border border-blue-ycube text-blue-ycube text-xs font-semibold hover:bg-blue-ycube hover:text-white transition inline-flex items-center gap-1 whitespace-nowrap"
+                        @click.stop="ouvrirPanneau(cle, c.numero_compte)"
                       >
                         <i class="fa-regular fa-comment"></i> Commenter · {{ remarquesPourCollectif(cle, c.numero_compte).length }}
                       </button>
@@ -1136,131 +1146,8 @@ function back() {
                   </tr>
                 </tbody>
               </table>
-              <p v-else-if="!estImmobilisations(module) && module.statut !== 'non_evaluable'" class="italic">Aucun compte collectif trouvé dans la balance générale pour ce module.</p>
-
-              <!-- Un bloc par écart réel (compte collectif) : qualification (cause +
-                   commentaire, exigée pour soumettre et valider) puis remarques de
-                   niveau 2 (docs/PLAN_verrou_IPE.md). -->
-              <template v-if="module.statut === 'ecart'">
-              <div
-                v-for="c in (module.derniere_evaluation.detail_collectifs || []).filter((c) => !c.ok)"
-                :key="'ecart-' + c.numero_compte"
-                :id="`ecart-${cle}-${c.numero_compte}`"
-                class="border border-gray-200 rounded-lg p-3 flex flex-col gap-3 text-xs scroll-mt-4"
-              >
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                  <p class="font-semibold text-gray-700 text-sm">Écart — {{ libelleLigneEcart(module, c) }}</p>
-                  <span
-                    class="px-3 py-1 rounded-full text-xs font-semibold"
-                    :class="qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
-                  >
-                    {{ qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'Qualifié' : 'À qualifier' }}
-                  </span>
-                </div>
-
-                <!-- Qualification : cause choisie dans la liste provisoire (TODO(spec: CAC-IPE-01)) + commentaire -->
-                <div class="flex flex-col gap-2">
-                  <div class="flex flex-wrap gap-2 items-start">
-                    <select
-                      v-model="formulairesQualification[`${cle}:${c.numero_compte}`].cause"
-                      :disabled="!peutEditerAuditeur"
-                      class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
-                    >
-                      <option value="" disabled>Cause de l'écart...</option>
-                      <option v-for="cause in causesEcart" :key="cause" :value="cause">{{ cause }}</option>
-                    </select>
-                    <textarea
-                      v-model="formulairesQualification[`${cle}:${c.numero_compte}`].commentaire"
-                      :disabled="!peutEditerAuditeur"
-                      rows="2"
-                      class="flex-1 min-w-[16rem] text-sm border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
-                      :placeholder="`Commentaire (au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères)`"
-                    ></textarea>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <button
-                      class="px-5 py-2 rounded-lg bg-blue-ycube text-white text-sm font-semibold hover:bg-blue-900 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      :disabled="!peutEditerAuditeur || qualificationEnCours === `${cle}:${c.numero_compte}`"
-                      :title="!peutEditerAuditeur ? 'Modifiable uniquement « En cours » ou « En attente de correction »' : ''"
-                      @click="enregistrerQualification(cle, c.numero_compte)"
-                    >
-                      Enregistrer la qualification
-                    </button>
-                    <span v-if="qualificationPour(cle, c.numero_compte)" class="text-gray-500">
-                      Qualifié par {{ qualificationPour(cle, c.numero_compte).utilisateur_id || 'Non identifié' }},
-                      {{ formatHorodatage(qualificationPour(cle, c.numero_compte).horodatage) }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Remarques sur cet écart -->
-                <div class="border-t pt-2 flex flex-col gap-2">
-                  <p class="font-semibold text-gray-700">Remarques</p>
-                  <p v-if="!remarquesPourCollectif(cle, c.numero_compte).length" class="text-gray-500 italic">Aucune remarque.</p>
-
-                  <div v-for="r in remarquesPourCollectif(cle, c.numero_compte)" :key="r._id" class="border-t pt-2 flex flex-col gap-1">
-                    <div class="flex items-center gap-2">
-                      <span class="px-2 py-0.5 rounded-full text-xs font-semibold" :class="TYPE_REMARQUE_INFO[r.type]?.classe || TYPE_REMARQUE_INFO.information.classe">
-                        {{ TYPE_REMARQUE_INFO[r.type]?.label || 'Information' }}
-                      </span>
-                      <span><span class="font-semibold">{{ r.utilisateur_id || 'Non identifié' }}</span> — {{ formatHorodatage(r.horodatage) }}</span>
-                    </div>
-                    <p class="text-gray-700">{{ r.commentaire }}</p>
-                    <p v-if="r.reponse" class="ml-3 text-gray-600 italic">
-                      Réponse de {{ r.reponse.utilisateur_id || 'Non identifié' }} ({{ formatHorodatage(r.reponse.horodatage) }}) : {{ r.reponse.commentaire }}
-                    </p>
-                    <div class="flex items-center gap-2">
-                      <span
-                        class="px-2 py-0.5 rounded-full text-xs font-semibold"
-                        :class="r.traitee ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
-                      >
-                        {{ r.traitee ? 'Traitée' : 'Non traitée' }}
-                      </span>
-                      <button
-                        class="text-blue-ycube font-semibold hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
-                        :disabled="!!raisonMarquageImpossible(r)"
-                        :title="raisonMarquageImpossible(r)"
-                        @click="basculerTraitee(r)"
-                      >
-                        {{ r.traitee ? 'Rouvrir' : 'Marquer traitée' }}
-                      </button>
-                    </div>
-                    <div v-if="!r.reponse" class="flex gap-2 mt-1">
-                      <input
-                        v-model="reponsesEnCours[r._id]"
-                        type="text"
-                        placeholder="Répondre..."
-                        class="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-ycube"
-                      />
-                      <button class="text-blue-ycube font-semibold hover:underline" @click="envoyerReponse(r)">Répondre</button>
-                    </div>
-                  </div>
-
-                  <div class="flex gap-2 mt-1">
-                    <select
-                      :value="typesNouvellesRemarquesEcart[`${cle}:${c.numero_compte}`] || 'information'"
-                      @change="typesNouvellesRemarquesEcart[`${cle}:${c.numero_compte}`] = $event.target.value"
-                      class="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-ycube"
-                    >
-                      <option value="information">Information</option>
-                      <option value="demande_correction" :disabled="!utilisateurIdentifie">Demande de correction</option>
-                    </select>
-                    <input
-                      v-model="nouvellesRemarquesEcart[`${cle}:${c.numero_compte}`]"
-                      type="text"
-                      placeholder="Ajouter une remarque sur cet écart..."
-                      class="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-ycube"
-                    />
-                    <button
-                      class="px-3 py-1 rounded-lg bg-blue-ycube text-white text-xs font-semibold hover:bg-blue-900 transition"
-                      @click="ajouterRemarqueEcart(cle, c.numero_compte)"
-                    >
-                      Ajouter
-                    </button>
-                  </div>
-                </div>
               </div>
-              </template>
+              <p v-else-if="!estImmobilisations(module) && module.statut !== 'non_evaluable'" class="italic">Aucun compte collectif trouvé dans la balance générale pour ce module.</p>
 
               <!-- Tiers sans compte collectif (maquette) : traitement attendu TODO(spec: CAC-IPE-01) -->
               <div
@@ -1318,6 +1205,183 @@ function back() {
         <p v-else class="text-sm text-gray-500 italic">
           Aucune évaluation IPE encore lancée pour cette mission.
         </p>
+      </div>
+
+      <!-- Modules non évaluables · justification (§2.5) : exigée dès la soumission et à la validation.
+           Traitement métier de ces modules : TODO(spec: CAC-IPE-01). -->
+      <div v-if="modulesNonEvaluables.length" class="bg-white rounded-xl shadow p-6 flex flex-col gap-4 w-full">
+        <h2 class="font-bold text-sm uppercase text-blue-ycube">Modules non évaluables · justification</h2>
+        <div v-for="cleModule in modulesNonEvaluables" :key="cleModule" class="flex flex-col gap-2">
+          <label :for="`justification-${cleModule}`" class="text-sm font-semibold text-gray-800">
+            {{ (LIBELLES_MODULE[cleModule] || cleModule).split(' (')[0] }}
+            <span v-if="ipeEtat.justifications_non_evaluables?.[cleModule]" class="font-normal text-gray-500">
+              — enregistrée par {{ ipeEtat.justifications_non_evaluables[cleModule].utilisateur_id || 'Non identifié' }},
+              {{ formatHorodatage(ipeEtat.justifications_non_evaluables[cleModule].horodatage) }}
+            </span>
+          </label>
+          <div class="flex flex-wrap gap-3 items-start">
+            <textarea
+              :id="`justification-${cleModule}`"
+              v-model="justificationsEnCours[cleModule]"
+              :disabled="!peutEditerAuditeur"
+              rows="2"
+              class="flex-1 min-w-[16rem] text-sm border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
+              :placeholder="`Pourquoi ce module ne peut pas être évalué (au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères)`"
+            ></textarea>
+            <button
+              class="px-5 py-2 rounded-lg bg-blue-ycube text-white text-sm font-semibold hover:bg-blue-900 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              :disabled="!peutEditerAuditeur || justificationEnCours === cleModule"
+              :title="!peutEditerAuditeur ? 'Modifiable uniquement « En cours » ou « En attente de correction »' : ''"
+              @click="enregistrerJustification(cleModule)"
+            >
+              Enregistrer
+            </button>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Panneau du compte en écart (§2.4) : remplace les blocs d'écart sous le tableau.
+           Ombre simple + bordure (la charte réserve les ombres marquées aux modales). -->
+      <aside
+        v-if="lignePanneau"
+        :aria-label="`Panneau de qualification du compte ${lignePanneau.ligne.numero_compte}`"
+        class="w-full lg:w-[380px] shrink-0 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-y-auto bg-white rounded-xl shadow border border-blue-ycube/20 p-6 flex flex-col gap-4 text-sm"
+      >
+        <div class="flex justify-between items-start gap-3">
+          <div class="flex flex-col gap-1">
+            <h2 class="text-lg font-bold text-blue-ycube">Écart · {{ libelleLigneEcart(lignePanneau.module, lignePanneau.ligne) }}</h2>
+            <span class="text-gray-500">
+              <template v-if="estImmobilisations(lignePanneau.module)">
+                {{ montantImmo(lignePanneau.ligne, lignePanneau.ligne.ecart) }} · {{ lignePanneau.ligne.nb_biens }} bien(s)
+              </template>
+              <template v-else>
+                {{ formatMontant(lignePanneau.ligne.ecart) }} · {{ lignePanneau.ligne.nb_tiers_rattaches }} tiers rattaché(s)
+              </template>
+            </span>
+          </div>
+          <button class="w-10 h-10 rounded-lg bg-gray-100 text-blue-ycube hover:bg-gray-200 transition" aria-label="Fermer le panneau" @click="fermerPanneau">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Qualification : cause de la liste provisoire (TODO(spec: CAC-IPE-01)) + commentaire -->
+        <div class="flex flex-col gap-3 rounded-lg bg-gray-50 p-4">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="font-semibold text-gray-800">Qualification</h3>
+            <span
+              class="px-3 py-1 rounded-full text-xs font-semibold"
+              :class="qualificationComplete(qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
+            >
+              {{ qualificationComplete(qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte)) ? 'Qualifiée' : 'À qualifier' }}
+            </span>
+          </div>
+          <label class="flex flex-col gap-1 font-semibold text-gray-700">
+            Cause de l'écart
+            <select
+              v-model="formulairesQualification[`${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`].cause"
+              :disabled="!peutEditerAuditeur"
+              class="h-11 border border-gray-300 rounded-lg px-2 font-normal bg-white focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
+            >
+              <option value="" disabled>Choisir une cause</option>
+              <option v-for="cause in causesEcart" :key="cause" :value="cause">{{ cause }}</option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-1 font-semibold text-gray-700">
+            Commentaire
+            <textarea
+              v-model="formulairesQualification[`${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`].commentaire"
+              :disabled="!peutEditerAuditeur"
+              rows="3"
+              class="border border-gray-300 rounded-lg p-2 font-normal focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
+              :placeholder="`Expliquer l'écart (au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères)`"
+            ></textarea>
+          </label>
+          <button
+            class="h-11 rounded-lg bg-green-ycube-2 text-white font-semibold hover:bg-green-ycube transition disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="!peutEditerAuditeur || qualificationEnCours === `${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`"
+            :title="!peutEditerAuditeur ? 'Modifiable uniquement « En cours » ou « En attente de correction »' : ''"
+            @click="enregistrerQualification(lignePanneau.cle, lignePanneau.ligne.numero_compte)"
+          >
+            Enregistrer la qualification
+          </button>
+          <p v-if="qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte)" class="text-xs text-gray-500">
+            Qualifiée par {{ qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte).utilisateur_id || 'Non identifié' }},
+            {{ formatHorodatage(qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte).horodatage) }}
+          </p>
+        </div>
+
+        <!-- Fil des remarques (niveau 2) : réponse et « Marquer traitée » conservés (circuit de revue) -->
+        <div class="flex flex-col gap-3">
+          <h3 class="font-semibold text-gray-800">Remarques ({{ remarquesPourCollectif(lignePanneau.cle, lignePanneau.ligne.numero_compte).length }})</h3>
+          <p v-if="!remarquesPourCollectif(lignePanneau.cle, lignePanneau.ligne.numero_compte).length" class="text-gray-500 italic">Aucune remarque.</p>
+          <article
+            v-for="r in remarquesPourCollectif(lignePanneau.cle, lignePanneau.ligne.numero_compte)"
+            :key="r._id"
+            class="border border-gray-200 rounded-lg p-3 flex flex-col gap-2"
+          >
+            <div class="flex justify-between gap-2 flex-wrap">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold" :class="TYPE_REMARQUE_INFO[r.type]?.classe || TYPE_REMARQUE_INFO.information.classe">
+                {{ TYPE_REMARQUE_INFO[r.type]?.label || 'Information' }}
+              </span>
+              <span class="text-xs text-gray-500">{{ r.utilisateur_id || 'Non identifié' }} · {{ formatHorodatage(r.horodatage) }}</span>
+            </div>
+            <p class="text-gray-800">{{ r.commentaire }}</p>
+            <p v-if="r.reponse" class="ml-3 text-gray-600 italic">
+              Réponse de {{ r.reponse.utilisateur_id || 'Non identifié' }} ({{ formatHorodatage(r.reponse.horodatage) }}) : {{ r.reponse.commentaire }}
+            </p>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-full font-semibold" :class="r.traitee ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'">
+                {{ r.traitee ? 'Traitée' : 'Non traitée' }}
+              </span>
+              <button
+                class="text-blue-ycube font-semibold hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
+                :disabled="!!raisonMarquageImpossible(r)"
+                :title="raisonMarquageImpossible(r)"
+                @click="basculerTraitee(r)"
+              >
+                {{ r.traitee ? 'Rouvrir' : 'Marquer traitée' }}
+              </button>
+            </div>
+            <div v-if="!r.reponse" class="flex gap-2">
+              <input
+                v-model="reponsesEnCours[r._id]"
+                type="text"
+                placeholder="Répondre..."
+                class="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+              />
+              <button class="text-xs text-blue-ycube font-semibold hover:underline" @click="envoyerReponse(r)">Répondre</button>
+            </div>
+          </article>
+
+          <label class="flex flex-col gap-1 font-semibold text-gray-700">
+            Nouvelle remarque
+            <textarea
+              v-model="nouvellesRemarquesEcart[`${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`]"
+              rows="2"
+              class="border border-gray-300 rounded-lg p-2 font-normal focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+              placeholder="Ajouter une remarque sur cet écart"
+            ></textarea>
+          </label>
+          <div class="flex gap-2 flex-wrap">
+            <select
+              aria-label="Type de remarque"
+              :value="typesNouvellesRemarquesEcart[`${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`] || 'information'"
+              class="h-11 border border-gray-300 rounded-lg px-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+              @change="typesNouvellesRemarquesEcart[`${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`] = $event.target.value"
+            >
+              <option value="information">Information</option>
+              <option value="demande_correction" :disabled="!utilisateurIdentifie">Demande de correction</option>
+            </select>
+            <button
+              class="h-11 px-5 rounded-lg bg-blue-ycube text-white font-semibold hover:bg-blue-900 transition"
+              @click="ajouterRemarqueEcart(lignePanneau.cle, lignePanneau.ligne.numero_compte)"
+            >
+              Ajouter
+            </button>
+          </div>
+        </div>
+      </aside>
       </div>
 
       <!-- Commentaire général — niveau 1 des remarques (docs/PLAN_verrou_IPE.md),

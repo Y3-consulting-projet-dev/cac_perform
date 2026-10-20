@@ -108,6 +108,9 @@ def lire_etat_ipe(mission_id: str) -> Dict[str, Any]:
         "remarques": ipe.get("remarques", []),
         "qualifications_ecarts": ipe.get("qualifications_ecarts", []),
         "justifications_non_evaluables": ipe.get("justifications_non_evaluables", {}),
+        # Fichiers utilisés par le dernier rapprochement (None : inconnus) —
+        # revue_ipe_service.refus_rapprochement.
+        "fichiers_evalues": ipe.get("fichiers_evalues"),
     })
     return etat
 

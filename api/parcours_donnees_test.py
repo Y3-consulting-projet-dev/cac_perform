@@ -44,7 +44,8 @@ def creer():
         "legal_form": "SA", "responsable_name": "Responsable Test", "civility": "M", "responsable_function": "DG",
         "RCCM": "CI-TEST-0000", "country": "Côte d'Ivoire", "creation_date": "2015-01-01",
     }).inserted_id
-    lignes = [_ligne("101000", "CAPITAL", credit_fin=1_000_000), _ligne("521000", "BANQUE", debit_fin=1_000_000)]
+    lignes = [_ligne("101000", "CAPITAL", credit_fin=1_000_000), _ligne("521000", "BANQUE", debit_fin=1_100_000),
+              _ligne("401000", "FOURNISSEURS", credit_fin=100_000)]
     balance_n = db["Balance"].insert_one({**MARQUEUR, "id_client": str(client_id), "annee_balance": 2025, "balance": lignes}).inserted_id
     balance_n1 = db["Balance"].insert_one({**MARQUEUR, "id_client": str(client_id), "annee_balance": 2024, "balance": lignes}).inserted_id
     mission_id = db["Mission1"].insert_one({
@@ -52,6 +53,15 @@ def creer():
         "balances": [str(balance_n), str(balance_n1)], "balance_variation": [], "grouping": [], "efi": {}, "materiality": [],
         "ipe": {"verrou_applicable": False},
     }).inserted_id
+    # Balance auxiliaire fournisseurs (format Y3) dont le total diffère du 401 : un écart IPE-2,
+    # pour ouvrir le panneau du compte dans le parcours.
+    db["Balance"].insert_one({
+        **MARQUEUR, "id_client": str(client_id), "mission_id": str(mission_id), "annee_balance": "2025",
+        "type": "auxiliaire_fournisseur", "actif": True, "version": 1, "nom_fichier": "aux_frs_parcours.xlsx",
+        "balance": [{"code_entite": "E1", "numero_compte": "4011TEST", "libelle_compte": "FOURNISSEUR TEST",
+                     "solde_ouverture_debit": 0, "solde_ouverture_credit": 0, "mouvement_debit": 0,
+                     "mouvement_credit": 250_000, "solde_final_debit": 0, "solde_final_credit": 250_000}],
+    })
     print(json.dumps({"client_id": str(client_id), "client_nom": nom, "mission_id": str(mission_id)}))
 
 

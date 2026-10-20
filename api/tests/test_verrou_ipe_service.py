@@ -134,3 +134,23 @@ def test_detecter_fichiers_modifies_ignore_les_types_non_references():
     references = {"balance_generale": {"_id": "bal_n", "annee_balance": 2025}}
     actuelles = {"balance_generale": "bal_n", "auxiliaire_client": "aux_v1"}
     assert service.detecter_fichiers_modifies(references, actuelles) == []
+
+
+def test_lire_etat_ipe_renvoie_les_fichiers_du_dernier_rapprochement(monkeypatch):
+    # Régression : sans ce champ, refus_rapprochement croyait toujours le
+    # rapprochement inconnu et toute soumission pour revue était refusée.
+    from bson import ObjectId
+    from src.services import verrou_ipe_service
+
+    fichiers = {"balance_generale": "bg1", "auxiliaire_fournisseur": "frs1"}
+
+    class CollectionFactice:
+        def find_one(self, *args, **kwargs):
+            return {"ipe": {"modules": {"ipe_2_fournisseurs": {"statut": "ok"}}, "fichiers_evalues": fichiers}}
+
+    monkeypatch.setattr(verrou_ipe_service, "_collection", lambda: CollectionFactice())
+    etat = verrou_ipe_service.lire_etat_ipe(str(ObjectId()))
+    assert etat["fichiers_evalues"] == fichiers
+
+    from src.services import revue_ipe_service
+    assert revue_ipe_service.refus_rapprochement(etat, dict(fichiers)) is None

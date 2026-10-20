@@ -181,6 +181,16 @@ async function parcours(navigateur, d) {
     { url: /step=fiabilite_ipe/, texte: "Lancez d'abord le rapprochement.", barre: true })
   await etape(navigateur, 'Fiabilité IPE : synthèse avec colonne Fichier', async () => {},
     { url: /step=fiabilite_ipe/, texte: 'Aucun fichier importé', barre: true })
+  // Panneau latéral d'un compte en écart (§2.4) : rapprochement lancé, « Commenter » sur 401.
+  await etape(navigateur, 'Fiabilité IPE : « Lancer le rapprochement »', () => cliquer(navigateur, 'Lancer le rapprochement'),
+    { url: /step=fiabilite_ipe/, texte: 'Balance auxiliaire fournisseurs · v1', barre: true })
+  await etape(navigateur, 'Fiabilité IPE : « Commenter » ouvre le panneau du compte 401', () => navigateur.evaluer(`(() => {
+      const tr = [...document.querySelectorAll('tr')].find((t) => t.querySelector('td')?.textContent.trim() === '401');
+      if (!tr) throw new Error('ligne 401 introuvable'); tr.querySelector('button').click() })()`),
+    { url: /step=fiabilite_ipe/, texte: 'Écart · compte 401', barre: true })
+  await etape(navigateur, 'Fiabilité IPE : fermer le panneau', () => navigateur.evaluer(
+    `document.querySelector('[aria-label="Fermer le panneau"]').click()`),
+    { url: /step=fiabilite_ipe/, barre: true })
   await etape(navigateur, 'Fiabilité IPE : « Commentaires généraux (0) » -> section', () => cliquer(navigateur, 'Commentaires généraux (0)'),
     { url: /step=fiabilite_ipe/, texte: 'Aucun commentaire général.', barre: true })
   await etape(navigateur, 'Barre latérale : étape « Contrôle d’intangibilité »', () => navigateur.evaluer(`(() => {
