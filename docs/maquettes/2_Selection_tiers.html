@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sélection des tiers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0F3A5A}a:hover{color:#0B2A42}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F4F6F9; font-family: 'Nunito Sans', Arial, sans-serif; color: #1F2937; display: flex; flex-direction: column">
+  <header style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 32px; background: #FFFFFF; border-bottom: 1px solid #E3E8EF; flex-wrap: wrap">
+    <div style="font-size: 30px; font-weight: 800; color: #0F3A5A; letter-spacing: -1px">Y<span style="color: #6BA539">3</span></div>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div style="width: 44px; height: 44px; border-radius: 50%; background: #0F3A5A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700">S</div>
+      <div style="display: flex; flex-direction: column"><span style="font-weight: 700">Stéphanie Axelle Kotie AMANI</span><span style="font-size: 13px; color: #5B6675">Auditeur</span></div>
+    </div>
+  </header>
+  <div style="display: flex; flex-wrap: wrap; flex: 1">
+    <dc-import name="Sidebar" active="selection" hint-size="340px,1300px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px; display: flex; flex-direction: column; gap: 20px">
+      <section style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 24px 28px; display: flex; flex-direction: column; gap: 6px; text-align: center">
+        <h1 style="margin: 0; font-size: 26px; color: #0F3A5A">Sélection des tiers à circulariser</h1>
+        <p style="margin: 0; color: #5B6675">KOFFI &amp; DIABATE GROUP · exercice 2025 · CIR-01, à partir des seuils de SEUILS-01 et de l'échantillonnage ECH-01</p>
+      </section>
+
+      <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px">
+        <div style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 20px 24px; display: flex; flex-direction: column; gap: 8px">
+          <h2 style="margin: 0; font-size: 15px; letter-spacing: 0.3px; color: #0F3A5A">PRÉREQUIS · FIABILITÉ IPE</h2>
+          <p style="margin: 0; font-size: 15px">Rapprochement en cours, non validé. La population ne doit être utilisée qu'après validation de la fiabilité.</p>
+          <a href="Main.dc.html" style="font-size: 14px; font-weight: 600">Ouvrir Fiabilité IPE</a>
+        </div>
+        <div style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 20px 24px; display: flex; flex-direction: column; gap: 10px">
+          <h2 style="margin: 0; font-size: 15px; letter-spacing: 0.3px; color: #0F3A5A">SEUILS RETENUS · ÉTAPE 5</h2>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+            <div style="padding: 10px 12px; border-radius: 10px; background: #F7FAFC"><div style="font-size: 13px; color: #5B6675">Seuil de signification (SS)</div><div style="font-weight: 800; font-size: 17px">[montant]</div></div>
+            <div style="padding: 10px 12px; border-radius: 10px; background: #F7FAFC"><div style="font-size: 13px; color: #5B6675">Seuil de planification (SP)</div><div style="font-weight: 800; font-size: 17px">[montant]</div></div>
+            <div style="padding: 10px 12px; border-radius: 10px; background: #F7FAFC"><div style="font-size: 13px; color: #5B6675">Seuil de remontée (TS)</div><div style="font-weight: 800; font-size: 17px">[montant]</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 24px 28px; display: flex; flex-direction: column; gap: 18px">
+        <h2 style="margin: 0; font-size: 17px; letter-spacing: 0.3px; color: #0F3A5A">POPULATION</h2>
+        <div role="tablist" aria-label="Types de tiers" style="display: flex; gap: 8px; flex-wrap: wrap">
+          <button type="button" role="tab" aria-selected="false" style="height: 44px; padding: 0 16px; border: 1px solid #C9D4DE; border-radius: 10px; background: #FFFFFF; font-family: inherit; font-size: 15px; font-weight: 600; color: #1F2937">Clients · 11</button>
+          <button type="button" role="tab" aria-selected="true" style="height: 44px; padding: 0 16px; border: none; border-radius: 10px; background: #0F3A5A; font-family: inherit; font-size: 15px; font-weight: 700; color: #FFFFFF">Fournisseurs · 91</button>
+          <button type="button" role="tab" aria-selected="false" style="height: 44px; padding: 0 16px; border: 1px solid #C9D4DE; border-radius: 10px; background: #FFFFFF; font-family: inherit; font-size: 15px; font-weight: 600; color: #1F2937">Avocats · à saisir</button>
+          <button type="button" role="tab" aria-selected="false" style="height: 44px; padding: 0 16px; border: 1px solid #C9D4DE; border-radius: 10px; background: #FFFFFF; font-family: inherit; font-size: 15px; font-weight: 600; color: #1F2937">Bailleurs · à saisir</button>
+          <button type="button" role="tab" aria-selected="false" style="height: 44px; padding: 0 16px; border: 1px solid #C9D4DE; border-radius: 10px; background: #FFFFFF; font-family: inherit; font-size: 15px; font-weight: 600; color: #1F2937">Banques · relevés</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+          <fieldset style="margin: 0; border: 1px solid #E3E8EF; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+            <legend style="font-weight: 700; padding: 0 6px">Méthode</legend>
+            <label style="display: flex; gap: 10px; align-items: flex-start; font-size: 15px"><input type="radio" name="methode" checked style="width: 18px; height: 18px; margin-top: 2px">Seuils SS/SP/TS et échantillonnage MUS (ECH-01)</label>
+            <label style="display: flex; gap: 10px; align-items: flex-start; font-size: 15px"><input type="radio" name="methode" style="width: 18px; height: 18px; margin-top: 2px">Sélection manuelle uniquement</label>
+          </fieldset>
+          <fieldset style="margin: 0; border: 1px solid #E3E8EF; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+            <legend style="font-weight: 700; padding: 0 6px">Tirage reproductible</legend>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600">Graine du tirage
+              <input type="text" value="[générée au lancement]" style="height: 44px; box-sizing: border-box; font-family: inherit; font-size: 15px; padding: 0 12px; border: 1px solid #C9D4DE; border-radius: 10px">
+            </label>
+            <span style="font-size: 13px; color: #5B6675">Enregistrée au journal : le tirage peut être rejoué à l'identique.</span>
+          </fieldset>
+          <fieldset style="margin: 0; border: 1px solid #E3E8EF; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+            <legend style="font-weight: 700; padding: 0 6px">Mode de confirmation</legend>
+            <label style="display: flex; gap: 10px; align-items: flex-start; font-size: 15px"><input type="radio" name="mode" checked style="width: 18px; height: 18px; margin-top: 2px">Positive (par défaut)</label>
+            <label style="display: flex; gap: 10px; align-items: flex-start; font-size: 15px"><input type="radio" name="mode" style="width: 18px; height: 18px; margin-top: 2px">Négative · décision du Manager, motif obligatoire</label>
+          </fieldset>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap">
+          <button type="button" style="height: 46px; padding: 0 22px; border: none; border-radius: 10px; background: #0F3A5A; color: #FFFFFF; font-family: inherit; font-size: 15px; font-weight: 700">Lancer la sélection</button>
+          <button type="button" style="height: 46px; padding: 0 22px; border: 1px solid #0F3A5A; border-radius: 10px; background: #FFFFFF; color: #0F3A5A; font-family: inherit; font-size: 15px; font-weight: 700">Ajouter un tiers manuellement</button>
+        </div>
+      </section>
+
+      <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+        <div style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 18px 20px"><div style="font-size: 13px; color: #5B6675">Tiers sélectionnés</div><div style="font-size: 24px; font-weight: 800; color: #0F3A5A">[n] / 91</div><div style="font-size: 13px; color: #5B6675">Taux de sélection [x] %</div></div>
+        <div style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 18px 20px"><div style="font-size: 13px; color: #5B6675">Valeur de la population</div><div style="font-size: 24px; font-weight: 800; color: #0F3A5A">[montant]</div><div style="font-size: 13px; color: #5B6675">Somme des soldes</div></div>
+        <div style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 18px 20px"><div style="font-size: 13px; color: #5B6675">Valeur couverte</div><div style="font-size: 24px; font-weight: 800; color: #0F3A5A">[montant]</div><div style="font-size: 13px; color: #5B6675">Taux de couverture [x] %</div></div>
+        <div style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 18px 20px"><div style="font-size: 13px; color: #5B6675">Solde moyen sélectionné</div><div style="font-size: 24px; font-weight: 800; color: #0F3A5A">[montant]</div><div style="font-size: 13px; color: #5B6675">Valeur couverte / sélectionnés</div></div>
+      </section>
+
+      <section style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 24px 28px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
+          <h2 style="margin: 0; font-size: 17px; letter-spacing: 0.3px; color: #0F3A5A">TIERS · FOURNISSEURS</h2>
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 14px">Afficher
+            <select style="height: 40px; font-family: inherit; font-size: 14px; padding: 0 10px; border: 1px solid #C9D4DE; border-radius: 10px; background: #FFFFFF"><option>Tous</option><option>Sélectionnés</option><option>Non sélectionnés</option></select>
+          </label>
+        </div>
+        <div style="overflow-x: auto">
+          <table style="width: 100%; border-collapse: collapse; font-size: 15px">
+            <thead><tr style="background: #0F3A5A; color: #FFFFFF; text-align: left">
+              <th style="padding: 14px 16px">Retenu</th><th style="padding: 14px 16px">Compte</th><th style="padding: 14px 16px">Libellé</th><th style="padding: 14px 16px; text-align: right">Solde final</th><th style="padding: 14px 16px">Origine</th><th style="padding: 14px 16px">Motif</th>
+            </tr></thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid #E3E8EF"><td style="padding: 12px 16px"><input type="checkbox" checked aria-label="Retenir 4011TO" style="width: 18px; height: 18px"></td><td style="padding: 12px 16px">4011TO</td><td style="padding: 12px 16px">TOTAL CI</td><td style="padding: 12px 16px; text-align: right">[solde] C</td><td style="padding: 12px 16px"><span style="padding: 3px 10px; border-radius: 999px; background: #E6F0F8; color: #0F3A5A; font-size: 13px; font-weight: 700">Au-dessus du seuil</span></td><td style="padding: 12px 16px; color: #5B6675">—</td></tr>
+              <tr style="border-bottom: 1px solid #E3E8EF"><td style="padding: 12px 16px"><input type="checkbox" checked aria-label="Retenir 4081GAR" style="width: 18px; height: 18px"></td><td style="padding: 12px 16px">4081GAR</td><td style="padding: 12px 16px">[libellé]</td><td style="padding: 12px 16px; text-align: right">[solde] C</td><td style="padding: 12px 16px"><span style="padding: 3px 10px; border-radius: 999px; background: #EEF1F5; color: #3E4A59; font-size: 13px; font-weight: 700">Tirage MUS</span></td><td style="padding: 12px 16px; color: #5B6675">—</td></tr>
+              <tr style="border-bottom: 1px solid #E3E8EF"><td style="padding: 12px 16px"><input type="checkbox" checked aria-label="Retenir 4812MAX" style="width: 18px; height: 18px"></td><td style="padding: 12px 16px">4812MAX</td><td style="padding: 12px 16px">[libellé]</td><td style="padding: 12px 16px; text-align: right">[solde] C</td><td style="padding: 12px 16px"><span style="padding: 3px 10px; border-radius: 999px; background: #FFF4E5; color: #8A4B08; font-size: 13px; font-weight: 700">Ajout manuel</span></td><td style="padding: 12px 16px">[motif saisi par l'auditeur]</td></tr>
+              <tr><td style="padding: 12px 16px"><input type="checkbox" aria-label="Retenir 4091MSL" style="width: 18px; height: 18px"></td><td style="padding: 12px 16px">4091MSL</td><td style="padding: 12px 16px">[libellé]</td><td style="padding: 12px 16px; text-align: right">[solde] D</td><td style="padding: 12px 16px; color: #5B6675">Non retenu</td><td style="padding: 12px 16px; color: #5B6675">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap">
+          <a href="Memo.dc.html" style="display: inline-flex; align-items: center; height: 46px; padding: 0 22px; border-radius: 10px; background: #6BA539; color: #FFFFFF; font-weight: 700; text-decoration: none">Générer le mémo de sélection</a>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

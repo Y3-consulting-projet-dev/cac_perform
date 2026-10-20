@@ -7,6 +7,7 @@
 // progression des 11 étapes (voir l'indicateur "Fiabilité IPE" de la barre
 // latérale, qui renvoie ici pour le détail).
 import { ref, onMounted, computed, watch } from 'vue'
+import * as circuit from '@/utils/circuitIpe'
 import router from '@/router'
 import { useNotyf } from '@/composables/useNotyf'
 import {
@@ -214,7 +215,7 @@ const historiqueRecent = computed(() => {
              en_attente_correction <--+ (demande de correction manager)
 ================================ */
 
-const statutCircuit = computed(() => ipeEtat.value?.statut_circuit || 'en_cours')
+const statutCircuit = computed(() => circuit.statutCircuit(ipeEtat.value))
 
 // Causes d'écart : liste provisoire renvoyée par le backend
 // (revue_ipe_service.CAUSES_ECART, TODO(spec: CAC-IPE-01)) — jamais recopiée ici.
@@ -222,42 +223,21 @@ const causesEcart = computed(() => ipeEtat.value?.causes_ecart || [])
 
 // La qualification des écarts et la justification des modules non
 // évaluables sont figées une fois le contrôle soumis ou validé.
-const peutEditerAuditeur = computed(() => ['en_cours', 'en_attente_correction'].includes(statutCircuit.value))
+const peutEditerAuditeur = computed(() => circuit.STATUTS_EDITION_AUDITEUR.includes(statutCircuit.value))
 
+// Points bloquants : calcul partagé avec la barre latérale (utils/circuitIpe.js),
+// reflet de revue_ipe_service (ecarts_non_qualifies, refus_soumission, refus_validation).
 function qualificationPour(module, numeroCompte) {
-  return (ipeEtat.value?.qualifications_ecarts || []).find(
-    (q) => q.module === module && q.numero_compte === numeroCompte
-  )
+  return circuit.qualificationPour(ipeEtat.value, module, numeroCompte)
 }
 
 function qualificationComplete(q) {
-  return !!q && causesEcart.value.includes(q.cause) && !!(q.commentaire || '').trim()
+  return circuit.qualificationComplete(ipeEtat.value, q)
 }
 
-// Reflet côté frontend de revue_ipe_service.ecarts_non_qualifies (backend) :
-// un écart réel (collectif "ok: false" d'un module "ecart") sans
-// qualification complète (cause + commentaire) bloque la soumission.
-const ecartsNonQualifies = computed(() => {
-  const manquants = []
-  for (const [cle, module] of Object.entries(ipeEtat.value?.modules || {})) {
-    if (module.statut !== 'ecart') continue
-    for (const c of module.derniere_evaluation?.detail_collectifs || []) {
-      if (c.ok) continue
-      if (!qualificationComplete(qualificationPour(cle, c.numero_compte))) manquants.push(`${cle}:${c.numero_compte}`)
-    }
-  }
-  return manquants
-})
-
-// Reflet de revue_ipe_service.refus_validation : bloquent la validation.
-const demandesCorrectionNonTraitees = computed(() =>
-  (ipeEtat.value?.remarques || []).filter((r) => r.type === 'demande_correction' && !r.traitee)
-)
-const modulesNonEvaluablesSansJustification = computed(() =>
-  Object.entries(ipeEtat.value?.modules || {})
-    .filter(([cle, m]) => m.statut === 'non_evaluable' && !(ipeEtat.value?.justifications_non_evaluables?.[cle]?.commentaire || '').trim())
-    .map(([cle]) => cle)
-)
+const ecartsNonQualifies = computed(() => circuit.ecartsNonQualifies(ipeEtat.value))
+const demandesCorrectionNonTraitees = computed(() => circuit.demandesCorrectionNonTraitees(ipeEtat.value))
+const modulesNonEvaluablesSansJustification = computed(() => circuit.modulesNonEvaluablesSansJustification(ipeEtat.value))
 
 // Reflet de revue_ipe_service.refus_soumission : qualification des écarts ET
 // justification des modules non évaluables, dès la soumission.

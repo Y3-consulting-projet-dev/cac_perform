@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Suivi des réponses</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0F3A5A}a:hover{color:#0B2A42}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F4F6F9; font-family: 'Nunito Sans', Arial, sans-serif; color: #1F2937; display: flex; flex-direction: column">
+  <header style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 32px; background: #FFFFFF; border-bottom: 1px solid #E3E8EF; flex-wrap: wrap">
+    <div style="font-size: 30px; font-weight: 800; color: #0F3A5A; letter-spacing: -1px">Y<span style="color: #6BA539">3</span></div>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div style="width: 44px; height: 44px; border-radius: 50%; background: #0F3A5A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700">S</div>
+      <div style="display: flex; flex-direction: column"><span style="font-weight: 700">Stéphanie Axelle Kotie AMANI</span><span style="font-size: 13px; color: #5B6675">Auditeur</span></div>
+    </div>
+  </header>
+  <div style="display: flex; flex-wrap: wrap; flex: 1">
+    <dc-import name="Sidebar" active="suivi" hint-size="340px,1300px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px; display: flex; flex-direction: column; gap: 20px">
+      <section style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 24px 28px; display: flex; flex-direction: column; gap: 6px; text-align: center">
+        <h1 style="margin: 0; font-size: 26px; color: #0F3A5A">Suivi des réponses</h1>
+        <p style="margin: 0; color: #5B6675">Confirmations envoyées, relances automatiques et réponses reçues</p>
+      </section>
+
+      <section style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px">
+        <div style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 16px 18px"><div style="font-size: 13px; color: #5B6675">Envoyés</div><div style="font-size: 24px; font-weight: 800; color: #0F3A5A">[n]</div></div>
+        <div style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 16px 18px"><div style="font-size: 13px; color: #5B6675">Réponses reçues</div><div style="font-size: 24px; font-weight: 800; color: #2F6B1E">[n]</div><div style="font-size: 13px; color: #5B6675">Taux [x] %</div></div>
+        <div style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 16px 18px"><div style="font-size: 13px; color: #5B6675">En relance</div><div style="font-size: 24px; font-weight: 800; color: #8A4B08">[n]</div></div>
+        <div style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 16px 18px"><div style="font-size: 13px; color: #5B6675">Écarts constatés</div><div style="font-size: 24px; font-weight: 800; color: #A61B1B">[n]</div></div>
+        <div style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 16px 18px"><div style="font-size: 13px; color: #5B6675">Sans réponse après J+45</div><div style="font-size: 24px; font-weight: 800; color: #3E4A59">[n]</div></div>
+      </section>
+
+      <section style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 18px 24px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 2px"><strong style="color: #0F3A5A">J0</strong><span style="font-size: 14px">Envoi de la demande</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px"><strong style="color: #0F3A5A">J+15</strong><span style="font-size: 14px">Relance 1, générée automatiquement</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px"><strong style="color: #0F3A5A">J+30</strong><span style="font-size: 14px">Relance 2 et alerte du Manager</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px"><strong style="color: #0F3A5A">J+45</strong><span style="font-size: 14px">Procédures alternatives requises</span></div>
+      </section>
+
+      <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start">
+        <section style="flex: 999 1 560px; min-width: 0; background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 24px 28px; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
+            <h2 style="margin: 0; font-size: 17px; letter-spacing: 0.3px; color: #0F3A5A">DEMANDES DE CONFIRMATION</h2>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px">Statut
+              <select style="height: 40px; font-family: inherit; font-size: 14px; padding: 0 10px; border: 1px solid #C9D4DE; border-radius: 10px; background: #FFFFFF"><option>Tous</option><option>À relancer</option><option>Réponse reçue</option><option>Écart constaté</option><option>Sans réponse</option></select>
+            </label>
+          </div>
+          <div style="overflow-x: auto">
+            <table style="width: 100%; border-collapse: collapse; font-size: 15px">
+              <thead><tr style="background: #0F3A5A; color: #FFFFFF; text-align: left">
+                <th style="padding: 14px 16px">Tiers</th><th style="padding: 14px 16px">Envoyé le</th><th style="padding: 14px 16px">Statut</th><th style="padding: 14px 16px">Prochaine étape</th><th style="padding: 14px 16px; text-align: right">Écart</th><th style="padding: 14px 16px">Action</th>
+              </tr></thead>
+              <tbody>
+                <tr style="border-bottom: 1px solid #E3E8EF; background: #EAF2FA"><td style="padding: 12px 16px"><strong>TOTAL CI</strong><br><span style="font-size: 13px; color: #5B6675">4011TO · fournisseur</span></td><td style="padding: 12px 16px">[date]</td><td style="padding: 12px 16px"><span style="padding: 3px 10px; border-radius: 999px; background: #E6F0F8; color: #0F3A5A; font-size: 13px; font-weight: 700">Envoyé</span></td><td style="padding: 12px 16px">Relance 1 le [date]</td><td style="padding: 12px 16px; text-align: right; color: #5B6675">—</td><td style="padding: 12px 16px"><button type="button" style="height: 36px; padding: 0 12px; border: 1px solid #0F3A5A; border-radius: 8px; background: #FFFFFF; color: #0F3A5A; font-family: inherit; font-weight: 700">Saisir la réponse</button></td></tr>
+                <tr style="border-bottom: 1px solid #E3E8EF"><td style="padding: 12px 16px"><strong>[libellé]</strong><br><span style="font-size: 13px; color: #5B6675">4812MAX · fournisseur</span></td><td style="padding: 12px 16px">[date]</td><td style="padding: 12px 16px"><span style="padding: 3px 10px; border-radius: 999px; background: #FFF4E5; color: #8A4B08; font-size: 13px; font-weight: 700">Relance 2</span></td><td style="padding: 12px 16px">Alerte Manager envoyée</td><td style="padding: 12px 16px; text-align: right; color: #5B6675">—</td><td style="padding: 12px 16px"><button type="button" style="height: 36px; padding: 0 12px; border: 1px solid #0F3A5A; border-radius: 8px; background: #FFFFFF; color: #0F3A5A; font-family: inherit; font-weight: 700">Saisir la réponse</button></td></tr>
+                <tr style="border-bottom: 1px solid #E3E8EF"><td style="padding: 12px 16px"><strong>ABATTA VILLAGE</strong><br><span style="font-size: 13px; color: #5B6675">4111AV · client</span></td><td style="padding: 12px 16px">[date]</td><td style="padding: 12px 16px"><span style="padding: 3px 10px; border-radius: 999px; background: #FDECEC; color: #A61B1B; font-size: 13px; font-weight: 700">Écart constaté</span></td><td style="padding: 12px 16px">Feuille d'analyse à compléter</td><td style="padding: 12px 16px; text-align: right; color: #A61B1B; font-weight: 700">[montant]</td><td style="padding: 12px 16px"><a href="#" style="font-weight: 700">Analyser l'écart</a></td></tr>
+                <tr><td style="padding: 12px 16px"><strong>[libellé]</strong><br><span style="font-size: 13px; color: #5B6675">4081GAR · fournisseur</span></td><td style="padding: 12px 16px">[date]</td><td style="padding: 12px 16px"><span style="padding: 3px 10px; border-radius: 999px; background: #EEF1F5; color: #3E4A59; font-size: 13px; font-weight: 700">Sans réponse</span></td><td style="padding: 12px 16px">Procédure alternative</td><td style="padding: 12px 16px; text-align: right; color: #5B6675">—</td><td style="padding: 12px 16px"><a href="#" style="font-weight: 700">Documenter</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside aria-label="Saisie de la réponse de TOTAL CI" style="flex: 1 1 380px; max-width: 460px; background: #FFFFFF; border-radius: 14px; box-shadow: 0 8px 24px rgba(15,58,90,0.16); padding: 24px; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+            <div><h2 style="margin: 0; font-size: 18px; color: #0F3A5A">Réponse · TOTAL CI</h2><span style="font-size: 14px; color: #5B6675">Solde comptable [solde] C</span></div>
+            <button type="button" aria-label="Fermer le panneau" style="width: 44px; height: 44px; border: none; background: #F4F6F9; border-radius: 10px; color: #0F3A5A"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600">Reçue le<input type="text" placeholder="jj/mm/aaaa" style="height: 44px; box-sizing: border-box; font-family: inherit; font-size: 15px; padding: 0 12px; border: 1px solid #C9D4DE; border-radius: 10px"></label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600">Reçue par<select style="height: 44px; font-family: inherit; font-size: 15px; padding: 0 10px; border: 1px solid #C9D4DE; border-radius: 10px; background: #FFFFFF"><option>Courriel</option><option>Courrier</option></select></label>
+          </div>
+          <fieldset style="margin: 0; border: 1px solid #E3E8EF; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px"><legend style="font-weight: 700; padding: 0 6px">Réponse du tiers</legend>
+            <label style="display: flex; gap: 10px; font-size: 15px"><input type="radio" name="rep" style="width: 18px; height: 18px">Accord total</label>
+            <label style="display: flex; gap: 10px; font-size: 15px"><input type="radio" name="rep" checked style="width: 18px; height: 18px">Accord partiel</label>
+            <label style="display: flex; gap: 10px; font-size: 15px"><input type="radio" name="rep" style="width: 18px; height: 18px">Désaccord</label>
+          </fieldset>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600">Solde confirmé par le tiers (FCFA)<input type="text" placeholder="[montant]" style="height: 44px; box-sizing: border-box; font-family: inherit; font-size: 15px; padding: 0 12px; border: 1px solid #C9D4DE; border-radius: 10px"></label>
+          <div style="padding: 12px 14px; border-radius: 10px; background: #FDECEC; color: #A61B1B; font-size: 14px; font-weight: 600">Écart calculé : [montant]. Une feuille d'analyse d'écart sera ouverte.</div>
+          <button type="button" style="height: 44px; border: 1px dashed #0F3A5A; border-radius: 10px; background: #FFFFFF; color: #0F3A5A; font-family: inherit; font-weight: 700">Joindre la réponse signée</button>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600">Commentaire<textarea rows="2" placeholder="Au moins 15 caractères" style="font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid #C9D4DE; border-radius: 10px; resize: vertical"></textarea></label>
+          <button type="button" style="height: 46px; border: none; border-radius: 10px; background: #6BA539; color: #FFFFFF; font-family: inherit; font-size: 15px; font-weight: 700">Enregistrer la réponse</button>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

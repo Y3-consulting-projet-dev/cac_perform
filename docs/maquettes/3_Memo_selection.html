@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Mémo de sélection</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0F3A5A}a:hover{color:#0B2A42}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F4F6F9; font-family: 'Nunito Sans', Arial, sans-serif; color: #1F2937; display: flex; flex-direction: column">
+  <header style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 32px; background: #FFFFFF; border-bottom: 1px solid #E3E8EF; flex-wrap: wrap">
+    <div style="font-size: 30px; font-weight: 800; color: #0F3A5A; letter-spacing: -1px">Y<span style="color: #6BA539">3</span></div>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div style="width: 44px; height: 44px; border-radius: 50%; background: #0F3A5A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700">S</div>
+      <div style="display: flex; flex-direction: column"><span style="font-weight: 700">Stéphanie Axelle Kotie AMANI</span><span style="font-size: 13px; color: #5B6675">Auditeur</span></div>
+    </div>
+  </header>
+  <div style="display: flex; flex-wrap: wrap; flex: 1">
+    <dc-import name="Sidebar" active="selection" hint-size="340px,1300px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px; display: flex; flex-direction: column; gap: 20px">
+      <section style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 20px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+        <a href="Selection.dc.html" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 700; text-decoration: none; min-height: 44px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>Retour à la sélection</a>
+        <div style="text-align: center"><h1 style="margin: 0; font-size: 26px; color: #0F3A5A">Mémo de sélection</h1><p style="margin: 0; color: #5B6675">Fournisseurs · version 1 · à verser au dossier</p></div>
+        <span style="padding: 6px 14px; border-radius: 999px; background: #FFF4E5; color: #8A4B08; font-size: 14px; font-weight: 700">Brouillon</span>
+      </section>
+
+      <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start">
+        <article aria-label="Aperçu du mémo" style="flex: 999 1 640px; min-width: 0; max-width: 860px; background: #FFFFFF; border-radius: 6px; box-shadow: 0 4px 16px rgba(15,58,90,0.12); padding: 56px 64px; display: flex; flex-direction: column; gap: 22px; font-size: 15px; line-height: 1.55">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #6BA539; padding-bottom: 16px; gap: 16px">
+            <div><div style="font-size: 26px; font-weight: 800; color: #0F3A5A">Y<span style="color: #6BA539">3</span> Audit &amp; Conseils</div><div style="color: #5B6675; font-size: 14px">Mémo de sélection des tiers à circulariser</div></div>
+            <div style="text-align: right; font-size: 14px; color: #3E4A59">Réf. mission [référence]<br>Exercice clos le 31/12/2025</div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; font-size: 14px">
+            <div><strong>Entité</strong> · KOFFI &amp; DIABATE GROUP</div><div><strong>Population</strong> · Fournisseurs</div>
+            <div><strong>Norme</strong> · ISA 505, confirmations externes</div><div><strong>Mode</strong> · Confirmation positive</div>
+          </div>
+          <section style="display: flex; flex-direction: column; gap: 6px"><h2 style="margin: 0; font-size: 17px; color: #0F3A5A">1. Population de départ</h2><p style="margin: 0">Balance auxiliaire fournisseurs, version 1, importée le 15/10/2026 : 91 comptes. Fiabilité IPE : [statut à la date du mémo].</p></section>
+          <section style="display: flex; flex-direction: column; gap: 6px"><h2 style="margin: 0; font-size: 17px; color: #0F3A5A">2. Méthode</h2><p style="margin: 0">Sélection fondée sur les seuils de l'étape 5 (SS [montant], SP [montant], TS [montant]) et un échantillonnage en unités monétaires (ECH-01). Graine du tirage : [graine], enregistrée au journal d'audit.</p></section>
+          <section style="display: flex; flex-direction: column; gap: 10px"><h2 style="margin: 0; font-size: 17px; color: #0F3A5A">3. Résultat</h2>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+              <tbody>
+                <tr style="border-bottom: 1px solid #E3E8EF"><td style="padding: 8px 0">Tiers sélectionnés</td><td style="padding: 8px 0; text-align: right; font-weight: 700">[n] sur 91</td></tr>
+                <tr style="border-bottom: 1px solid #E3E8EF"><td style="padding: 8px 0">Valeur couverte</td><td style="padding: 8px 0; text-align: right; font-weight: 700">[montant]</td></tr>
+                <tr><td style="padding: 8px 0">Taux de couverture</td><td style="padding: 8px 0; text-align: right; font-weight: 700">[x] %</td></tr>
+              </tbody>
+            </table>
+          </section>
+          <section style="display: flex; flex-direction: column; gap: 6px"><h2 style="margin: 0; font-size: 17px; color: #0F3A5A">4. Ajouts et exclusions manuels</h2><p style="margin: 0">4812MAX ajouté par Stéphanie A. K. AMANI le [date] : [motif].</p></section>
+          <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 12px">
+            <div style="border-top: 1px solid #C9D4DE; padding-top: 10px; font-size: 14px"><strong>Préparé par</strong><br>Stéphanie A. K. AMANI · Auditeur<br>[date]</div>
+            <div style="border-top: 1px solid #C9D4DE; padding-top: 10px; font-size: 14px"><strong>Revu par</strong><br>[Manager]<br>[date]</div>
+          </section>
+        </article>
+
+        <aside style="flex: 1 1 320px; max-width: 400px; display: flex; flex-direction: column; gap: 16px">
+          <section style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 20px 22px; display: flex; flex-direction: column; gap: 12px">
+            <h2 style="margin: 0; font-size: 15px; letter-spacing: 0.3px; color: #0F3A5A">VALIDATION</h2>
+            <p style="margin: 0; font-size: 14px; color: #3E4A59">Le mémo est figé à la soumission. Le Manager valide ou demande une correction.</p>
+            <button type="button" style="height: 46px; border: none; border-radius: 10px; background: #0F3A5A; color: #FFFFFF; font-family: inherit; font-size: 15px; font-weight: 700">Soumettre pour revue</button>
+          </section>
+          <section style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 20px 22px; display: flex; flex-direction: column; gap: 10px">
+            <h2 style="margin: 0; font-size: 15px; letter-spacing: 0.3px; color: #0F3A5A">TÉLÉCHARGER</h2>
+            <button type="button" style="height: 44px; border: 1px solid #0F3A5A; border-radius: 10px; background: #FFFFFF; color: #0F3A5A; font-family: inherit; font-weight: 700">PDF</button>
+            <button type="button" style="height: 44px; border: 1px solid #0F3A5A; border-radius: 10px; background: #FFFFFF; color: #0F3A5A; font-family: inherit; font-weight: 700">Word</button>
+            <button type="button" style="height: 44px; border: none; border-radius: 10px; background: #6BA539; color: #FFFFFF; font-family: inherit; font-weight: 700">Verser au dossier de travail</button>
+          </section>
+          <section style="background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,58,90,0.08); padding: 20px 22px; display: flex; flex-direction: column; gap: 8px">
+            <h2 style="margin: 0; font-size: 15px; letter-spacing: 0.3px; color: #0F3A5A">ÉTAPE SUIVANTE</h2>
+            <a href="Courriers.dc.html" style="font-weight: 700">Préparer les courriers de circularisation</a>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
