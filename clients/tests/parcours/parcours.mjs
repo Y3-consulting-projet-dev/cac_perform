@@ -178,6 +178,18 @@ async function parcours(navigateur, d) {
       const el = [...document.querySelectorAll('span')].find((s) => s.textContent.trim().startsWith('Contrôle d') && s.textContent.includes('intangibilit'));
       if (!el) throw new Error('étape introuvable'); el.closest('div[class*=rounded-lg]').click() })()`),
     { url: /step=intang/, barre: true })
+  // Entrées « à venir » (docs/PLAN_ecrans_lot1.md §1) : visibles, mais un clic ne change pas d'écran.
+  for (const entree of ['Sélection des tiers', 'Courriers', 'Suivi des réponses', "Journal d'audit", 'Paramètres']) {
+    await etape(navigateur, `Barre latérale : « ${entree} » à venir, non cliquable`, () => cliquer(navigateur, entree),
+      { url: /step=intang/, texte: 'Circularisation', barre: true })
+  }
+  await etape(navigateur, 'Barre latérale : Phase 2 repliée -> résumé', () => cliquer(navigateur, 'Phase 2 – Exécution'),
+    { url: /step=intang/, texte: 'Étapes 3 à 10 · cohérence', barre: true })
+  await etape(navigateur, 'Barre latérale : Phase 2 dépliée -> étape « Contrôle de cohérence »', async () => {
+    await cliquer(navigateur, 'Phase 2 – Exécution')
+    await attendre(300)
+    await cliquer(navigateur, 'Contrôle de cohérence')
+  }, { url: /step=coherence/, barre: true })
   await etape(navigateur, 'Barre latérale : « Retour »', () => cliquer(navigateur, 'Retour'),
     { url: new RegExp(`^/client/${d.client_id}`), texte: d.client_nom })
 

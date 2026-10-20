@@ -8,6 +8,7 @@ import { useNotyf } from '@/composables/useNotyf';
 import * as XLSX from 'xlsx';
 import { obtenirEtatIpe } from '@/api/ipe.api';
 import { fraicheurDonneesV1 } from '@/api/imports.api';
+import { phraseBlocages } from '@/utils/circuitIpe';
 import { formatDateHeureFr } from '@/utils/formatDate';
 import FiabiliteIpeView from '@/views/FiabiliteIpeView.vue';
 import FichiersComplementairesView from '@/views/FichiersComplementairesView.vue';
@@ -674,6 +675,40 @@ const ipeVerrouApplicable = computed(() => ipeEtat.value?.verrou_applicable === 
 const ipeFiabiliteValidee = computed(() => ipeEtat.value?.ipe_fiabilite_validee === true);
 const ipeStatutAffiche = computed(() => ipeEtat.value?.statut_affiche || 'non_commence');
 const ipeStatutLabel = computed(() => IPE_STATUT_LABELS[ipeStatutAffiche.value] || 'Non commencé');
+
+// Sous-titre de l'entrée « Fiabilité IPE » : statut + points bloquants
+// (« En cours · 1 écart à qualifier »), même calcul que l'écran
+// (utils/circuitIpe.js). Une fois soumis, les demandes de correction non
+// traitées bloquent la validation : elles sont comptées aussi.
+const ipeSousTitre = computed(() => {
+  const statut = ipeEtat.value?.statut_circuit;
+  if (!ipeEtat.value || statut === 'valide') return ipeStatutLabel.value;
+  const blocages = phraseBlocages(ipeEtat.value, { avecDemandes: statut === 'soumis_pour_revue' });
+  return blocages ? `${ipeStatutLabel.value} · ${blocages}` : ipeStatutLabel.value;
+});
+
+/* ================================
+   ENTRÉES « À VENIR » de la barre latérale (docs/PLAN_ecrans_lot1.md §1) :
+   une seule liste. Hors de workflowPhases (ni étapes, ni progression) et
+   hors de isValidStepKey. Pour brancher un écran : `disponible: true` + son
+   rendu dans showComponent, comme Fiabilité IPE et Fichiers complémentaires.
+================================ */
+const ENTREES_A_VENIR = {
+  circularisation: [
+    { cle: 'selection_tiers', libelle: 'Sélection des tiers', sousTitre: 'Module 2 · seuils SS/SP/TS, MUS', disponible: false },
+    { cle: 'courriers', libelle: 'Courriers', sousTitre: 'Module 3 · modèles, génération, envoi', disponible: false },
+    { cle: 'suivi_reponses', libelle: 'Suivi des réponses', sousTitre: 'Relances J0 / J+15 / J+30 / J+45', disponible: false },
+  ],
+  bas: [
+    { cle: 'journal_audit', libelle: "Journal d'audit", disponible: false },
+    { cle: 'parametres', libelle: 'Paramètres', disponible: false },
+  ],
+};
+
+// Résumé affiché seulement quand la phase est repliée (maquette 0_Barre_laterale).
+const RESUMES_PHASES = {
+  2: 'Étapes 3 à 10 · cohérence, intangibilité, seuils, analyses, comptes à tester, leads, états préliminaires',
+};
 
 function etapeEstVerrouillee(step) {
   return ipeVerrouApplicable.value && !ipeFiabiliteValidee.value && ETAPES_VERROUILLABLES.has(step.key);
@@ -2459,7 +2494,7 @@ function formatAmount(value) {
     <!-- Sidebar -->
     <!-- SIDEBAR ÉTAPES -->
 <!-- SIDEBAR WORKFLOW PAR PHASES -->
-<div class="min-w-[320px] bg-blue-ycube text-white flex flex-col px-5 py-6 shadow-xl">
+<div class="min-w-[320px] w-[340px] shrink-0 bg-blue-ycube text-white flex flex-col px-5 py-6 shadow-xl">
 
   <!-- Bouton retour -->
   <button
@@ -2511,6 +2546,11 @@ function formatAmount(value) {
             :class="phase.open ? 'fa-chevron-up' : 'fa-chevron-down'"
           ></i>
         </button>
+
+        <!-- Résumé de la phase, seulement quand elle est repliée -->
+        <p v-if="!phase.open && RESUMES_PHASES[phase.id]" class="px-4 pb-3 text-xs text-white/70">
+          {{ RESUMES_PHASES[phase.id] }}
+        </p>
 
         <!-- ÉTAPES -->
         <div v-if="phase.open" class="flex flex-col gap-2 px-3 pb-3">
@@ -2571,7 +2611,7 @@ function formatAmount(value) {
           <i class="fa-solid fa-shield-halved" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-blue-ycube' : 'text-white/70'"></i>
           <div class="flex flex-col min-w-0">
             <span class="font-semibold text-sm" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-blue-ycube' : ''">Fiabilité IPE</span>
-            <span class="text-xs truncate" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-blue-ycube/70' : 'text-white/60'">{{ ipeStatutLabel }}</span>
+            <span class="text-xs leading-snug" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-blue-ycube/70' : 'text-white/60'">{{ ipeSousTitre }}</span>
           </div>
         </div>
         <span
@@ -2581,7 +2621,37 @@ function formatAmount(value) {
           Détail
         </span>
       </div>
+
+      <!-- Circularisation : entre la Phase 2 et la Phase 3 (écrans à venir) -->
+      <div v-if="phase.id === 2" class="rounded-xl bg-white/10 flex flex-col gap-2 px-3 pb-3">
+        <span class="px-1 pt-3 text-sm font-bold">Circularisation</span>
+        <div
+          v-for="entree in ENTREES_A_VENIR.circularisation"
+          :key="entree.cle"
+          class="rounded-lg px-3 py-2 flex items-start justify-between gap-2 bg-blue-ycube-1 opacity-60 cursor-not-allowed"
+          aria-disabled="true"
+          :title="`${entree.libelle} : écran à venir`"
+        >
+          <div class="flex flex-col">
+            <span class="font-semibold text-sm">{{ entree.libelle }}</span>
+            <span class="text-xs text-white/60">{{ entree.sousTitre }}</span>
+          </div>
+          <span class="shrink-0 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/15">à venir</span>
+        </div>
+      </div>
     </template>
+
+    <!-- Journal d'audit, Paramètres : sous la Phase 3 (écrans à venir) -->
+    <div
+      v-for="entree in ENTREES_A_VENIR.bas"
+      :key="entree.cle"
+      class="rounded-xl px-4 py-3 flex items-center justify-between gap-2 bg-white/10 opacity-60 cursor-not-allowed"
+      aria-disabled="true"
+      :title="`${entree.libelle} : écran à venir`"
+    >
+      <span class="font-semibold text-sm">{{ entree.libelle }}</span>
+      <span class="shrink-0 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/15">à venir</span>
+    </div>
 
   </div>
 </div>
