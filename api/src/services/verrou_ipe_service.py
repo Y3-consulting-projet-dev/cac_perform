@@ -352,6 +352,11 @@ def _references_actuelles(mission_id: str) -> Dict[str, Optional[str]]:
     return actuelles
 
 
+def references_fichiers_actuelles(mission_id: str) -> Dict[str, Optional[str]]:
+    """_id actuel de chaque fichier utilisé par le rapprochement IPE (None si absent)."""
+    return _references_actuelles(mission_id)
+
+
 def detecter_fichiers_modifies(
     fichiers_references: Dict[str, Any],
     references_actuelles: Dict[str, Optional[str]],

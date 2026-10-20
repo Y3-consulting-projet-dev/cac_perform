@@ -1050,6 +1050,8 @@ function showComponent(type, options = {}) {
       missionId: props.missionId,
       integre: true,
       onEtatIpe: (etat) => { ipeEtat.value = etat; },
+      // Lien « Voir le fichier dans Fichiers complémentaires » : même chemin que la barre latérale.
+      onOuvrirEcran: (ecran) => { if (ECRANS_HORS_ETAPES.has(ecran)) showComponent(ecran); },
     });
     return;
   }

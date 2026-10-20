@@ -596,10 +596,15 @@ def evaluer_ipe(mission_id: str) -> Dict[str, Any]:
         "commentaire": None,
     }
 
+    # Fichiers effectivement utilisés (_id par type, None si absent) : la
+    # soumission pour revue exige un rapprochement fait sur les versions
+    # actuelles (revue_ipe_service.refus_rapprochement).
+    fichiers_evalues = verrou_ipe_service.references_fichiers_actuelles(mission_id)
+
     get_database()[COLLECTION_MISSION].update_one(
         {"_id": ObjectId(mission_id)},
         {
-            "$set": {"ipe.modules": modules_doc},
+            "$set": {"ipe.modules": modules_doc, "ipe.fichiers_evalues": fichiers_evalues},
             "$push": {"ipe.historique": historique_entree},
         },
     )

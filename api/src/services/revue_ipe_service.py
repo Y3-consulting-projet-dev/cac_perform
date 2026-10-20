@@ -169,6 +169,48 @@ def refus_marquage_remarque(
     return None
 
 
+LIBELLES_FICHIERS = {
+    "balance_generale": "balance générale",
+    "auxiliaire_client": "balance auxiliaire clients",
+    "auxiliaire_fournisseur": "balance auxiliaire fournisseurs",
+    "immobilisations": "fichier des immobilisations",
+}
+
+
+def refus_rapprochement(etat: Dict[str, Any], references_actuelles: Dict[str, Optional[str]]) -> Optional[str]:
+    """
+    Fonction pure : message de refus si le rapprochement n'a pas été lancé, ou
+    s'il ne porte plus sur les versions actuelles des fichiers ; None sinon.
+
+    Décision du 20/10/2026 : « Soumettre pour revue » exige un rapprochement
+    fait sur les fichiers en vigueur. TODO(spec: CAC-IPE-01) : modules exigés
+    (aujourd'hui, le rapprochement évalue toujours IPE-1, IPE-2 et IPE-3).
+    """
+    if not etat.get("modules"):
+        return "Lancez d'abord le rapprochement."
+
+    evalues = etat.get("fichiers_evalues")
+    if evalues is None:
+        # Rapprochement enregistré avant ce contrôle : versions utilisées inconnues.
+        return "Relancez le rapprochement : les versions des fichiers utilisées par le dernier rapprochement ne sont pas connues."
+
+    changements = []
+    for type_fichier in sorted(set(evalues) | set(references_actuelles or {})):
+        avant, maintenant = evalues.get(type_fichier), (references_actuelles or {}).get(type_fichier)
+        if avant == maintenant:
+            continue
+        libelle = LIBELLES_FICHIERS.get(type_fichier, type_fichier)
+        if avant is None:
+            changements.append(f"le fichier « {libelle} » a été importé")
+        elif maintenant is None:
+            changements.append(f"le fichier « {libelle} » a été retiré")
+        else:
+            changements.append(f"le fichier « {libelle} » a été remplacé")
+    if changements:
+        return "Relancez le rapprochement : " + ", ".join(changements) + "."
+    return None
+
+
 def refus_soumission(etat: Dict[str, Any]) -> Optional[str]:
     """
     Fonction pure : message de refus de « Soumettre pour revue », ou None.
@@ -246,8 +288,10 @@ def soumettre_pour_revue(
     """
     Action auditeur : "en_cours" ou "en_attente_correction" -> "soumis_pour_revue".
     Refusée (ValueError, rien écrit) si le statut actuel ne le permet pas,
-    si un écart réel n'est pas qualifié (cause + commentaire), ou si un
-    module non évaluable n'a pas de justification écrite (refus_soumission).
+    si le rapprochement n'a pas été lancé ou ne porte plus sur les fichiers
+    en vigueur (refus_rapprochement), si un écart réel n'est pas qualifié
+    (cause + commentaire), ou si un module non évaluable n'a pas de
+    justification écrite (refus_soumission).
     TODO(décision) : qui a le droit de soumettre n'est pas vérifié.
     """
     etat = verrou_ipe_service.lire_etat_ipe(mission_id)
@@ -259,7 +303,7 @@ def soumettre_pour_revue(
             f"correction » (statut actuel : {statut_actuel})."
         )
 
-    refus = refus_soumission(etat)
+    refus = refus_rapprochement(etat, verrou_ipe_service.references_fichiers_actuelles(mission_id)) or refus_soumission(etat)
     if refus:
         raise ValueError(refus)
 

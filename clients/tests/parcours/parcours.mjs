@@ -177,6 +177,10 @@ async function parcours(navigateur, d) {
   // Fiabilité IPE (docs/PLAN_ecrans_lot1.md §2.1) : circuit en quatre étapes, action attendue, lien vers les commentaires généraux.
   await etape(navigateur, 'Fiabilité IPE : circuit de revue en quatre étapes', async () => {},
     { url: /step=fiabilite_ipe/, texte: '4 · Validé', barre: true })
+  await etape(navigateur, 'Fiabilité IPE : soumission bloquée sans rapprochement (règle serveur)', async () => {},
+    { url: /step=fiabilite_ipe/, texte: "Lancez d'abord le rapprochement.", barre: true })
+  await etape(navigateur, 'Fiabilité IPE : synthèse avec colonne Fichier', async () => {},
+    { url: /step=fiabilite_ipe/, texte: 'Aucun fichier importé', barre: true })
   await etape(navigateur, 'Fiabilité IPE : « Commentaires généraux (0) » -> section', () => cliquer(navigateur, 'Commentaires généraux (0)'),
     { url: /step=fiabilite_ipe/, texte: 'Aucun commentaire général.', barre: true })
   await etape(navigateur, 'Barre latérale : étape « Contrôle d’intangibilité »', () => navigateur.evaluer(`(() => {

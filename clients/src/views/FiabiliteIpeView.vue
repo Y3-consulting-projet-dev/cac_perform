@@ -22,20 +22,28 @@ import {
   qualifierEcartIpe,
   justifierNonEvaluableIpe,
 } from '@/api/ipe.api'
-import { obtenirMission, obtenirClient } from '@/api/imports.api'
+import { obtenirMission, obtenirClient, listerFichiersComplementaires } from '@/api/imports.api'
 
 // `integre` : écran affiché dans la zone principale de GroupingAnalyse.vue,
 // sous la barre latérale bleue (qui porte déjà le « Retour »).
 const props = defineProps({ missionId: String, integre: Boolean })
 // Chaque nouvel état IPE est remonté pour mettre à jour la barre latérale
 // (statut, cadenas des étapes) sans recharger la page.
-const emit = defineEmits(['etat-ipe'])
+const emit = defineEmits(['etat-ipe', 'ouvrir-ecran'])
 const notyf = useNotyf()
 
+// Libellés de la maquette 1_Fiabilite_IPE. Racines : rapprochement_ipe_service.RACINES_COLLECTIFS.
 const LIBELLES_MODULE = {
-  ipe_1_clients: 'IPE-1 — Clients (comptes 41x)',
-  ipe_2_fournisseurs: 'IPE-2 — Fournisseurs (comptes 40x)',
-  ipe_3_immobilisations: 'IPE-3 — Immobilisations (comptes 20 à 28)',
+  ipe_1_clients: 'IPE-1 · Clients (racine 41)',
+  ipe_2_fournisseurs: 'IPE-2 · Fournisseurs (racine 40)',
+  ipe_3_immobilisations: 'IPE-3 · Immobilisations (20 à 28)',
+}
+
+// Fichier complémentaire comparé par chaque module (colonne « Fichier » de la synthèse).
+const FICHIER_DU_MODULE = {
+  ipe_1_clients: { type: 'auxiliaire_client', libelle: 'Balance auxiliaire clients' },
+  ipe_2_fournisseurs: { type: 'auxiliaire_fournisseur', libelle: 'Balance auxiliaire fournisseurs' },
+  ipe_3_immobilisations: { type: 'immobilisations', libelle: 'Fichier des immobilisations' },
 }
 
 const IPE_STATUT_LABELS = {
@@ -169,8 +177,53 @@ const commentaireInvalidation = ref('')
 
 onMounted(async () => {
   chargerEnTete()
+  chargerFichiers()
   await chargerEtatIpe()
 })
+
+// Fichiers complémentaires actifs (colonne « Fichier » de la synthèse).
+const fichiersActifs = ref({})
+
+async function chargerFichiers() {
+  try {
+    fichiersActifs.value = await listerFichiersComplementaires(props.missionId)
+  } catch (e) {
+    console.warn('Fiabilité IPE : fichiers complémentaires indisponibles', e)
+  }
+}
+
+function fichierDuModule(cle) {
+  const attendu = FICHIER_DU_MODULE[cle]
+  const actif = attendu ? (fichiersActifs.value[attendu.type] || [])[0] : null
+  return actif ? `${attendu.libelle} · v${actif.version || 1}` : 'Aucun fichier importé'
+}
+
+// Module affiché en détail : choisi par un clic dans la synthèse ; par défaut,
+// le premier module en écart, sinon le premier évalué (docs/PLAN_ecrans_lot1.md §2.2).
+const moduleChoisi = ref(null)
+const cleModuleAffiche = computed(() => {
+  const modules = ipeEtat.value?.modules || {}
+  if (moduleChoisi.value && modules[moduleChoisi.value]) return moduleChoisi.value
+  return ORDRE_MODULES.find((cle) => modules[cle]?.statut === 'ecart') || ORDRE_MODULES.find((cle) => modules[cle]) || null
+})
+const modulesAffiches = computed(() => {
+  const cle = cleModuleAffiche.value
+  return cle ? { [cle]: ipeEtat.value.modules[cle] } : {}
+})
+
+function ouvrirFichiersComplementaires() {
+  if (props.integre) emit('ouvrir-ecran', 'fichiers_complementaires')
+  else router.push({ path: `/grouping-analyse/${props.missionId}`, query: { step: 'fichiers_complementaires' } })
+}
+
+// Tiers sans compte collectif (et collectifs sans tiers) : liste complète dans une fenêtre.
+// Traitement attendu : TODO(spec: CAC-IPE-01).
+const listeOrphelinsOuverte = ref(false)
+
+// « Commenter » : mène au bloc de l'écart (panneau latéral à l'incrément suivant).
+function allerALecart(cle, numeroCompte) {
+  document.getElementById(`ecart-${cle}-${numeroCompte}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 // En-tête (maquette 1_Fiabilite_IPE) : « [client] · exercice audité [année] ».
 // Échec de chargement : sous-titre sans ces informations, jamais bloquant.
@@ -204,6 +257,7 @@ async function lancerEvaluationIpe() {
   ipeEvaluationEnCours.value = true
   try {
     ipeEtat.value = await evaluerIpe(props.missionId)
+    chargerFichiers()
     notyf.trigger('Rapprochement IPE effectué', 'success')
   } catch (e) {
     notyf.trigger(e.message || 'Erreur lors du rapprochement IPE', 'error')
@@ -250,6 +304,7 @@ const rapprochementLance = computed(() => Object.keys(ipeEtat.value?.modules || 
 // Raison du blocage, écrite à côté de l'action attendue (maquette :
 // « Avant de soumettre : 1 écart à qualifier, 2 justifications à écrire »).
 const raisonSoumission = computed(() => {
+  if (!rapprochementAJour.value) return ipeEtat.value.rapprochement_a_jour.raison
   const blocages = circuit.phraseBlocages(ipeEtat.value)
   return blocages ? `Avant de soumettre : ${blocages}` : ''
 })
@@ -301,9 +356,14 @@ const modulesNonEvaluablesSansJustification = computed(() => circuit.modulesNonE
 
 // Reflet de revue_ipe_service.refus_soumission : qualification des écarts ET
 // justification des modules non évaluables, dès la soumission.
+// Rapprochement exigé, sur les versions actuelles des fichiers (décision du
+// 20/10/2026) : état calculé par le serveur (revue_ipe_service.refus_rapprochement).
+const rapprochementAJour = computed(() => ipeEtat.value?.rapprochement_a_jour?.ok !== false)
+
 const peutSoumettre = computed(
   () =>
     peutEditerAuditeur.value &&
+    rapprochementAJour.value &&
     ecartsNonQualifies.value.length === 0 &&
     modulesNonEvaluablesSansJustification.value.length === 0
 )
@@ -839,21 +899,33 @@ function back() {
 
       </div>
 
-      <!-- Synthèse, puis détail des modules (refonte au prochain incrément, docs/PLAN_ecrans_lot1.md §2.2-2.3).
-           Tableau à en-tête bleu marine (ClientSpace.vue) — charte CLAUDE.md. -->
+      <!-- Synthèse (maquette 1_Fiabilite_IPE, docs/PLAN_ecrans_lot1.md §2.2) : un clic sur
+           une ligne choisit le module affiché en détail. En-tête bleu marine — charte CLAUDE.md. -->
       <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-4 w-full" v-if="ipeEtat">
         <h2 class="font-bold text-sm uppercase text-blue-ycube">Synthèse</h2>
         <table class="min-w-full text-sm">
           <thead class="bg-blue-ycube text-white h-12 text-left">
             <tr>
               <th class="px-3">Module</th>
+              <th class="px-3">Fichier</th>
               <th class="px-3">Statut</th>
               <th class="px-3 text-right">Écart global</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="ligne in syntheseModules" :key="ligne.cle" class="h-12 border-b">
+            <tr
+              v-for="ligne in syntheseModules"
+              :key="ligne.cle"
+              class="h-12 border-b transition"
+              :class="[
+                ipeEtat.modules?.[ligne.cle] ? 'cursor-pointer hover:bg-gray-50' : '',
+                cleModuleAffiche === ligne.cle ? 'bg-gray-50 font-semibold' : '',
+              ]"
+              :aria-selected="cleModuleAffiche === ligne.cle"
+              @click="ipeEtat.modules?.[ligne.cle] && (moduleChoisi = ligne.cle)"
+            >
               <td class="px-3">{{ ligne.libelle }}</td>
+              <td class="px-3 text-gray-500 font-normal">{{ fichierDuModule(ligne.cle) }}</td>
               <td class="px-3">
                 <span
                   class="px-3 py-1 rounded-full text-xs font-semibold"
@@ -867,16 +939,31 @@ function back() {
           </tbody>
         </table>
 
-        <div v-if="ipeEtat.modules && Object.keys(ipeEtat.modules).length" class="flex flex-col gap-4 mt-2">
-          <div v-for="(module, cle) in ipeEtat.modules" :key="cle" class="border border-gray-200 rounded-lg p-4 text-sm">
-            <div class="flex items-center justify-between">
-              <span class="font-semibold text-gray-800">{{ LIBELLES_MODULE[cle] || cle }}</span>
-              <span
-                class="px-3 py-1 rounded-full text-xs font-semibold"
-                :class="STATUT_MODULE_INFO[module.statut]?.classe || 'bg-gray-100 text-gray-700'"
-              >
-                {{ STATUT_MODULE_INFO[module.statut]?.label || module.statut }}
-              </span>
+      </div>
+
+      <!-- Détail du module choisi (docs/PLAN_ecrans_lot1.md §2.3) -->
+      <div class="bg-white rounded-xl shadow p-6 flex flex-col gap-4 w-full" v-if="ipeEtat">
+        <div v-if="ipeEtat.modules && Object.keys(ipeEtat.modules).length" class="flex flex-col gap-4">
+          <div v-for="(module, cle) in modulesAffiches" :key="cle" class="text-sm flex flex-col gap-1">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <h2 class="font-bold text-sm uppercase text-blue-ycube">
+                {{ (LIBELLES_MODULE[cle] || cle).split(' (')[0] }} · détail {{ estImmobilisations(module) ? 'par compte' : 'par compte collectif' }}
+              </h2>
+              <div class="flex items-center gap-3">
+                <span
+                  class="px-3 py-1 rounded-full text-xs font-semibold"
+                  :class="STATUT_MODULE_INFO[module.statut]?.classe || 'bg-gray-100 text-gray-700'"
+                >
+                  {{ STATUT_MODULE_INFO[module.statut]?.label || module.statut }}
+                </span>
+                <a
+                  href="#"
+                  class="text-sm font-semibold text-blue-ycube hover:underline"
+                  @click.prevent="ouvrirFichiersComplementaires"
+                >
+                  Voir le fichier dans Fichiers complémentaires
+                </a>
+              </div>
             </div>
 
             <div v-if="module.derniere_evaluation" class="mt-3 flex flex-col gap-3 text-gray-600">
@@ -914,7 +1001,7 @@ function back() {
                   </button>
                 </div>
               </div>
-              <p v-else class="text-sm">
+              <p v-else-if="estImmobilisations(module)" class="text-sm">
                 {{ estImmobilisations(module) ? 'Écart global sur les valeurs brutes' : 'Écart global' }} :
                 <span class="font-mono font-semibold text-gray-800">{{ formatMontant(module.derniere_evaluation.ecart_global) }}</span>
                 <span v-if="estImmobilisations(module)" class="text-gray-500">
@@ -933,6 +1020,8 @@ function back() {
                     <th class="px-3 text-right">Fichier des immobilisations</th>
                     <th class="px-3 text-right">Biens</th>
                     <th class="px-3 text-right">Écart</th>
+                    <th class="px-3">Qualification</th>
+                    <th class="px-3">Remarques</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -948,6 +1037,25 @@ function back() {
                     <td class="px-3 text-right font-mono">{{ montantImmo(c, c.montant_fichier) }}</td>
                     <td class="px-3 text-right">{{ c.nb_biens }}</td>
                     <td class="px-3 text-right font-mono">{{ montantImmo(c, c.ecart) }}</td>
+                    <td class="px-3">
+                      <span v-if="c.ok || module.statut !== 'ecart'" class="text-gray-400">—</span>
+                      <span
+                        v-else
+                        class="px-3 py-1 rounded-full text-xs font-semibold"
+                        :class="qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
+                      >
+                        {{ qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'Qualifiée' : 'À qualifier' }}
+                      </span>
+                    </td>
+                    <td class="px-3">
+                      <button
+                        v-if="!c.ok && module.statut === 'ecart'"
+                        class="px-3 py-1 rounded-lg border border-blue-ycube text-blue-ycube text-xs font-semibold hover:bg-blue-ycube hover:text-white transition inline-flex items-center gap-1 whitespace-nowrap"
+                        @click="allerALecart(cle, c.numero_compte)"
+                      >
+                        <i class="fa-regular fa-comment"></i> Commenter · {{ remarquesPourCollectif(cle, c.numero_compte).length }}
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -986,25 +1094,45 @@ function back() {
               <table v-if="!estImmobilisations(module) && module.derniere_evaluation.detail_collectifs?.length" class="min-w-full text-sm">
                 <thead class="bg-blue-ycube text-white h-12 text-left">
                   <tr>
-                    <th class="px-3">Compte collectif</th>
-                    <th class="px-3 text-right">Solde balance générale</th>
-                    <th class="px-3 text-right">Solde auxiliaire</th>
-                    <th class="px-3 text-right">Tiers rattachés</th>
+                    <th class="px-3">Compte</th>
+                    <th class="px-3 text-right">Balance générale</th>
+                    <th class="px-3 text-right">Auxiliaire</th>
+                    <th class="px-3 text-right">Tiers</th>
                     <th class="px-3 text-right">Écart</th>
+                    <th class="px-3">Qualification</th>
+                    <th class="px-3">Remarques</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
                     v-for="c in module.derniere_evaluation.detail_collectifs"
                     :key="c.numero_compte"
-                    class="h-12 border-b"
-                    :class="module.statut !== 'ecart' ? 'text-gray-500' : (c.ok ? 'text-green-700' : 'text-red-700')"
+                    class="h-12 border-b text-gray-800"
                   >
-                    <td class="px-3">{{ c.numero_compte }}</td>
+                    <td class="px-3 font-semibold">{{ c.numero_compte }}</td>
                     <td class="px-3 text-right font-mono">{{ formatMontant(c.solde_balance_generale) }}</td>
                     <td class="px-3 text-right font-mono">{{ formatMontant(c.solde_auxiliaire) }}</td>
                     <td class="px-3 text-right">{{ c.nb_tiers_rattaches }}</td>
-                    <td class="px-3 text-right font-mono">{{ formatMontant(c.ecart) }}</td>
+                    <td class="px-3 text-right font-mono" :class="!c.ok && module.statut === 'ecart' ? 'font-bold text-red-700' : 'text-gray-500'">{{ formatMontant(c.ecart) }}</td>
+                    <td class="px-3">
+                      <span v-if="c.ok || module.statut !== 'ecart'" class="text-gray-400">—</span>
+                      <span
+                        v-else
+                        class="px-3 py-1 rounded-full text-xs font-semibold"
+                        :class="qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
+                      >
+                        {{ qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'Qualifiée' : 'À qualifier' }}
+                      </span>
+                    </td>
+                    <td class="px-3">
+                      <button
+                        v-if="!c.ok && module.statut === 'ecart'"
+                        class="px-3 py-1 rounded-lg border border-blue-ycube text-blue-ycube text-xs font-semibold hover:bg-blue-ycube hover:text-white transition inline-flex items-center gap-1 whitespace-nowrap"
+                        @click="allerALecart(cle, c.numero_compte)"
+                      >
+                        <i class="fa-regular fa-comment"></i> Commenter · {{ remarquesPourCollectif(cle, c.numero_compte).length }}
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -1017,7 +1145,8 @@ function back() {
               <div
                 v-for="c in (module.derniere_evaluation.detail_collectifs || []).filter((c) => !c.ok)"
                 :key="'ecart-' + c.numero_compte"
-                class="border border-gray-200 rounded-lg p-3 flex flex-col gap-3 text-xs"
+                :id="`ecart-${cle}-${c.numero_compte}`"
+                class="border border-gray-200 rounded-lg p-3 flex flex-col gap-3 text-xs scroll-mt-4"
               >
                 <div class="flex items-center justify-between flex-wrap gap-2">
                   <p class="font-semibold text-gray-700 text-sm">Écart — {{ libelleLigneEcart(module, c) }}</p>
@@ -1133,14 +1262,52 @@ function back() {
               </div>
               </template>
 
-              <p v-if="module.derniere_evaluation.tiers_orphelins?.balance_generale_seulement?.length" class="text-gray-500 text-sm">
-                Comptes collectifs sans tiers rattaché dans l'auxiliaire (TODO(spec: CAC-IPE-01) — traitement attendu non confirmé) :
-                {{ module.derniere_evaluation.tiers_orphelins.balance_generale_seulement.join(', ') }}
-              </p>
-              <p v-if="module.derniere_evaluation.tiers_orphelins?.auxiliaire_seulement?.length" class="text-gray-500 text-sm">
-                Tiers de l'auxiliaire sans compte collectif correspondant (TODO(spec: CAC-IPE-01) — traitement attendu non confirmé) :
-                {{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.join(', ') }}
-              </p>
+              <!-- Tiers sans compte collectif (maquette) : traitement attendu TODO(spec: CAC-IPE-01) -->
+              <div
+                v-if="module.derniere_evaluation.tiers_orphelins?.auxiliaire_seulement?.length || module.derniere_evaluation.tiers_orphelins?.balance_generale_seulement?.length"
+                class="flex items-center justify-between gap-3 flex-wrap rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700"
+              >
+                <span>
+                  <template v-if="module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement?.length">
+                    <strong>{{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.length }} tiers de l'auxiliaire</strong>
+                    sans compte collectif dans la balance générale
+                    ({{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.slice(0, 3).join(', ') }}{{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.length > 3 ? '…' : '' }}).
+                  </template>
+                  <template v-if="module.derniere_evaluation.tiers_orphelins.balance_generale_seulement?.length">
+                    <strong>{{ module.derniere_evaluation.tiers_orphelins.balance_generale_seulement.length }} compte(s) collectif(s)</strong>
+                    sans tiers dans l'auxiliaire.
+                  </template>
+                  Traitement à confirmer par la spec.
+                </span>
+                <a href="#" class="font-semibold text-blue-ycube hover:underline" @click.prevent="listeOrphelinsOuverte = true">Voir la liste</a>
+              </div>
+
+              <!-- Liste complète — modale, recette ClientsView.vue (charte CLAUDE.md) -->
+              <div v-if="listeOrphelinsOuverte" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="listeOrphelinsOuverte = false">
+                <div class="bg-white rounded-2xl w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4 text-sm">
+                  <div class="flex justify-between items-start">
+                    <h3 class="text-xl font-bold text-blue-ycube">{{ (LIBELLES_MODULE[cle] || cle).split(' (')[0] }} · rattachements manquants</h3>
+                    <button class="text-gray-500 hover:text-gray-800" aria-label="Fermer" @click="listeOrphelinsOuverte = false">
+                      <i class="fa-solid fa-xmark text-2xl"></i>
+                    </button>
+                  </div>
+                  <div v-if="module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement?.length">
+                    <p class="font-semibold text-gray-800 mb-1">
+                      Tiers de l'auxiliaire sans compte collectif dans la balance générale
+                      ({{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.length }})
+                    </p>
+                    <p class="text-gray-700 leading-relaxed">{{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.join(', ') }}</p>
+                  </div>
+                  <div v-if="module.derniere_evaluation.tiers_orphelins.balance_generale_seulement?.length">
+                    <p class="font-semibold text-gray-800 mb-1">
+                      Comptes collectifs de la balance générale sans tiers dans l'auxiliaire
+                      ({{ module.derniere_evaluation.tiers_orphelins.balance_generale_seulement.length }})
+                    </p>
+                    <p class="text-gray-700">{{ module.derniere_evaluation.tiers_orphelins.balance_generale_seulement.join(', ') }}</p>
+                  </div>
+                  <p class="text-xs text-gray-500">Traitement de ces rattachements : à confirmer par la spécification CAC-IPE-01.</p>
+                </div>
+              </div>
               <p v-if="module.derniere_evaluation.lignes_non_calculables?.length" class="text-orange-600 text-sm">
                 {{ module.derniere_evaluation.lignes_non_calculables.length }}
                 {{ estImmobilisations(module) ? 'bien(s) sans valeur brute exploitable' : 'ligne(s) auxiliaire(s) sans montant exploitable' }} (mapping incomplet).

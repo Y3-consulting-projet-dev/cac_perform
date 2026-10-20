@@ -197,3 +197,44 @@ def test_soumission_ne_depend_pas_des_demandes_de_correction():
     etat["remarques"] = [{"type": "demande_correction", "traitee": False}]
     assert service.refus_soumission(etat) is None
     assert service.refus_validation(etat) is not None
+
+
+# --- Rapprochement exigé avant la soumission, sur les versions actuelles (décision du 20/10/2026) ---
+
+FICHIERS = {"balance_generale": "bg1", "auxiliaire_client": None, "auxiliaire_fournisseur": "frs1", "immobilisations": None}
+
+
+def _etat_evalue(**extra):
+    return {"modules": {"ipe_2_fournisseurs": {"statut": "ok"}}, "fichiers_evalues": dict(FICHIERS), **extra}
+
+
+def test_soumission_refusee_sans_rapprochement():
+    assert service.refus_rapprochement({"modules": {}}, FICHIERS) == "Lancez d'abord le rapprochement."
+
+
+def test_rapprochement_sur_les_versions_actuelles_accepte():
+    assert service.refus_rapprochement(_etat_evalue(), dict(FICHIERS)) is None
+
+
+def test_fichier_remplace_depuis_le_rapprochement():
+    actuels = {**FICHIERS, "auxiliaire_fournisseur": "frs2"}
+    assert service.refus_rapprochement(_etat_evalue(), actuels) == (
+        "Relancez le rapprochement : le fichier « balance auxiliaire fournisseurs » a été remplacé."
+    )
+
+
+def test_fichier_importe_ou_retire_depuis_le_rapprochement():
+    actuels = {**FICHIERS, "auxiliaire_client": "cli1", "auxiliaire_fournisseur": None}
+    raison = service.refus_rapprochement(_etat_evalue(), actuels)
+    assert "« balance auxiliaire clients » a été importé" in raison
+    assert "« balance auxiliaire fournisseurs » a été retiré" in raison
+
+
+def test_balance_generale_remplacee():
+    raison = service.refus_rapprochement(_etat_evalue(), {**FICHIERS, "balance_generale": "bg2"})
+    assert raison == "Relancez le rapprochement : le fichier « balance générale » a été remplacé."
+
+
+def test_rapprochement_anterieur_sans_versions_enregistrees():
+    etat = {"modules": {"ipe_2_fournisseurs": {"statut": "ok"}}}
+    assert service.refus_rapprochement(etat, FICHIERS).startswith("Relancez le rapprochement : les versions des fichiers")

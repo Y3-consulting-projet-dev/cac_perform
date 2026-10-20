@@ -26,10 +26,15 @@ def _reponse(etat, code=200):
     """
     Réponse commune : état IPE + statut affiché + liste des causes d'écart
     (source unique : revue_ipe_service.CAUSES_ECART, jamais recopiée côté
-    frontend).
+    frontend) + fraîcheur du rapprochement (raison du refus de soumission
+    s'il n'est pas lancé ou porte sur des fichiers remplacés depuis).
     """
     etat["statut_affiche"] = verrou_ipe_service.statut_affiche(etat)
     etat["causes_ecart"] = list(revue_ipe_service.CAUSES_ECART)
+    mission_id = (request.view_args or {}).get("mission_id")
+    if mission_id:
+        raison = revue_ipe_service.refus_rapprochement(etat, verrou_ipe_service.references_fichiers_actuelles(mission_id))
+        etat["rapprochement_a_jour"] = {"ok": raison is None, "raison": raison}
     return make_response(jsonify({"success": True, "data": etat}), code)
 
 
