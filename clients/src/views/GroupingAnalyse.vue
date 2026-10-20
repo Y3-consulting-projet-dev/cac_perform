@@ -683,8 +683,15 @@ const ipeStatutLabel = computed(() => IPE_STATUT_LABELS[ipeStatutAffiche.value] 
 const ipeSousTitre = computed(() => {
   const statut = ipeEtat.value?.statut_circuit;
   if (!ipeEtat.value || statut === 'valide') return ipeStatutLabel.value;
+  const morceaux = [ipeStatutLabel.value];
+  // Rapprochement à (re)faire avant de soumettre (serveur : rapprochement_a_jour).
+  const fraicheur = ipeEtat.value.rapprochement_a_jour;
+  if (statut !== 'soumis_pour_revue' && fraicheur && fraicheur.ok === false) {
+    morceaux.push((fraicheur.raison || '').startsWith('Lancez') ? 'Rapprochement à lancer' : 'Relancez le rapprochement');
+  }
   const blocages = phraseBlocages(ipeEtat.value, { avecDemandes: statut === 'soumis_pour_revue' });
-  return blocages ? `${ipeStatutLabel.value} · ${blocages}` : ipeStatutLabel.value;
+  if (blocages) morceaux.push(blocages);
+  return morceaux.join(' · ');
 });
 
 /* ================================
@@ -2493,170 +2500,145 @@ function formatAmount(value) {
 
 <template>
   <div class="flex w-full overflow-hidden">
-    <!-- Sidebar -->
-    <!-- SIDEBAR ÉTAPES -->
-<!-- SIDEBAR WORKFLOW PAR PHASES -->
-<div class="min-w-[320px] w-[340px] shrink-0 bg-blue-ycube text-white flex flex-col px-5 py-6 shadow-xl">
+    <!-- Barre latérale de la mission : mise en page et couleurs de la maquette
+         docs/maquettes/0_Barre_laterale.html (jetons maquette-*, police Nunito Sans).
+         `data-barre-mission` : repère stable du test de parcours. -->
+<nav
+  data-barre-mission
+  aria-label="Navigation de la mission"
+  class="min-w-[320px] w-[340px] shrink-0 bg-maquette-barre text-white font-maquette flex flex-col gap-4 px-5 py-6 overflow-y-auto"
+>
 
-  <!-- Bouton retour -->
+  <!-- Retour -->
   <button
-    class="mb-4 px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 font-semibold flex items-center gap-2 transition"
+    class="min-h-12 px-[18px] rounded-xl bg-maquette-barre-retour hover:brightness-110 text-[17px] font-bold flex items-center gap-2.5 transition text-left"
     @click="back">
-    <i class="fa-solid fa-arrow-left"></i> Retour
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6" /></svg>
+    Retour
   </button>
 
-  <!-- Écran de données (pas une étape d'audit) : volontairement hors de la
-       barre de progression ci-dessous. Voir docs/PLAN_import_refonte.md. -->
-  <!-- Affiché dans la zone principale : la barre latérale reste visible. -->
+  <!-- Écran de données (pas une étape d'audit) : hors de la progression ; affiché dans la zone principale. -->
   <button
-    class="mb-4 px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition"
-    :class="componentKey === ECRAN_FICHIERS_COMPLEMENTAIRES ? 'bg-white text-blue-ycube font-semibold' : 'bg-white/10 hover:bg-white/20'"
+    class="min-h-[46px] px-[18px] rounded-xl flex items-center gap-2.5 transition text-left"
+    :class="componentKey === ECRAN_FICHIERS_COMPLEMENTAIRES ? 'bg-white text-maquette-barre font-bold' : 'bg-maquette-barre-bloc text-white font-semibold hover:brightness-110'"
     @click="showComponent(ECRAN_FICHIERS_COMPLEMENTAIRES)">
-    <i class="fa-solid fa-folder-open"></i> Fichiers complémentaires
+    Fichiers complémentaires
   </button>
 
   <!-- Progression globale -->
-  <div class="mb-6 bg-blue-ycube-1 rounded-xl p-4 shadow-inner">
-    <h3 class="text-sm font-bold mb-3">Progression de l’audit</h3>
-
-    <div class="w-full bg-white/20 rounded-full h-2 overflow-hidden">
-      <div
-        class="bg-green-400 h-2 transition-all duration-500"
-        :style="{ width: progress + '%' }">
-      </div>
+  <div class="px-[18px] py-4 rounded-xl bg-maquette-barre-progression flex flex-col gap-2.5">
+    <span class="font-bold">Progression de l’audit</span>
+    <div class="h-2 rounded-full bg-maquette-barre-jauge overflow-hidden">
+      <div class="h-2 rounded-full bg-maquette-vert transition-all duration-500" :style="{ width: progress + '%' }"></div>
     </div>
-
-    <p class="text-xs mt-2 opacity-90">
-      {{ completedSteps }} / 9 étapes validées
-    </p>
+    <span class="text-sm text-maquette-barre-sous-2">{{ completedSteps }} / 9 étapes validées</span>
   </div>
 
-  <!-- PHASES -->
-  <div class="flex flex-col gap-4 overflow-y-auto pr-1">
+  <template v-for="(phase, idx) in workflowPhases" :key="phase.id">
+    <div class="p-3.5 rounded-xl bg-maquette-barre-bloc flex flex-col gap-2">
 
-    <template v-for="(phase, idx) in workflowPhases" :key="phase.id">
-      <div class="rounded-xl bg-white/10">
-
-        <!-- HEADER PHASE -->
-        <button
-          class="w-full flex items-center justify-between px-4 py-3 text-sm font-bold hover:bg-white/20 transition rounded-t-xl"
-          @click="togglePhase(phase)"
-        >
-          <span>{{ phase.label }}</span>
-          <i
-            class="fa-solid transition-transform duration-300"
-            :class="phase.open ? 'fa-chevron-up' : 'fa-chevron-down'"
-          ></i>
-        </button>
-
-        <!-- Résumé de la phase, seulement quand elle est repliée -->
-        <p v-if="!phase.open && RESUMES_PHASES[phase.id]" class="px-4 pb-3 text-xs text-white/70">
-          {{ RESUMES_PHASES[phase.id] }}
-        </p>
-
-        <!-- ÉTAPES -->
-        <div v-if="phase.open" class="flex flex-col gap-2 px-3 pb-3">
-
-          <div
-            v-for="step in phase.steps"
-            :key="step.id"
-            :class="[
-              'rounded-lg px-3 py-2 flex items-start gap-3 transition',
-              step.static ? 'bg-blue-ycube-1' : 'bg-white/10 hover:bg-white/20 cursor-pointer',
-              isActiveStep(step) ? '!bg-white' : '',
-              etapeEstVerrouillee(step) ? 'opacity-60' : ''
-            ]"
-            @click="handleStepClick(step)"
-          >
-
-            <!-- CHECKBOX (Phase 1 & 3) -->
-            <input
-              v-if="step.static"
-              type="checkbox"
-              class="mt-1 accent-green-500 cursor-pointer"
-              v-model="step.checked"
-              @click.stop
-            />
-
-            <!-- CADENAS (étape verrouillée par IPE-GLOBAL-01) -->
-            <i v-else-if="etapeEstVerrouillee(step)" class="fa-solid fa-lock text-white/60 mt-1"></i>
-
-            <!-- DOT (Phase 2) -->
-            <span v-else class="text-white/60 mt-1">•</span>
-
-            <!-- TEXTE -->
-            <div class="flex flex-col">
-              <span :class="isActiveStep(step) ? 'font-semibold text-sm text-blue-ycube' : 'font-semibold text-sm'">
-                {{ step.name }}
-              </span>
-              <span :class="isActiveStep(step) ? 'text-xs text-blue-ycube/70' : 'text-xs text-white/60'">
-                <template v-if="etapeEstVerrouillee(step)">Cycle verrouillé : fiabilité IPE non validée</template>
-                <template v-else>Étape {{ step.id }}</template>
-              </span>
-            </div>
-
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Point de contrôle "Fiabilité IPE" : entre Phase 1 et Phase 2
-           (docs/PLAN_verrou_IPE.md §6). HORS de workflowPhases : n'entre
-           jamais dans le décompte des 11 étapes ni dans la progression. -->
-      <div
-        v-if="idx === 0"
-        class="rounded-xl px-4 py-3 flex items-center justify-between gap-3 cursor-pointer transition"
-        :class="componentKey === ECRAN_FIABILITE_IPE ? 'bg-white' : 'bg-white/10 hover:bg-white/20'"
-        @click="allerVersFiabiliteIpe"
+      <!-- En-tête de phase (repli / dépli conservé) -->
+      <button
+        class="w-full flex items-center justify-between gap-2 px-1 py-1 font-bold text-left hover:opacity-90 transition"
+        @click="togglePhase(phase)"
       >
-        <div class="flex items-center gap-2 min-w-0">
-          <i class="fa-solid fa-shield-halved" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-blue-ycube' : 'text-white/70'"></i>
-          <div class="flex flex-col min-w-0">
-            <span class="font-semibold text-sm" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-blue-ycube' : ''">Fiabilité IPE</span>
-            <span class="text-xs leading-snug" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-blue-ycube/70' : 'text-white/60'">{{ ipeSousTitre }}</span>
-          </div>
-        </div>
-        <span
-          class="shrink-0 text-xs px-3 py-1.5 rounded-lg transition"
-          :class="componentKey === ECRAN_FIABILITE_IPE ? 'bg-blue-ycube/10 text-blue-ycube' : 'bg-white/10'"
-        >
-          Détail
-        </span>
-      </div>
+        <span>{{ phase.label }}</span>
+        <i class="fa-solid text-sm text-maquette-barre-sous-2" :class="phase.open ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+      </button>
 
-      <!-- Circularisation : entre la Phase 2 et la Phase 3 (écrans à venir) -->
-      <div v-if="phase.id === 2" class="rounded-xl bg-white/10 flex flex-col gap-2 px-3 pb-3">
-        <span class="px-1 pt-3 text-sm font-bold">Circularisation</span>
+      <!-- Résumé de la phase, seulement quand elle est repliée -->
+      <p v-if="!phase.open && RESUMES_PHASES[phase.id]" class="m-0 px-1 text-sm text-maquette-barre-sous-2">
+        {{ RESUMES_PHASES[phase.id] }}
+      </p>
+
+      <!-- Étapes -->
+      <template v-if="phase.open">
         <div
-          v-for="entree in ENTREES_A_VENIR.circularisation"
-          :key="entree.cle"
-          class="rounded-lg px-3 py-2 flex items-start justify-between gap-2 bg-blue-ycube-1 opacity-60 cursor-not-allowed"
-          aria-disabled="true"
-          :title="`${entree.libelle} : écran à venir`"
+          v-for="step in phase.steps"
+          :key="step.id"
+          :data-etape="step.key"
+          :class="[
+            'px-3 py-2.5 rounded-[10px] flex items-start gap-3 transition text-[15px]',
+            isActiveStep(step) ? 'bg-white text-maquette-barre' : 'bg-maquette-barre',
+            step.static ? '' : 'cursor-pointer hover:brightness-125',
+            etapeEstVerrouillee(step) ? 'opacity-60' : ''
+          ]"
+          @click="handleStepClick(step)"
         >
-          <div class="flex flex-col">
-            <span class="font-semibold text-sm">{{ entree.libelle }}</span>
-            <span class="text-xs text-white/60">{{ entree.sousTitre }}</span>
-          </div>
-          <span class="shrink-0 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/15">à venir</span>
-        </div>
-      </div>
-    </template>
+          <!-- Case à cocher (Phase 1 & 3) -->
+          <input
+            v-if="step.static"
+            type="checkbox"
+            class="mt-1 accent-maquette-vert cursor-pointer"
+            v-model="step.checked"
+            @click.stop
+          />
+          <!-- Cadenas (étape verrouillée par IPE-GLOBAL-01) -->
+          <i v-else-if="etapeEstVerrouillee(step)" class="fa-solid fa-lock text-maquette-barre-sous mt-1"></i>
 
-    <!-- Journal d'audit, Paramètres : sous la Phase 3 (écrans à venir) -->
-    <div
-      v-for="entree in ENTREES_A_VENIR.bas"
-      :key="entree.cle"
-      class="rounded-xl px-4 py-3 flex items-center justify-between gap-2 bg-white/10 opacity-60 cursor-not-allowed"
-      aria-disabled="true"
-      :title="`${entree.libelle} : écran à venir`"
-    >
-      <span class="font-semibold text-sm">{{ entree.libelle }}</span>
-      <span class="shrink-0 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/15">à venir</span>
+          <div class="flex flex-col">
+            <span :class="isActiveStep(step) ? 'font-bold' : ''">{{ step.name }}</span>
+            <span class="text-[13px]" :class="isActiveStep(step) ? 'text-maquette-ardoise' : 'text-maquette-barre-sous'">
+              <template v-if="etapeEstVerrouillee(step)">Cycle verrouillé : fiabilité IPE non validée</template>
+              <template v-else>Étape {{ step.id }}</template>
+            </span>
+          </div>
+        </div>
+      </template>
     </div>
 
+    <!-- Point de contrôle « Fiabilité IPE » : entre Phase 1 et Phase 2 (docs/PLAN_verrou_IPE.md §6).
+         Hors de workflowPhases : n'entre jamais dans les 11 étapes ni dans la progression. -->
+    <div
+      v-if="idx === 0"
+      class="px-4 py-3.5 rounded-xl flex justify-between items-center gap-2.5 cursor-pointer transition"
+      :class="componentKey === ECRAN_FIABILITE_IPE ? 'bg-white text-maquette-barre' : 'bg-maquette-barre-bloc text-white hover:brightness-110'"
+      @click="allerVersFiabiliteIpe"
+    >
+      <span class="flex flex-col min-w-0">
+        <strong>Fiabilité IPE</strong>
+        <span class="text-[13px] leading-snug" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-maquette-ardoise' : 'text-maquette-barre-sous-2'">{{ ipeSousTitre }}</span>
+      </span>
+      <span
+        class="shrink-0 text-[13px] font-bold px-2.5 py-1.5 rounded-lg"
+        :class="componentKey === ECRAN_FIABILITE_IPE ? 'bg-maquette-gris' : 'bg-maquette-barre-retour'"
+      >
+        Détail
+      </span>
+    </div>
+
+    <!-- Circularisation : entre la Phase 2 et la Phase 3 (écrans à venir, non cliquables) -->
+    <div v-if="phase.id === 2" class="p-3.5 rounded-xl bg-maquette-barre-bloc flex flex-col gap-2">
+      <span class="px-1 py-1 font-bold">Circularisation</span>
+      <div
+        v-for="entree in ENTREES_A_VENIR.circularisation"
+        :key="entree.cle"
+        class="px-3 py-2.5 rounded-[10px] bg-maquette-barre flex items-start justify-between gap-2 opacity-60 cursor-not-allowed"
+        aria-disabled="true"
+        :title="`${entree.libelle} : écran à venir`"
+      >
+        <span class="flex flex-col">
+          <span class="text-[15px]">{{ entree.libelle }}</span>
+          <span class="text-[13px] text-maquette-barre-sous">{{ entree.sousTitre }}</span>
+        </span>
+        <span class="shrink-0 text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-maquette-barre-retour">à venir</span>
+      </div>
+    </div>
+  </template>
+
+  <!-- Journal d'audit, Paramètres : sous la Phase 3 (écrans à venir, non cliquables) -->
+  <div
+    v-for="entree in ENTREES_A_VENIR.bas"
+    :key="entree.cle"
+    class="min-h-[46px] px-[18px] rounded-xl bg-maquette-barre-bloc flex items-center justify-between gap-2 font-semibold opacity-60 cursor-not-allowed"
+    aria-disabled="true"
+    :title="`${entree.libelle} : écran à venir`"
+  >
+    <span>{{ entree.libelle }}</span>
+    <span class="shrink-0 text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-maquette-barre-retour">à venir</span>
   </div>
-</div>
+
+</nav>
 
 
 

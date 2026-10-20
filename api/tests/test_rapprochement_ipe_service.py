@@ -447,3 +447,11 @@ def test_modules_en_ecart_non_qualifie_ignore_les_modules_ok():
 def test_modules_en_ecart_non_qualifie_sans_modules():
     assert service.modules_en_ecart_non_qualifie(None) == []
     assert service.modules_en_ecart_non_qualifie({}) == []
+
+
+def test_collectif_conserve_les_numeros_de_la_balance_generale():
+    lignes_bg = [{"numero_compte": "401000", "solde_reel": -300.0}]
+    lignes_aux = [{"numero_compte": "4011AF", "solde_final_debit": 0.0, "solde_final_credit": 300.0}]
+    collectif = service.rapprocher_famille(lignes_bg, lignes_aux, "40", "numero_compte")["collectifs"][0]
+    assert collectif["numero_compte"] == "401"
+    assert collectif["comptes_balance_generale"] == ["401000"]

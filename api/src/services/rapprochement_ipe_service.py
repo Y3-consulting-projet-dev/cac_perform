@@ -190,6 +190,9 @@ def rapprocher_famille(
         ecart = solde_balance_generale - solde_auxiliaire
         resultats_collectifs.append({
             "numero_compte": collectif,
+            # Numéros d'origine de la balance générale (affichage, ex. « 401000 ») ;
+            # numero_compte reste le collectif normalisé utilisé pour le rattachement.
+            "comptes_balance_generale": sorted({str(l.get("numero_compte") or "").strip() for l in lignes_bg_collectif}),
             "solde_balance_generale": solde_balance_generale,
             "solde_auxiliaire": solde_auxiliaire,
             "nb_tiers_rattaches": len(tiers),

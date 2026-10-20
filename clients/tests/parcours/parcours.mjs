@@ -96,7 +96,7 @@ async function etape(navigateur, nom, action, attendu) {
     let etat
     for (let i = 0; i < 40; i++) {
       etat = await navigateur.evaluer(`({ url: location.pathname + location.search, texte: document.body.innerText,
-        barre: !!document.querySelector('.bg-blue-ycube.min-w-\\\\[320px\\\\]') })`)
+        barre: !!document.querySelector('[data-barre-mission]') })`)
       const ok = (!attendu.url || attendu.url.test(etat.url))
         && (!attendu.texte || etat.texte.includes(attendu.texte))
         && (attendu.barre === undefined || etat.barre === attendu.barre)
@@ -184,10 +184,10 @@ async function parcours(navigateur, d) {
   // Panneau latéral d'un compte en écart (§2.4) : rapprochement lancé, « Commenter » sur 401.
   await etape(navigateur, 'Fiabilité IPE : « Lancer le rapprochement »', () => cliquer(navigateur, 'Lancer le rapprochement'),
     { url: /step=fiabilite_ipe/, texte: 'Balance auxiliaire fournisseurs · v1', barre: true })
-  await etape(navigateur, 'Fiabilité IPE : « Commenter » ouvre le panneau du compte 401', () => navigateur.evaluer(`(() => {
-      const tr = [...document.querySelectorAll('tr')].find((t) => t.querySelector('td')?.textContent.trim() === '401');
-      if (!tr) throw new Error('ligne 401 introuvable'); tr.querySelector('button').click() })()`),
-    { url: /step=fiabilite_ipe/, texte: 'Écart · compte 401', barre: true })
+  await etape(navigateur, 'Fiabilité IPE : « Commenter » ouvre le panneau du compte 401000', () => navigateur.evaluer(`(() => {
+      const tr = [...document.querySelectorAll('tr')].find((t) => t.querySelector('td')?.textContent.trim() === '401000');
+      if (!tr) throw new Error('ligne 401000 introuvable'); tr.querySelector('button').click() })()`),
+    { url: /step=fiabilite_ipe/, texte: 'Écart · compte 401000', barre: true })
   await etape(navigateur, 'Fiabilité IPE : fermer le panneau', () => navigateur.evaluer(
     `document.querySelector('[aria-label="Fermer le panneau"]').click()`),
     { url: /step=fiabilite_ipe/, barre: true })
@@ -195,7 +195,7 @@ async function parcours(navigateur, d) {
     { url: /step=fiabilite_ipe/, texte: 'Aucun commentaire général.', barre: true })
   await etape(navigateur, 'Barre latérale : étape « Contrôle d’intangibilité »', () => navigateur.evaluer(`(() => {
       const el = [...document.querySelectorAll('span')].find((s) => s.textContent.trim().startsWith('Contrôle d') && s.textContent.includes('intangibilit'));
-      if (!el) throw new Error('étape introuvable'); el.closest('div[class*=rounded-lg]').click() })()`),
+      if (!el) throw new Error('étape introuvable'); el.closest('[data-etape]').click() })()`),
     { url: /step=intang/, barre: true })
   // Entrées « à venir » (docs/PLAN_ecrans_lot1.md §1) : visibles, mais un clic ne change pas d'écran.
   for (const entree of ['Sélection des tiers', 'Courriers', 'Suivi des réponses', "Journal d'audit", 'Paramètres']) {
