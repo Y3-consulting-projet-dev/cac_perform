@@ -27,6 +27,7 @@ from src.resources.user_resources import (
 from src.resources.mission_resources import MissionResource
 from src.resources.import_resources import ImportResource
 from src.resources.ipe_resources import IpeResource
+from src.resources.journal_resources import JournalResource
 from src.mission import mission
 from src.services.verrou_ipe_service import (
     verifier_verrou_ipe,
@@ -230,6 +231,18 @@ def register_routes(app):
     def marquer_remarque_traitee_ipe(mission_id, remarque_id):
         """PUT /api/v1/missions/<id>/ipe/remarques/<remarque_id>/traitee - Marque (ou démarque) une remarque comme traitée"""
         return IpeResource.marquer_remarque_traitee(mission_id, remarque_id)
+
+    # --- Journal d'audit (page B) : lecture seule, aucune route d'écriture ---
+
+    @mission_bp.route('/<mission_id>/journal', methods=['GET'])
+    def journal_audit(mission_id):
+        """GET /api/v1/missions/<id>/journal - Journal d'audit filtré et paginé"""
+        return JournalResource.lister(mission_id)
+
+    @mission_bp.route('/<mission_id>/journal/export', methods=['GET'])
+    def exporter_journal_audit(mission_id):
+        """GET /api/v1/missions/<id>/journal/export - Export Excel du journal filtré"""
+        return JournalResource.exporter(mission_id)
 
     # Enregistrer le blueprint mission
     app.register_blueprint(mission_bp)

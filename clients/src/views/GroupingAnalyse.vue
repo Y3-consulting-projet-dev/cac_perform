@@ -12,6 +12,7 @@ import { phraseBlocages } from '@/utils/circuitIpe';
 import { formatDateHeureFr } from '@/utils/formatDate';
 import FiabiliteIpeView from '@/views/FiabiliteIpeView.vue';
 import FichiersComplementairesView from '@/views/FichiersComplementairesView.vue';
+import JournalAuditView from '@/views/JournalAuditView.vue';
 
 
 const axios = inject('axios');
@@ -608,7 +609,8 @@ const stepKeys = computed(() => new Set(
 // des 11 étapes (ni progression, ni workflowPhases) — docs/PLAN_verrou_IPE.md §6.
 const ECRAN_FIABILITE_IPE = 'fiabilite_ipe';
 const ECRAN_FICHIERS_COMPLEMENTAIRES = 'fichiers_complementaires';
-const ECRANS_HORS_ETAPES = new Set([ECRAN_FIABILITE_IPE, ECRAN_FICHIERS_COMPLEMENTAIRES]);
+const ECRAN_JOURNAL_AUDIT = 'journal_audit';
+const ECRANS_HORS_ETAPES = new Set([ECRAN_FIABILITE_IPE, ECRAN_FICHIERS_COMPLEMENTAIRES, ECRAN_JOURNAL_AUDIT]);
 
 function isValidStepKey(key) {
   return typeof key === 'string' && (stepKeys.value.has(key) || ECRANS_HORS_ETAPES.has(key));
@@ -697,8 +699,8 @@ const ipeSousTitre = computed(() => {
 /* ================================
    ENTRÉES « À VENIR » de la barre latérale (docs/PLAN_ecrans_lot1.md §1) :
    une seule liste. Hors de workflowPhases (ni étapes, ni progression) et
-   hors de isValidStepKey. Pour brancher un écran : `disponible: true` + son
-   rendu dans showComponent, comme Fiabilité IPE et Fichiers complémentaires.
+   hors de isValidStepKey. Pour brancher un écran : `disponible: true`, sa clé
+   dans ECRANS_HORS_ETAPES et son rendu dans showComponent (ex. Journal d'audit).
 ================================ */
 const ENTREES_A_VENIR = {
   circularisation: [
@@ -707,7 +709,7 @@ const ENTREES_A_VENIR = {
     { cle: 'suivi_reponses', libelle: 'Suivi des réponses', sousTitre: 'Relances J0 / J+15 / J+30 / J+45', disponible: false },
   ],
   bas: [
-    { cle: 'journal_audit', libelle: "Journal d'audit", disponible: false },
+    { cle: ECRAN_JOURNAL_AUDIT, libelle: "Journal d'audit", disponible: true },
     { cle: 'parametres', libelle: 'Paramètres', disponible: false },
   ],
 };
@@ -1060,6 +1062,12 @@ function showComponent(type, options = {}) {
       // Lien « Voir le fichier dans Fichiers complémentaires » : même chemin que la barre latérale.
       onOuvrirEcran: (ecran) => { if (ECRANS_HORS_ETAPES.has(ecran)) showComponent(ecran); },
     });
+    return;
+  }
+
+  if (type === ECRAN_JOURNAL_AUDIT) {
+    // Lecture seule de l'historique de la mission (page B).
+    renderComponent.value = h(JournalAuditView, { missionId: props.missionId });
     return;
   }
 
@@ -2626,10 +2634,18 @@ function formatAmount(value) {
     </div>
   </template>
 
-  <!-- Journal d'audit, Paramètres : sous la Phase 3 (écrans à venir, non cliquables) -->
+  <!-- Journal d'audit, Paramètres : sous la Phase 3. Écran disponible : affiché dans la zone principale,
+       comme Fichiers complémentaires ; sinon entrée « à venir », non cliquable. -->
+  <template v-for="entree in ENTREES_A_VENIR.bas" :key="entree.cle">
+  <button
+    v-if="entree.disponible"
+    class="min-h-[46px] px-[18px] rounded-xl flex items-center gap-2.5 transition text-left"
+    :class="componentKey === entree.cle ? 'bg-white text-blue-ycube font-bold' : 'bg-white/10 text-white font-semibold hover:brightness-110'"
+    @click="showComponent(entree.cle)">
+    {{ entree.libelle }}
+  </button>
   <div
-    v-for="entree in ENTREES_A_VENIR.bas"
-    :key="entree.cle"
+    v-else
     class="min-h-[46px] px-[18px] rounded-xl bg-white/10 flex items-center justify-between gap-2 font-semibold opacity-60 cursor-not-allowed"
     aria-disabled="true"
     :title="`${entree.libelle} : écran à venir`"
@@ -2637,6 +2653,7 @@ function formatAmount(value) {
     <span>{{ entree.libelle }}</span>
     <span class="shrink-0 text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/20">à venir</span>
   </div>
+  </template>
 
 </nav>
 

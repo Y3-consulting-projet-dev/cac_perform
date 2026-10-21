@@ -193,12 +193,32 @@ async function parcours(navigateur, d) {
     { url: /step=fiabilite_ipe/, barre: true })
   await etape(navigateur, 'Fiabilité IPE : « Commentaires généraux (0) » -> section', () => cliquer(navigateur, 'Commentaires généraux (0)'),
     { url: /step=fiabilite_ipe/, texte: 'Aucun commentaire général.', barre: true })
+  // Journal d'audit (page B) : lecture seule de l'historique ; le rapprochement lancé ci-dessus y figure.
+  await etape(navigateur, "Barre latérale : Journal d'audit", () => cliquer(navigateur, "Journal d'audit"),
+    { url: /step=journal_audit/, texte: 'Rapprochement lancé', barre: true })
+  await etape(navigateur, "Journal d'audit : import tracé, aucune action de modification", () => navigateur.evaluer(`(() => {
+      const lignes = [...document.querySelectorAll('tbody tr')];
+      if (lignes.some((tr) => tr.querySelector('button, input, select, a'))) throw new Error('action dans une ligne du journal');
+    })()`),
+    { url: /step=journal_audit/, texte: 'Fichier importé', barre: true })
+  await etape(navigateur, "Journal d'audit : filtre Module « Fiabilité IPE »", async () => {
+    await navigateur.evaluer(`(() => { const s = document.querySelector('select');
+      s.value = 'Fiabilité IPE'; s.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await attendre(1500)
+    await navigateur.evaluer(`(() => {
+      if ([...document.querySelectorAll('tbody tr')].some((tr) => tr.children[2]?.textContent.trim() === 'Import'))
+        throw new Error('entrée « Import » encore affichée'); })()`)
+  }, { url: /step=journal_audit/, texte: 'Rapprochement lancé', barre: true })
+  await etape(navigateur, "Journal d'audit : export Excel (fichier .xlsx)", () => navigateur.evaluer(`(async () => {
+      const r = await fetch(${JSON.stringify(API)} + '/api/v1/missions/' + ${JSON.stringify(d.mission_id)} + '/journal/export?module=Import');
+      if (!r.ok || !r.headers.get('content-type').includes('spreadsheetml')) throw new Error('export HTTP ' + r.status); })()`),
+    { url: /step=journal_audit/, texte: 'Exporter (Excel)', barre: true })
   await etape(navigateur, 'Barre latérale : étape « Contrôle d’intangibilité »', () => navigateur.evaluer(`(() => {
       const el = [...document.querySelectorAll('span')].find((s) => s.textContent.trim().startsWith('Contrôle d') && s.textContent.includes('intangibilit'));
       if (!el) throw new Error('étape introuvable'); el.closest('[data-etape]').click() })()`),
     { url: /step=intang/, barre: true })
   // Entrées « à venir » (docs/PLAN_ecrans_lot1.md §1) : visibles, mais un clic ne change pas d'écran.
-  for (const entree of ['Sélection des tiers', 'Courriers', 'Suivi des réponses', "Journal d'audit", 'Paramètres']) {
+  for (const entree of ['Sélection des tiers', 'Courriers', 'Suivi des réponses', 'Paramètres']) {
     await etape(navigateur, `Barre latérale : « ${entree} » à venir, non cliquable`, () => cliquer(navigateur, entree),
       { url: /step=intang/, texte: 'Circularisation', barre: true })
   }
