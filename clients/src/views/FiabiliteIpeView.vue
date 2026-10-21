@@ -921,7 +921,7 @@ function back() {
         </div>
       </section>
 
-      <!-- Deux colonnes (maquette) : synthèse, détail et justifications à gauche ; panneau du compte à droite. -->
+      <!-- Synthèse, détail et justifications ; le compte en écart s'ouvre dans une fenêtre centrée (ci-dessous). -->
       <div v-if="ipeEtat" class="flex gap-5 flex-wrap items-start">
         <div class="flex-[999_1_560px] min-w-0 flex flex-col gap-5">
 
@@ -1240,11 +1240,14 @@ function back() {
           </section>
         </div>
 
-        <!-- Panneau du compte en écart (§2.4) : à droite du détail, ombre de la maquette -->
+        <!-- Compte en écart (§2.4) : fenêtre centrée au milieu de la page (demande du 21/10/2026, au lieu
+             du panneau à droite de la maquette) ; modale de la charte (ClientsView). Clic sur le fond : fermeture. -->
+        <div v-if="lignePanneau" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="fermerPanneau">
         <aside
-          v-if="lignePanneau"
+          role="dialog"
+          aria-modal="true"
           :aria-label="`Panneau de qualification du compte ${numeroBalanceGenerale(lignePanneau.ligne)}`"
-          class="flex-[1_1_380px] max-w-[460px] lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-y-auto bg-white rounded-[14px] shadow-[0_8px_24px_rgba(4,60,93,0.16)] p-6 flex flex-col gap-4"
+          class="bg-white rounded-2xl w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4"
         >
           <div class="flex justify-between items-start gap-3">
             <div class="flex flex-col gap-1">
@@ -1382,6 +1385,7 @@ function back() {
             </div>
           </div>
         </aside>
+        </div>
       </div>
 
       <!-- Commentaires généraux (niveau 1) : hors maquette, gardés en bas dans le même style -->
