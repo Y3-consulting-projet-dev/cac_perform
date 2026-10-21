@@ -75,7 +75,7 @@ def supprimer(client_id, mission_id):
         # d'une mission de test, identifiée par son marqueur ci-dessus.
         balances += db["Balance"].delete_many({"mission_id": mission_id}).deleted_count
         # Circularisation faite pendant le test (même condition : mission de test).
-        for collection in ("CirSelection", "CirMemo", "CirJournal", "CirCoordonnees", "CirModele"):
+        for collection in ("CirSelection", "CirMemo", "CirJournal", "CirCoordonnees", "CirModele", "CirEnvoi"):
             db[collection].delete_many({"mission_id": mission_id})
         # Modèles de courrier importés pendant le test (GridFS, rattachés à la mission de test).
         import gridfs

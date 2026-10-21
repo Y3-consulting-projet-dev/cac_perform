@@ -27,6 +27,9 @@ class CollectionFactice:
             docs.sort(key=lambda d: d.get(cle), reverse=sens < 0)
         return copy.deepcopy(docs[0]) if docs else None
 
+    def find(self, filtre, projection=None):
+        return [copy.deepcopy(d) for d in self.docs if self._correspond(d, filtre)]
+
     def insert_one(self, doc):
         doc = copy.deepcopy(doc)
         doc.setdefault("_id", ObjectId())

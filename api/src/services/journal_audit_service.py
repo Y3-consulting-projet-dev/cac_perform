@@ -34,7 +34,8 @@ MODULE_IPE = "Fiabilité IPE"
 # Suivi des réponses : à ajouter quand leurs écrans tracent leurs actions).
 MODULE_SELECTION = "Sélection des tiers"  # = circularisation_service.MODULE_JOURNAL
 MODULE_COURRIERS = "Courriers"  # = courriers_service.MODULE_JOURNAL
-MODULES = (MODULE_IMPORT, MODULE_IPE, MODULE_SELECTION, MODULE_COURRIERS)
+MODULE_SUIVI = "Suivi des réponses"  # = suivi_reponses_service.MODULE_JOURNAL
+MODULES = (MODULE_IMPORT, MODULE_IPE, MODULE_SELECTION, MODULE_COURRIERS, MODULE_SUIVI)
 
 NON_IDENTIFIE = "Non identifié"
 # Valeur du filtre « Utilisateur » pour les entrées sans utilisateur enregistré.

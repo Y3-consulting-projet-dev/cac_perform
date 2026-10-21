@@ -9,8 +9,29 @@ Ce plan ne fixe aucune règle métier : tout ce qui en dépend est listé en
 questions (§5). Rien dans `api/src/model.py` ni dans `/cors` : services
 dédiés dans `api/src/services/`, routes `/api/v1/missions/<id>/circularisation/...`.
 
-Statut : plan validé le 21/10/2026. **Sous-lot a livré**, **sous-lot b livré en
-partie** (voir les choix provisoires ci-dessous) ; sous-lots c, d à venir.
+Statut : plan validé le 21/10/2026. **Sous-lots a et c livrés**, **sous-lot b
+livré en partie** (voir les choix provisoires ci-dessous) ; sous-lot d bloqué
+(CAC-SEUILS-01, ECH-01).
+
+### Sous-lot c : choix provisoires (21/10/2026)
+
+- **Aucun envoi automatique** (pas d'authentification, pas de serveur
+  d'envoi) : l'auditeur enregistre l'envoi (canal, date, destinataire) et
+  chaque relance qu'il a faits ; collection `CirEnvoi`, une demande par tiers.
+- Échéances calculées depuis `CADENCE_RELANCES` et **figées à l'envoi** ;
+  statut calculé à la date du jour : Envoyé, À relancer, Relance 1, Relance 2,
+  Sans réponse (après l'échéance « Alternative »), Réponse reçue, Écart
+  constaté. Deux relances au plus.
+- Écart = |solde comptable| − solde confirmé ; accord total = écart nul ;
+  aucune tolérance (`TODO(spec: CAC-CIR-01)`).
+- Réponse versionnée (une correction crée une version), commentaire ≥ 15
+  caractères, réponse signée facultative (GridFS).
+- « Alerte du Manager » à J+30 : seulement affichée (aucun canal de
+  notification). Analyse d'écart et procédure alternative : commentaire
+  ≥ 15 caractères et pièce facultative, faute de modèle de feuille
+  (`TODO(spec: CAC-CIR-01)`).
+- Saisies dans une fenêtre centrée (au lieu du panneau à droite de la
+  maquette), comme demandé pour Fiabilité IPE.
 
 ### Sous-lot b : choix provisoires (décidés le 21/10/2026)
 

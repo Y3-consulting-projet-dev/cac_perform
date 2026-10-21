@@ -108,6 +108,7 @@ Voir `docs/PLAN_circularisation.md` (questions de spec, choix du sous-lot a). Sp
 - Circularisation **non bloquée par le verrou** et utilisable avant la validation IPE (bandeau + état IPE figé) — `TODO(décision)`.
 - Retenir/exclure un tiers, confirmation négative, décision sur le mémo : motif/commentaire ≥ 15 caractères et utilisateur identifié, **sans contrôle de rôle**.
 - Courriers (sous-lot b) : fichiers dans **GridFS** (`cir_fichiers`) ; coordonnées des tiers **saisies**, dans un **annuaire par client** (`CirCoordonnees`, versionné) ; modèles C1 à C5 **communs au cabinet** (`CirModele`, versionnés, champs `{{ champ }}`). **Aucune bibliothèque de génération Word/PDF installée** tant que ce n'est pas validé avec la personne qui gère le serveur.
+- Suivi des réponses (sous-lot c) : **aucun envoi automatique** (ni courriel ni courrier) tant qu'il n'y a ni authentification ni serveur d'envoi validé ; l'auditeur enregistre envois et relances (`CirEnvoi`), échéances figées à l'envoi depuis `CADENCE_RELANCES`. Écart = |solde comptable| − solde confirmé, sans tolérance (`TODO(spec)`).
 - Seuils de l'étape 5 affichés sous leurs noms V1 (`materiality`, `performance_materiality`, `trivial_misstatements`) : **ne pas les présenter comme SS/SP/TS** tant que CAC-SEUILS-01 n'établit pas la correspondance.
 
 ## Fins de ligne

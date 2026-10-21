@@ -31,6 +31,7 @@ from src.resources.journal_resources import JournalResource
 from src.resources.parametres_resources import ParametresResource
 from src.resources.circularisation_resources import CircularisationResource
 from src.resources.courriers_resources import CourriersResource
+from src.resources.suivi_reponses_resources import SuiviReponsesResource
 from src.mission import mission
 from src.services.verrou_ipe_service import (
     verifier_verrou_ipe,
@@ -310,6 +311,43 @@ def register_routes(app):
     def telecharger_modele_cir(mission_id, modele_id):
         """GET /api/v1/missions/<id>/courriers/modeles/<modele_id>/fichier - Fichier Word d'une version de modèle"""
         return CourriersResource.telecharger_modele(mission_id, modele_id)
+
+    # --- Circularisation, sous-lot c : suivi des réponses (docs/PLAN_circularisation.md) ---
+
+    @mission_bp.route('/<mission_id>/suivi', methods=['GET'])
+    def lire_suivi_cir(mission_id):
+        """GET /api/v1/missions/<id>/suivi - Demandes, statuts du jour, indicateurs, tiers à envoyer"""
+        return SuiviReponsesResource.lire(mission_id)
+
+    @mission_bp.route('/<mission_id>/suivi/envois', methods=['POST'])
+    def envoi_cir(mission_id):
+        """POST /api/v1/missions/<id>/suivi/envois - Enregistre l'envoi d'une demande (aucun envoi réel)"""
+        return SuiviReponsesResource.enregistrer_envoi(mission_id)
+
+    @mission_bp.route('/<mission_id>/suivi/<envoi_id>/relances', methods=['POST'])
+    def relance_cir(mission_id, envoi_id):
+        """POST /api/v1/missions/<id>/suivi/<envoi_id>/relances - Enregistre une relance faite par l'auditeur"""
+        return SuiviReponsesResource.enregistrer_relance(mission_id, envoi_id)
+
+    @mission_bp.route('/<mission_id>/suivi/<envoi_id>/reponse', methods=['POST'])
+    def reponse_cir(mission_id, envoi_id):
+        """POST /api/v1/missions/<id>/suivi/<envoi_id>/reponse - Réponse du tiers (écart calculé)"""
+        return SuiviReponsesResource.enregistrer_reponse(mission_id, envoi_id)
+
+    @mission_bp.route('/<mission_id>/suivi/<envoi_id>/analyse-ecart', methods=['POST'])
+    def analyse_ecart_cir(mission_id, envoi_id):
+        """POST /api/v1/missions/<id>/suivi/<envoi_id>/analyse-ecart - Analyse d'un écart constaté"""
+        return SuiviReponsesResource.analyser_ecart(mission_id, envoi_id)
+
+    @mission_bp.route('/<mission_id>/suivi/<envoi_id>/procedure-alternative', methods=['POST'])
+    def procedure_alternative_cir(mission_id, envoi_id):
+        """POST /api/v1/missions/<id>/suivi/<envoi_id>/procedure-alternative - Procédure alternative (sans réponse)"""
+        return SuiviReponsesResource.documenter_procedure_alternative(mission_id, envoi_id)
+
+    @mission_bp.route('/<mission_id>/suivi/pieces/<fichier_id>', methods=['GET'])
+    def piece_suivi_cir(mission_id, fichier_id):
+        """GET /api/v1/missions/<id>/suivi/pieces/<fichier_id> - Pièce jointe d'une demande"""
+        return SuiviReponsesResource.telecharger_piece(mission_id, fichier_id)
 
     # Enregistrer le blueprint mission
     app.register_blueprint(mission_bp)

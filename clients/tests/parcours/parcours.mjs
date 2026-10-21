@@ -254,17 +254,28 @@ async function parcours(navigateur, d) {
     await attendre(200)
     await cliquer(navigateur, 'Enregistrer les coordonnées')
   }, { url: /step=courriers/, texte: 'Version 1, par', barre: true })
+  // Circularisation, sous-lot c : suivi des réponses (envoi enregistré, réponse saisie ; aucun envoi réel).
+  await etape(navigateur, 'Barre latérale : Suivi des réponses', () => cliquer(navigateur, 'Suivi des réponses'),
+    { url: /step=suivi_reponses/, texte: 'Enregistrer l’envoi', barre: true })
+  await etape(navigateur, 'Suivi : envoi enregistré (destinataire repris de l’annuaire)', async () => {
+    await cliquer(navigateur, 'Enregistrer l’envoi')
+    await attendre(400)
+    await cliquer(navigateur, 'Enregistrer')
+  }, { url: /step=suivi_reponses/, texte: 'Saisir la réponse', barre: true })
+  await etape(navigateur, 'Suivi : réponse saisie (accord total)', async () => {
+    await cliquer(navigateur, 'Saisir la réponse')
+    await attendre(400)
+    await navigateur.evaluer(`(() => { const t = document.querySelector('[role=dialog] textarea');
+      t.value = 'Réponse signée reçue par courriel'; t.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+    await attendre(200)
+    await cliquer(navigateur, 'Enregistrer')
+  }, { url: /step=suivi_reponses/, texte: 'Réponse reçue', barre: true })
   await etape(navigateur, 'Barre latérale : étape « Contrôle d’intangibilité »', () => navigateur.evaluer(`(() => {
       const el = [...document.querySelectorAll('span')].find((s) => s.textContent.trim().startsWith('Contrôle d') && s.textContent.includes('intangibilit'));
       if (!el) throw new Error('étape introuvable'); el.closest('[data-etape]').click() })()`),
     { url: /step=intang/, barre: true })
-  // Entrées « à venir » (docs/PLAN_ecrans_lot1.md §1) : visibles, mais un clic ne change pas d'écran.
   await etape(navigateur, 'Barre latérale : cadence de relance lue sur le serveur', async () => {},
     { url: /step=intang/, texte: 'Relances J0 / J+15 / J+30 / J+45', barre: true })
-  for (const entree of ['Suivi des réponses']) {
-    await etape(navigateur, `Barre latérale : « ${entree} » à venir, non cliquable`, () => cliquer(navigateur, entree),
-      { url: /step=intang/, texte: 'Circularisation', barre: true })
-  }
   await etape(navigateur, 'Barre latérale : Phase 2 repliée -> résumé', () => cliquer(navigateur, 'Phase 2 – Exécution'),
     { url: /step=intang/, texte: 'Étapes 3 à 10 · cohérence', barre: true })
   await etape(navigateur, 'Barre latérale : Phase 2 dépliée -> étape « Contrôle de cohérence »', async () => {

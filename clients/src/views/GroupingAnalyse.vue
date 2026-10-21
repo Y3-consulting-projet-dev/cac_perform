@@ -17,6 +17,7 @@ import JournalAuditView from '@/views/JournalAuditView.vue';
 import ParametresView from '@/views/ParametresView.vue';
 import SelectionTiersView from '@/views/SelectionTiersView.vue';
 import CourriersView from '@/views/CourriersView.vue';
+import SuiviReponsesView from '@/views/SuiviReponsesView.vue';
 
 
 const axios = inject('axios');
@@ -617,9 +618,10 @@ const ECRAN_JOURNAL_AUDIT = 'journal_audit';
 const ECRAN_PARAMETRES = 'parametres';
 const ECRAN_SELECTION_TIERS = 'selection_tiers';
 const ECRAN_COURRIERS = 'courriers';
+const ECRAN_SUIVI_REPONSES = 'suivi_reponses';
 const ECRANS_HORS_ETAPES = new Set([
   ECRAN_FIABILITE_IPE, ECRAN_FICHIERS_COMPLEMENTAIRES, ECRAN_JOURNAL_AUDIT, ECRAN_PARAMETRES, ECRAN_SELECTION_TIERS,
-  ECRAN_COURRIERS,
+  ECRAN_COURRIERS, ECRAN_SUIVI_REPONSES,
 ]);
 
 function isValidStepKey(key) {
@@ -726,7 +728,7 @@ const ENTREES_A_VENIR = {
   circularisation: [
     { cle: ECRAN_SELECTION_TIERS, libelle: 'Sélection des tiers', sousTitre: 'Module 2 · seuils SS/SP/TS, MUS', disponible: true },
     { cle: ECRAN_COURRIERS, libelle: 'Courriers', sousTitre: 'Module 3 · modèles, génération, envoi', disponible: true },
-    { cle: 'suivi_reponses', libelle: 'Suivi des réponses', get sousTitre() { return cadenceRelances.value && `Relances ${cadenceRelances.value}`; }, disponible: false },
+    { cle: ECRAN_SUIVI_REPONSES, libelle: 'Suivi des réponses', get sousTitre() { return cadenceRelances.value && `Relances ${cadenceRelances.value}`; }, disponible: true },
   ],
   bas: [
     { cle: ECRAN_JOURNAL_AUDIT, libelle: "Journal d'audit", disponible: true },
@@ -1104,6 +1106,15 @@ function showComponent(type, options = {}) {
   if (type === ECRAN_COURRIERS) {
     // Circularisation, sous-lot b : modèles, coordonnées, valeurs de fusion (docs/PLAN_circularisation.md).
     renderComponent.value = h(CourriersView, {
+      missionId: props.missionId,
+      onOuvrirEcran: (ecran) => { if (ECRANS_HORS_ETAPES.has(ecran)) showComponent(ecran); },
+    });
+    return;
+  }
+
+  if (type === ECRAN_SUIVI_REPONSES) {
+    // Circularisation, sous-lot c : envois, relances, réponses (docs/PLAN_circularisation.md).
+    renderComponent.value = h(SuiviReponsesView, {
       missionId: props.missionId,
       onOuvrirEcran: (ecran) => { if (ECRANS_HORS_ETAPES.has(ecran)) showComponent(ecran); },
     });

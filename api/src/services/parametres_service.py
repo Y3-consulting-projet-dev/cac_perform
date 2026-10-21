@@ -23,14 +23,15 @@ SPEC_A_CONFIRMER = "spec_a_confirmer"
 DECISION_PROVISOIRE = "decision_provisoire"
 
 # Cadence de relance de la circularisation (maquettes 0_Barre_laterale et
-# 5_Suivi_reponses) — SEUL endroit où elle est définie. Non utilisée par le
-# code tant que le module Circularisation n'existe pas.
+# 5_Suivi_reponses) — SEUL endroit où elle est définie.
 # TODO(spec: CAC-CIR-01) : cadence définitive et rôle de chaque échéance.
+# Utilisée par le suivi des réponses (suivi_reponses_service) : échéances
+# figées à l'envoi de chaque demande. Descriptions : maquette 5_Suivi_reponses.
 CADENCE_RELANCES = (
-    {"libelle": "Envoi", "jour": 0},
-    {"libelle": "Relance 1", "jour": 15},
-    {"libelle": "Relance 2", "jour": 30},
-    {"libelle": "Alternative", "jour": 45},
+    {"cle": "envoi", "libelle": "Envoi", "jour": 0, "description": "Envoi de la demande"},
+    {"cle": "relance_1", "libelle": "Relance 1", "jour": 15, "description": "Relance 1"},
+    {"cle": "relance_2", "libelle": "Relance 2", "jour": 30, "description": "Relance 2 et alerte du Manager"},
+    {"cle": "alternative", "libelle": "Alternative", "jour": 45, "description": "Procédures alternatives requises"},
 )
 
 # Seuils d'écart PROPOSÉS par défaut par le cahier des charges §2.4, NON
@@ -101,8 +102,8 @@ def lire_parametres() -> Dict[str, Any]:
         "circularisation": {
             "cadence": [{"libelle": c["libelle"], "valeur": f"J+{c['jour']}" if c["jour"] else "J0"}
                         for c in CADENCE_RELANCES],
-            "utilisee": False,
-            "source": _source(SPEC_A_CONFIRMER, "Cadence à confirmer par CAC-CIR-01 · module Circularisation à venir"),
+            "utilisee": True,
+            "source": _source(SPEC_A_CONFIRMER, "Cadence à confirmer par CAC-CIR-01 · échéances figées à l'envoi de chaque demande"),
         },
         "etapes_verrou": {
             "bloquees": [{"etape": e["etape"], "libelle": e["libelle"]} for e in verrou.ETAPES_VERROUILLABLES],
