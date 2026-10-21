@@ -100,6 +100,15 @@ Relevée sur le code réel de `ClientSpace.vue`, `ClientsView.vue`, `MissionsVie
 
 **Après chaque lot qui touche au frontend, lancer le test de parcours** : `npm run test:parcours` depuis `clients/` (API Flask et Vite démarrés). Il clique sur les boutons de navigation principaux (liste des clients, fiche client, liste des missions, barre latérale, Fichiers complémentaires) et vérifie l'écran ouvert et l'absence d'erreur en console. Il crée puis supprime un client et une mission fictifs (`api/parcours_donnees_test.py`, marqueur `test_parcours`). Captures dans `clients/tests/parcours/captures/` (non commitées). Ajouter une étape au parcours pour tout nouveau bouton de navigation.
 
+## Décisions prises durant le développement (circularisation) — provisoires
+
+Voir `docs/PLAN_circularisation.md` (questions de spec, choix du sous-lot a). Specs CAC-CIR-01, CAC-SEUILS-01, ECH-01 absentes : aucune règle de sélection automatique.
+
+- Collections `CirSelection` (population photographiée dedans, versions), `CirMemo` (versions figées), `CirJournal` (ajout seul, lu par le Journal d'audit). Rien n'est supprimé.
+- Circularisation **non bloquée par le verrou** et utilisable avant la validation IPE (bandeau + état IPE figé) — `TODO(décision)`.
+- Retenir/exclure un tiers, confirmation négative, décision sur le mémo : motif/commentaire ≥ 15 caractères et utilisateur identifié, **sans contrôle de rôle**.
+- Seuils de l'étape 5 affichés sous leurs noms V1 (`materiality`, `performance_materiality`, `trivial_misstatements`) : **ne pas les présenter comme SS/SP/TS** tant que CAC-SEUILS-01 n'établit pas la correspondance.
+
 ## Fins de ligne
 
 **Ne jamais modifier les fins de ligne d'un fichier. Avant chaque commit, vérifier `git diff --stat` : un nombre de lignes anormalement élevé signale un problème de fins de ligne.** Ce dépôt a `core.autocrlf=true` et des fichiers enregistrés en CRLF (ex. `GroupingAnalyse.vue`) comme en LF : une réécriture complète d'un fichier peut convertir toutes ses lignes. Contrôle : `git diff --stat` comparé à `git diff --stat --ignore-cr-at-eol` (les deux doivent donner le même nombre de lignes). Pour enregistrer un fichier CRLF tel quel : `git -c core.autocrlf=false add <fichier>`.

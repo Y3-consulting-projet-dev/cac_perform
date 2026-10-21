@@ -9,7 +9,31 @@ Ce plan ne fixe aucune règle métier : tout ce qui en dépend est listé en
 questions (§5). Rien dans `api/src/model.py` ni dans `/cors` : services
 dédiés dans `api/src/services/`, routes `/api/v1/missions/<id>/circularisation/...`.
 
-Statut : **plan à valider, aucun code écrit.**
+Statut : plan validé le 21/10/2026. **Sous-lot a livré** (voir « Sous-lot a :
+choix provisoires » ci-dessous) ; sous-lots b, c, d à venir.
+
+### Sous-lot a : choix provisoires (en l'absence de réponse aux questions §5)
+
+- `CirPopulation` n'est pas une collection séparée : la population est
+  photographiée **dans** `CirSelection` (`population.source`, `population.ipe`,
+  `population.lignes`). Même traçabilité, un document de moins.
+- Circularisation **non bloquée** par le verrou (`ENDPOINTS_VERROUILLABLES`
+  inchangé) et utilisable avant la validation de la fiabilité IPE : bandeau
+  et état IPE figé avec la population.
+- Seuls Clients et Fournisseurs ont une population ; Avocats, Bailleurs et
+  Banques affichent « source à confirmer par CAC-CIR-01 ».
+- Solde d'un tiers = débit − crédit (convention du rapprochement IPE) ;
+  valeur de la population et valeur couverte en valeur absolue
+  (`TODO(spec: CAC-CIR-01)`).
+- Retenir / exclure un tiers, passer en confirmation négative : motif
+  d'au moins 15 caractères et utilisateur identifié ; aucune vérification
+  de rôle (« décision du Manager » enregistrée telle quelle).
+- Mémo : aperçu à l'écran, figé à la soumission (`CirMemo`, une version par
+  soumission), validé ou renvoyé en correction avec un commentaire d'au
+  moins 15 caractères ; la sélection est figée tant que le mémo est soumis
+  ou validé. Soumission refusée si le fichier source a été remplacé.
+- PDF, Word, « Verser au dossier de travail », méthode automatique, graine
+  et « Ajouter un tiers manuellement » : affichés, désactivés.
 
 ---
 

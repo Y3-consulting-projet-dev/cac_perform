@@ -15,6 +15,7 @@ import FiabiliteIpeView from '@/views/FiabiliteIpeView.vue';
 import FichiersComplementairesView from '@/views/FichiersComplementairesView.vue';
 import JournalAuditView from '@/views/JournalAuditView.vue';
 import ParametresView from '@/views/ParametresView.vue';
+import SelectionTiersView from '@/views/SelectionTiersView.vue';
 
 
 const axios = inject('axios');
@@ -613,7 +614,10 @@ const ECRAN_FIABILITE_IPE = 'fiabilite_ipe';
 const ECRAN_FICHIERS_COMPLEMENTAIRES = 'fichiers_complementaires';
 const ECRAN_JOURNAL_AUDIT = 'journal_audit';
 const ECRAN_PARAMETRES = 'parametres';
-const ECRANS_HORS_ETAPES = new Set([ECRAN_FIABILITE_IPE, ECRAN_FICHIERS_COMPLEMENTAIRES, ECRAN_JOURNAL_AUDIT, ECRAN_PARAMETRES]);
+const ECRAN_SELECTION_TIERS = 'selection_tiers';
+const ECRANS_HORS_ETAPES = new Set([
+  ECRAN_FIABILITE_IPE, ECRAN_FICHIERS_COMPLEMENTAIRES, ECRAN_JOURNAL_AUDIT, ECRAN_PARAMETRES, ECRAN_SELECTION_TIERS,
+]);
 
 function isValidStepKey(key) {
   return typeof key === 'string' && (stepKeys.value.has(key) || ECRANS_HORS_ETAPES.has(key));
@@ -717,7 +721,7 @@ const ipeSousTitre = computed(() => {
 ================================ */
 const ENTREES_A_VENIR = {
   circularisation: [
-    { cle: 'selection_tiers', libelle: 'Sélection des tiers', sousTitre: 'Module 2 · seuils SS/SP/TS, MUS', disponible: false },
+    { cle: ECRAN_SELECTION_TIERS, libelle: 'Sélection des tiers', sousTitre: 'Module 2 · seuils SS/SP/TS, MUS', disponible: true },
     { cle: 'courriers', libelle: 'Courriers', sousTitre: 'Module 3 · modèles, génération, envoi', disponible: false },
     { cle: 'suivi_reponses', libelle: 'Suivi des réponses', get sousTitre() { return cadenceRelances.value && `Relances ${cadenceRelances.value}`; }, disponible: false },
   ],
@@ -1082,6 +1086,15 @@ function showComponent(type, options = {}) {
   if (type === ECRAN_JOURNAL_AUDIT) {
     // Lecture seule de l'historique de la mission (page B).
     renderComponent.value = h(JournalAuditView, { missionId: props.missionId });
+    return;
+  }
+
+  if (type === ECRAN_SELECTION_TIERS) {
+    // Circularisation, sous-lot a : population, sélection manuelle, mémo (docs/PLAN_circularisation.md).
+    renderComponent.value = h(SelectionTiersView, {
+      missionId: props.missionId,
+      onOuvrirEcran: (ecran) => { if (ECRANS_HORS_ETAPES.has(ecran)) showComponent(ecran); },
+    });
     return;
   }
 
@@ -2638,9 +2651,22 @@ function formatAmount(value) {
     <!-- Circularisation : entre la Phase 2 et la Phase 3 (écrans à venir, non cliquables) -->
     <div v-if="phase.id === 2" class="p-3.5 rounded-xl bg-white/10 flex flex-col gap-2">
       <span class="px-1 py-1 font-bold">Circularisation</span>
+      <template v-for="entree in ENTREES_A_VENIR.circularisation" :key="entree.cle">
+      <!-- Écran disponible : cliquable, comme les étapes de la Phase 2 -->
       <div
-        v-for="entree in ENTREES_A_VENIR.circularisation"
-        :key="entree.cle"
+        v-if="entree.disponible"
+        :data-etape="entree.cle"
+        class="px-3 py-2.5 rounded-[10px] flex items-start justify-between gap-2 cursor-pointer transition text-[15px]"
+        :class="componentKey === entree.cle ? 'bg-white text-blue-ycube' : 'bg-blue-ycube hover:brightness-125'"
+        @click="showComponent(entree.cle)"
+      >
+        <span class="flex flex-col">
+          <span :class="componentKey === entree.cle ? 'font-bold' : ''">{{ entree.libelle }}</span>
+          <span class="text-[13px]" :class="componentKey === entree.cle ? 'text-gray-700' : 'text-white/60'">{{ entree.sousTitre }}</span>
+        </span>
+      </div>
+      <div
+        v-else
         class="px-3 py-2.5 rounded-[10px] bg-blue-ycube flex items-start justify-between gap-2 opacity-60 cursor-not-allowed"
         aria-disabled="true"
         :title="`${entree.libelle} : écran à venir`"
@@ -2651,6 +2677,7 @@ function formatAmount(value) {
         </span>
         <span class="shrink-0 text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/20">à venir</span>
       </div>
+      </template>
     </div>
   </template>
 

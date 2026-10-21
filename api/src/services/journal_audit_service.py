@@ -32,7 +32,8 @@ MODULE_IMPORT = "Import"
 MODULE_IPE = "Fiabilité IPE"
 # Seuls les modules qui existent aujourd'hui (Sélection des tiers, Courriers,
 # Suivi des réponses : à ajouter quand leurs écrans tracent leurs actions).
-MODULES = (MODULE_IMPORT, MODULE_IPE)
+MODULE_SELECTION = "Sélection des tiers"  # = circularisation_service.MODULE_JOURNAL
+MODULES = (MODULE_IMPORT, MODULE_IPE, MODULE_SELECTION)
 
 NON_IDENTIFIE = "Non identifié"
 # Valeur du filtre « Utilisateur » pour les entrées sans utilisateur enregistré.
@@ -221,13 +222,21 @@ def entrees_ipe(historique: List[Dict[str, Any]], remarques: List[Dict[str, Any]
     return entrees
 
 
-def assembler(mission: Dict[str, Any], documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def entrees_circularisation(journal: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Journal de la circularisation (CirJournal) : action et détail déjà rédigés à l'enregistrement."""
+    return [_entree(j.get("horodatage"), j.get("utilisateur_id"), j.get("module") or MODULE_SELECTION,
+                    j.get("action"), j.get("detail")) for j in journal or []]
+
+
+def assembler(mission: Dict[str, Any], documents: List[Dict[str, Any]],
+              journal_circularisation: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
     """Toutes les entrées de la mission, la plus récente d'abord."""
     ipe = mission.get("ipe") or {}
     entrees = (
         entrees_fichiers(documents)
         + entrees_remplacements_balance_generale(mission.get("balance_generale_remplacements") or [])
         + entrees_ipe(ipe.get("historique") or [], ipe.get("remarques") or [])
+        + entrees_circularisation(journal_circularisation)
     )
     # Tri stable : à horodatage égal, l'ordre d'enregistrement est conservé.
     return sorted(entrees, key=lambda e: e["horodatage"] or "", reverse=True)
@@ -301,7 +310,8 @@ def lire_journal(mission_id: str) -> List[Dict[str, Any]]:
         {"mission_id": mission_id, "type": {"$in": list(TYPES_FICHIERS_COMPLEMENTAIRES)}},
         {"balance": 1, "type": 1, "nom_fichier": 1, "version": 1, "date_import": 1, "utilisateur_id": 1, "retrait": 1},
     ))
-    return assembler(mission, documents)
+    journal_circularisation = list(db["CirJournal"].find({"mission_id": mission_id}))
+    return assembler(mission, documents, journal_circularisation)
 
 
 # --- Export Excel ------------------------------------------------------------

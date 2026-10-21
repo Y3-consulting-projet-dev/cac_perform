@@ -74,6 +74,9 @@ def supprimer(client_id, mission_id):
         # Fichiers importés pendant le test (sans marqueur) : seulement ceux
         # d'une mission de test, identifiée par son marqueur ci-dessus.
         balances += db["Balance"].delete_many({"mission_id": mission_id}).deleted_count
+        # Circularisation faite pendant le test (même condition : mission de test).
+        for collection in ("CirSelection", "CirMemo", "CirJournal"):
+            db[collection].delete_many({"mission_id": mission_id})
     resultat = {
         "balances": balances,
         "missions": db["Mission1"].delete_many({"$or": [{"_id": ObjectId(mission_id)}, {"id_client": client_id}], **MARQUEUR}).deleted_count,

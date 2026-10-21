@@ -29,6 +29,7 @@ from src.resources.import_resources import ImportResource
 from src.resources.ipe_resources import IpeResource
 from src.resources.journal_resources import JournalResource
 from src.resources.parametres_resources import ParametresResource
+from src.resources.circularisation_resources import CircularisationResource
 from src.mission import mission
 from src.services.verrou_ipe_service import (
     verifier_verrou_ipe,
@@ -244,6 +245,48 @@ def register_routes(app):
     def exporter_journal_audit(mission_id):
         """GET /api/v1/missions/<id>/journal/export - Export Excel du journal filtré"""
         return JournalResource.exporter(mission_id)
+
+    # --- Circularisation, sous-lot a (docs/PLAN_circularisation.md) ---
+
+    @mission_bp.route('/<mission_id>/circularisation', methods=['GET'])
+    def lire_circularisation(mission_id):
+        """GET /api/v1/missions/<id>/circularisation - État de la sélection des tiers (5 types), seuils de l'étape 5, état IPE"""
+        return CircularisationResource.lire(mission_id)
+
+    @mission_bp.route('/<mission_id>/circularisation/<type_tiers>/population', methods=['POST'])
+    def constituer_population_cir(mission_id, type_tiers):
+        """POST /api/v1/missions/<id>/circularisation/<type_tiers>/population - Photographie la population depuis le fichier actif"""
+        return CircularisationResource.constituer_population(mission_id, type_tiers)
+
+    @mission_bp.route('/<mission_id>/circularisation/<type_tiers>/tiers', methods=['PUT'])
+    def decider_tiers_cir(mission_id, type_tiers):
+        """PUT /api/v1/missions/<id>/circularisation/<type_tiers>/tiers - Retenir ou exclure un tiers (motif obligatoire)"""
+        return CircularisationResource.decider_tiers(mission_id, type_tiers)
+
+    @mission_bp.route('/<mission_id>/circularisation/<type_tiers>/mode', methods=['PUT'])
+    def definir_mode_cir(mission_id, type_tiers):
+        """PUT /api/v1/missions/<id>/circularisation/<type_tiers>/mode - Mode de confirmation (négatif : motif obligatoire)"""
+        return CircularisationResource.definir_mode(mission_id, type_tiers)
+
+    @mission_bp.route('/<mission_id>/circularisation/<type_tiers>/memo', methods=['GET'])
+    def lire_memo_cir(mission_id, type_tiers):
+        """GET /api/v1/missions/<id>/circularisation/<type_tiers>/memo - Aperçu du mémo de sélection"""
+        return CircularisationResource.lire_memo(mission_id, type_tiers)
+
+    @mission_bp.route('/<mission_id>/circularisation/<type_tiers>/memo/soumettre', methods=['POST'])
+    def soumettre_memo_cir(mission_id, type_tiers):
+        """POST /api/v1/missions/<id>/circularisation/<type_tiers>/memo/soumettre - Fige et soumet le mémo pour revue"""
+        return CircularisationResource.soumettre_memo(mission_id, type_tiers)
+
+    @mission_bp.route('/<mission_id>/circularisation/<type_tiers>/memo/validation', methods=['POST'])
+    def valider_memo_cir(mission_id, type_tiers):
+        """POST /api/v1/missions/<id>/circularisation/<type_tiers>/memo/validation - Valide le mémo soumis"""
+        return CircularisationResource.valider_memo(mission_id, type_tiers)
+
+    @mission_bp.route('/<mission_id>/circularisation/<type_tiers>/memo/demander-correction', methods=['POST'])
+    def demander_correction_memo_cir(mission_id, type_tiers):
+        """POST /api/v1/missions/<id>/circularisation/<type_tiers>/memo/demander-correction - Demande une correction du mémo"""
+        return CircularisationResource.demander_correction_memo(mission_id, type_tiers)
 
     # Enregistrer le blueprint mission
     app.register_blueprint(mission_bp)

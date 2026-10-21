@@ -129,3 +129,13 @@ def test_le_service_n_ecrit_jamais_en_base():
     source = inspect.getsource(journal)
     for ecriture in ("insert_", "update_", "delete_", "replace_one", "find_one_and", "bulk_write", "drop"):
         assert ecriture not in source
+
+
+def test_journal_de_la_circularisation():
+    entrees = journal.assembler({}, [], [{"horodatage": "2026-10-21T09:00:00+00:00", "utilisateur_id": "Auditeur Test",
+                                          "module": "Sélection des tiers", "action": "Tiers retenu",
+                                          "detail": "Fournisseurs · 4011A · « motif »"}])
+    assert entrees == [{"horodatage": "2026-10-21T09:00:00+00:00", "utilisateur": "Auditeur Test",
+                        "module": "Sélection des tiers", "action": "Tiers retenu",
+                        "detail": "Fournisseurs · 4011A · « motif »"}]
+    assert "Sélection des tiers" in journal.MODULES

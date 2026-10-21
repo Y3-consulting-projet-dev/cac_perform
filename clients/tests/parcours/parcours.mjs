@@ -223,6 +223,26 @@ async function parcours(navigateur, d) {
       if (actifs.length) throw new Error('bouton actif : ' + actifs[0].textContent.trim());
     })()`),
     { url: /step=parametres/, texte: "Modification réservée aux administrateurs, disponible avec l'authentification", barre: true })
+  // Circularisation, sous-lot a (docs/PLAN_circularisation.md) : population, tiers retenu avec motif, mémo soumis.
+  await etape(navigateur, 'Barre latérale : Sélection des tiers', () => cliquer(navigateur, 'Sélection des tiers'),
+    { url: /step=selection_tiers/, texte: 'Sélection des tiers à circulariser', barre: true })
+  await etape(navigateur, 'Sélection des tiers : « Constituer la population » (fournisseurs)',
+    () => cliquer(navigateur, 'Constituer la population'),
+    { url: /step=selection_tiers/, texte: 'FOURNISSEUR TEST', barre: true })
+  await etape(navigateur, 'Sélection des tiers : retenir 4011TEST avec un motif', async () => {
+    await navigateur.evaluer(`document.querySelector('[aria-label="Retenir 4011TEST"]').click()`)
+    await attendre(400)
+    await navigateur.evaluer(`(() => { const t = document.querySelector('.fixed textarea');
+      t.value = 'Solde le plus élevé de la population fournisseurs'; t.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+    await attendre(200)
+    await cliquer(navigateur, 'Confirmer')
+  }, { url: /step=selection_tiers/, texte: 'Ajout manuel', barre: true })
+  await etape(navigateur, 'Sélection des tiers : « Générer le mémo de sélection »', () => cliquer(navigateur, 'Générer le mémo de sélection'),
+    { url: /step=selection_tiers/, texte: '4. Ajouts et exclusions manuels', barre: true })
+  await etape(navigateur, 'Mémo : « Soumettre pour revue »', () => cliquer(navigateur, 'Soumettre pour revue'),
+    { url: /step=selection_tiers/, texte: 'Valider le mémo', barre: true })
+  await etape(navigateur, 'Mémo : « Retour à la sélection » (sélection figée)', () => cliquer(navigateur, 'Retour à la sélection'),
+    { url: /step=selection_tiers/, texte: 'Mémo soumis pour revue', barre: true })
   await etape(navigateur, 'Barre latérale : étape « Contrôle d’intangibilité »', () => navigateur.evaluer(`(() => {
       const el = [...document.querySelectorAll('span')].find((s) => s.textContent.trim().startsWith('Contrôle d') && s.textContent.includes('intangibilit'));
       if (!el) throw new Error('étape introuvable'); el.closest('[data-etape]').click() })()`),
@@ -230,7 +250,7 @@ async function parcours(navigateur, d) {
   // Entrées « à venir » (docs/PLAN_ecrans_lot1.md §1) : visibles, mais un clic ne change pas d'écran.
   await etape(navigateur, 'Barre latérale : cadence de relance lue sur le serveur', async () => {},
     { url: /step=intang/, texte: 'Relances J0 / J+15 / J+30 / J+45', barre: true })
-  for (const entree of ['Sélection des tiers', 'Courriers', 'Suivi des réponses']) {
+  for (const entree of ['Courriers', 'Suivi des réponses']) {
     await etape(navigateur, `Barre latérale : « ${entree} » à venir, non cliquable`, () => cliquer(navigateur, entree),
       { url: /step=intang/, texte: 'Circularisation', barre: true })
   }
