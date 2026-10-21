@@ -97,6 +97,9 @@ const LIBELLE = 'flex flex-col gap-1.5 text-sm font-semibold'
               <label v-for="s in parametres.rapprochements.seuils" :key="s.libelle" :class="LIBELLE">{{ s.libelle }}
                 <input :value="s.applique ? formaterMontant(s.valeur) : 'Non appliqué'" readonly :title="MENTION_LECTURE_SEULE"
                        :class="[CHAMP, s.applique ? '' : 'text-gray-500 italic']" />
+                <span class="text-xs font-normal text-gray-500">
+                  Cahier des charges §2.4 : {{ formaterMontant(s.propose) }} {{ s.propose_unite }} par défaut · non appliqué
+                </span>
               </label>
             </div>
             <p class="m-0 text-[13px] text-gray-500 flex flex-wrap items-center gap-2">

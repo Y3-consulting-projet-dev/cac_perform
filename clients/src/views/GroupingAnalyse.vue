@@ -8,6 +8,7 @@ import { useNotyf } from '@/composables/useNotyf';
 import * as XLSX from 'xlsx';
 import { obtenirEtatIpe } from '@/api/ipe.api';
 import { fraicheurDonneesV1 } from '@/api/imports.api';
+import { lireParametres } from '@/api/parametres.api';
 import { phraseBlocages } from '@/utils/circuitIpe';
 import { formatDateHeureFr } from '@/utils/formatDate';
 import FiabiliteIpeView from '@/views/FiabiliteIpeView.vue';
@@ -649,12 +650,22 @@ function isActiveStep(step) {
    d'affichage des étapes concernées quand applicable.
 ================================ */
 
-// Même liste que ENDPOINTS_VERROUILLABLES côté backend
-// (api/src/services/verrou_ipe_service.py), exprimée ici par clé d'étape
-// frontend. Décision métier à confirmer (docs/PLAN_verrou_IPE.md §3).
-const ETAPES_VERROUILLABLES = new Set([
-  'materialite', 'quantitatif', 'qualitatif', 'presentation', 'grouping', 'efi', 'revue',
-]);
+// Numéros des étapes verrouillables et cadence de relance : lus sur le
+// serveur (GET /api/v1/parametres, source unique : verrou_ipe_service.
+// ETAPES_VERROUILLABLES, parametres_service.CADENCE_RELANCES), jamais recopiés ici.
+const etapesVerrouillables = ref(new Set());
+const cadenceRelances = ref('');
+
+async function chargerParametres() {
+  try {
+    const parametres = await lireParametres();
+    etapesVerrouillables.value = new Set(parametres.etapes_verrou.bloquees.map((e) => e.etape));
+    cadenceRelances.value = parametres.circularisation.cadence.map((c) => c.valeur).join(' / ');
+  } catch (e) {
+    // Affichage seulement : le serveur reste juge du verrou (verifier_verrou_ipe).
+    console.error('Paramètres non chargés :', e.message);
+  }
+}
 
 const IPE_STATUT_LABELS = {
   anterieure_au_verrou: 'Antérieure au verrou',
@@ -708,7 +719,7 @@ const ENTREES_A_VENIR = {
   circularisation: [
     { cle: 'selection_tiers', libelle: 'Sélection des tiers', sousTitre: 'Module 2 · seuils SS/SP/TS, MUS', disponible: false },
     { cle: 'courriers', libelle: 'Courriers', sousTitre: 'Module 3 · modèles, génération, envoi', disponible: false },
-    { cle: 'suivi_reponses', libelle: 'Suivi des réponses', sousTitre: 'Relances J0 / J+15 / J+30 / J+45', disponible: false },
+    { cle: 'suivi_reponses', libelle: 'Suivi des réponses', get sousTitre() { return cadenceRelances.value && `Relances ${cadenceRelances.value}`; }, disponible: false },
   ],
   bas: [
     { cle: ECRAN_JOURNAL_AUDIT, libelle: "Journal d'audit", disponible: true },
@@ -722,7 +733,7 @@ const RESUMES_PHASES = {
 };
 
 function etapeEstVerrouillee(step) {
-  return ipeVerrouApplicable.value && !ipeFiabiliteValidee.value && ETAPES_VERROUILLABLES.has(step.key);
+  return ipeVerrouApplicable.value && !ipeFiabiliteValidee.value && etapesVerrouillables.value.has(step.id);
 }
 
 // Affiché dans la zone principale : la barre latérale reste visible.
@@ -765,6 +776,7 @@ onMounted(async () => {
 
   chargerEtatIpe();
   chargerFraicheur();
+  chargerParametres();
 });
 
 /* ================================

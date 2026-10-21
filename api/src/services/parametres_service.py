@@ -33,6 +33,12 @@ CADENCE_RELANCES = (
     {"libelle": "Alternative", "jour": 45},
 )
 
+# Seuils d'écart PROPOSÉS par défaut par le cahier des charges §2.4, NON
+# appliqués à ce jour : la tolérance utilisée reste
+# rapprochement_ipe_service.TOLERANCE_ECART_IPE (0). Affichés pour information.
+# TODO(spec: CAC-IPE-01 §2) : seuils définitifs et leur application.
+SEUILS_PROPOSES_CAHIER_DES_CHARGES = {"absolu_fcfa": 500_000, "pourcentage": 0.5}
+
 # Étapes du workflow jamais bloquées par le verrou (avant l'ouverture des
 # cycles : CLAUDE.md, séquencement métier), affichées pour compléter la liste.
 ETAPES_NON_VERROUILLEES = (
@@ -78,12 +84,15 @@ def lire_parametres() -> Dict[str, Any]:
             "immobilisations_source": _source(SPEC_A_CONFIRMER, "Périmètre IPE-3 à confirmer par CAC-IPE-01 §3"),
             "seuils": [
                 {"libelle": "Seuil d'écart absolu (FCFA)", "valeur": rapprochement.TOLERANCE_ECART_IPE,
-                 "applique": True},
-                {"libelle": "Seuil d'écart significatif (%)", "valeur": None, "applique": False},
+                 "applique": True, "propose_unite": "FCFA",
+                 "propose": SEUILS_PROPOSES_CAHIER_DES_CHARGES["absolu_fcfa"]},
+                {"libelle": "Seuil d'écart significatif (%)", "valeur": None, "applique": False,
+                 "propose_unite": "%", "propose": SEUILS_PROPOSES_CAHIER_DES_CHARGES["pourcentage"]},
             ],
             "seuils_source": _source(DECISION_PROVISOIRE,
-                                     "Aucune tolérance : tout écart non nul est un écart. "
-                                     "Seuil en % non défini · à confirmer par CAC-IPE-01 §2"),
+                                     "Aucune tolérance appliquée : tout écart non nul est un écart. "
+                                     "Le cahier des charges §2.4 propose 0,5 % et 500 000 FCFA par défaut, "
+                                     "non appliqués à ce jour · à confirmer par CAC-IPE-01 §2"),
         },
         "causes_ecart": {
             "valeurs": list(revue.CAUSES_ECART),

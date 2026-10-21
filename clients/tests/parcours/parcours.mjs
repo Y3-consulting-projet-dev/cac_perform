@@ -228,6 +228,8 @@ async function parcours(navigateur, d) {
       if (!el) throw new Error('étape introuvable'); el.closest('[data-etape]').click() })()`),
     { url: /step=intang/, barre: true })
   // Entrées « à venir » (docs/PLAN_ecrans_lot1.md §1) : visibles, mais un clic ne change pas d'écran.
+  await etape(navigateur, 'Barre latérale : cadence de relance lue sur le serveur', async () => {},
+    { url: /step=intang/, texte: 'Relances J0 / J+15 / J+30 / J+45', barre: true })
   for (const entree of ['Sélection des tiers', 'Courriers', 'Suivi des réponses']) {
     await etape(navigateur, `Barre latérale : « ${entree} » à venir, non cliquable`, () => cliquer(navigateur, entree),
       { url: /step=intang/, texte: 'Circularisation', barre: true })
