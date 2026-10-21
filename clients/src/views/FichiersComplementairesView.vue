@@ -30,7 +30,7 @@ import {
 import { formatDateHeureFr } from '@/utils/formatDate'
 import {
   controlesLisibles, nombreAlertes, phraseSynthese, totauxLisibles, colonnesComptes,
-  LIBELLES_DONNEES, libellePerimetre, formatMontant, estImmobilisations, formatSens,
+  formatMontant, estImmobilisations, formatSens,
 } from '@/utils/lectureFichierComplementaire'
 
 // `integre` : écran affiché dans la zone principale de GroupingAnalyse.vue,
@@ -151,9 +151,6 @@ const alertesDetail = computed(() => controlesDetail.value.filter((c) => c.statu
 const syntheseDetail = computed(() => (detailOuvert.value ? phraseSynthese(detailOuvert.value) : ''))
 const totauxDetail = computed(() => (detailOuvert.value ? totauxLisibles(detailOuvert.value) : { lignes: [] }))
 const colonnesDetail = computed(() => (detailOuvert.value ? colonnesComptes(detailOuvert.value) : []))
-const lignesTotalEnEcart = computed(() =>
-  (detailOuvert.value?.controles_preliminaires?.bouclage_total?.resultats || []).filter((r) => !r.ok),
-)
 
 async function voirDetail(fichierId) {
   try {
@@ -810,68 +807,6 @@ function back() {
           </div>
           <p class="text-xs text-gray-500">D = solde débiteur, C = solde créditeur.</p>
         </div>
-
-        <!-- e) Détail technique, replié -->
-        <details class="border-t pt-3 text-xs text-gray-600">
-          <summary class="cursor-pointer font-semibold text-blue-ycube">Afficher le détail technique</summary>
-          <div class="flex flex-col gap-4 mt-3">
-            <div>
-              <p class="font-semibold text-gray-700">Lignes écartées</p>
-              <p v-if="!detailOuvert.controles_preliminaires?.lignes_ecartees?.nb" class="text-gray-500">Aucune ligne écartée.</p>
-              <template v-else>
-                <p>Lignes de total ou de sous-total du fichier (ou lignes sans numéro), écartées car ce ne sont pas des comptes :</p>
-                <ul class="list-disc ml-4 mt-1">
-                  <li v-for="e in detailOuvert.controles_preliminaires.lignes_ecartees.lignes" :key="e.ligne_excel">
-                    Ligne Excel {{ e.ligne_excel }} :
-                    <template v-if="e.motif === 'sous_total' || e.motif === 'sous_total_ecarte_par_l_auditeur'">
-                      sous-total {{ e.contenu?.numero_compte }} « {{ e.contenu?.libelle || 'sans libellé' }} »
-                      (résume {{ e.contenu?.nb_comptes_detail }} comptes du fichier{{ e.motif === 'sous_total_ecarte_par_l_auditeur' ? ', écarté sur décision de l\'auditeur' : '' }})
-                    </template>
-                    <template v-else>{{ e.contenu?.code_entite || e.contenu?.libelle_compte || e.contenu?.libelle || '(sans libellé)' }}</template>
-                  </li>
-                </ul>
-              </template>
-            </div>
-
-            <div v-if="lignesTotalEnEcart.length">
-              <p class="font-semibold text-gray-700">Comparaison des lignes de total en écart</p>
-              <div v-for="r in lignesTotalEnEcart" :key="r.ligne_excel" class="mt-1">
-                <p>Ligne Excel {{ r.ligne_excel }} ({{ r.libelle || 'sans libellé' }}) :</p>
-                <ul class="ml-4">
-                  <li v-for="(res, perimetre) in r.par_perimetre" :key="perimetre">
-                    Comparée à {{ libellePerimetre(perimetre) }} :
-                    <span v-for="(c, champ) in res.comparaisons" :key="champ" class="mr-2" :class="c.ok ? 'text-green-700' : 'text-red-600'">
-                      {{ LIBELLES_DONNEES[champ] || champ }} {{ c.ok ? 'OK' : formatMontant(c.valeur_fichier) + ' ≠ ' + formatMontant(c.somme_calculee) }}
-                    </span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div v-if="detailOuvert.mapping_utilise">
-              <p class="font-semibold text-gray-700 mb-1">Correspondance des colonnes</p>
-              <table class="min-w-full text-xs">
-                <thead class="bg-blue-ycube text-white text-left">
-                  <tr class="h-8">
-                    <th class="px-2">Colonne du fichier</th>
-                    <th class="px-2"></th>
-                    <th class="px-2">Donnée</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(colonne, champ) in detailOuvert.mapping_utilise" :key="champ" class="border-b h-8">
-                    <td class="px-2">{{ colonne }}</td>
-                    <td class="px-2 text-gray-400">→</td>
-                    <td class="px-2">
-                      {{ LIBELLES_DONNEES[champ] || champ }}
-                      <span class="text-gray-400 font-mono">({{ champ }})</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </details>
       </div>
     </div>
   </div>

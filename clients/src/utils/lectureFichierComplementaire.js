@@ -26,36 +26,6 @@ function formatSigne(montant) {
   return Number(montant) >= 0 ? formatSens(montant, 0) : formatSens(0, -montant)
 }
 
-// Libellés lisibles des données (correspondance des colonnes, détail technique).
-export const LIBELLES_DONNEES = {
-  code_entite: 'Entité',
-  numero_compte: 'Numéro de compte',
-  numero: 'Numéro de compte',
-  libelle_compte: 'Libellé du compte',
-  libelle: 'Libellé du compte',
-  montant: 'Montant (signé)',
-  solde_ouverture_debit: "Solde d'ouverture — débit",
-  solde_ouverture_credit: "Solde d'ouverture — crédit",
-  mouvement_debit: 'Mouvements — débit',
-  mouvement_credit: 'Mouvements — crédit',
-  solde_mouvement_debit: 'Solde des mouvements — débit',
-  solde_mouvement_credit: 'Solde des mouvements — crédit',
-  solde_final_debit: 'Solde final — débit',
-  solde_final_credit: 'Solde final — crédit',
-  debit_initial: "Solde d'ouverture — débit",
-  credit_initial: "Solde d'ouverture — crédit",
-  debit_mvt: 'Mouvements — débit',
-  credit_mvt: 'Mouvements — crédit',
-  debit_fin: 'Solde final — débit',
-  credit_fin: 'Solde final — crédit',
-  code_bien: 'Code du bien',
-  libelle_bien: 'Désignation du bien',
-  categorie: 'Catégorie',
-  valeur_brute: 'Valeur brute',
-  amortissements_cumules: 'Amortissements cumulés',
-  valeur_nette: 'Valeur nette',
-}
-
 const LIBELLES_TOTAUX = {
   ouverture: "Solde d'ouverture",
   mouvements: 'Mouvements de la période',
@@ -68,16 +38,6 @@ const LIBELLES_SOMMES_IMMOBILISATIONS = {
   valeur_brute: 'Valeurs brutes',
   amortissements_cumules: 'Amortissements cumulés',
   valeur_nette: 'Valeurs nettes',
-}
-
-const PERIMETRES = {
-  toutes_les_lignes: 'tous les comptes',
-  comptes_bilan: 'les comptes de bilan (classes 1 à 5)',
-  comptes_gestion: 'les comptes de gestion (classes 6 à 8)',
-}
-
-export function libellePerimetre(cle) {
-  return PERIMETRES[cle] || cle
 }
 
 // D'après le CONTENU (valeur brute présente), pas la carte choisie : une
