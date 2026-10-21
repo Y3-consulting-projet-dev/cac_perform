@@ -54,6 +54,8 @@ Toujours dire **« poste significatif »**. Ne jamais dire « PRAS ».
 
 Relevée sur le code réel de `ClientSpace.vue`, `ClientsView.vue`, `MissionsView.vue` et `GroupingAnalyse.vue` — pas inventée. Tout nouvel écran V2 doit s'y conformer ; ne pas introduire une nouvelle convention sans la documenter ici.
 
+**Maquettes (`docs/maquettes/`) et charte — règle définitive** : la maquette fait foi pour la **disposition** (ordre des cartes, panneau latéral, largeurs, espacements, arrondis, tailles de police) ; la charte ci-dessous fait foi pour les **couleurs** et la **police**. Les couleurs et la police des maquettes sont des estimations faites à partir de captures d'écran : ne jamais les reprendre (pas de jeton de couleur propre aux maquettes, pas de police propre à un écran).
+
 **Palette** (définie en `@theme` CSS, `clients/src/assets/style.css` — Tailwind v4, pas `tailwind.config.js`) :
 - `blue-ycube` `#043C5D` — couleur principale (sidebar, en-têtes de tableau, titres, boutons primaires). Variantes : `blue-ycube-1` `#053D5E`, `blue-ycube-2` `#8faadc`, `blue-ycube-3` `#156082`.
 - `green-ycube` `#589654` / `green-ycube-2` `#7FC241` — vert (actions positives, validation).

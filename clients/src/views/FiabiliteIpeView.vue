@@ -58,12 +58,11 @@ const IPE_STATUT_LABELS = {
 // Statuts du circuit de revue (docs/PLAN_verrou_IPE.md) — badge dédié, même
 // palette que les statuts de mission (MissionsView.vue) : gris neutre, orange
 // en cours de traitement, rouge correction demandée, vert validé.
-// Couleurs de la maquette 1_Fiabilite_IPE (jetons maquette-*) ; « Validé » / « OK » / « Qualifiée » :
-// absents de la maquette, vert de la charte conservé.
+// Couleurs des badges de la charte (CLAUDE.md) : positif vert, écart rouge, attente orange, neutre gris.
 const STATUT_CIRCUIT_INFO = {
-  en_cours: { label: 'En cours', classe: 'bg-maquette-gris text-maquette-ardoise' },
-  soumis_pour_revue: { label: 'Soumis pour revue', classe: 'bg-maquette-attente-fond text-maquette-attente' },
-  en_attente_correction: { label: 'En attente de correction', classe: 'bg-maquette-ecart-fond text-maquette-ecart' },
+  en_cours: { label: 'En cours', classe: 'bg-gray-100 text-gray-700' },
+  soumis_pour_revue: { label: 'Soumis pour revue', classe: 'bg-orange-100 text-orange-700' },
+  en_attente_correction: { label: 'En attente de correction', classe: 'bg-red-100 text-red-700' },
   valide: { label: 'Validé', classe: 'bg-green-100 text-green-700' },
 }
 
@@ -73,8 +72,8 @@ const STATUT_CIRCUIT_INFO = {
 // mission (MissionsView.vue) — charte d'interface, CLAUDE.md.
 const STATUT_MODULE_INFO = {
   ok: { label: 'OK', classe: 'bg-green-100 text-green-700' },
-  ecart: { label: 'Écart', classe: 'bg-maquette-ecart-fond text-maquette-ecart' },
-  non_evaluable: { label: 'Non évaluable', classe: 'bg-maquette-gris text-maquette-ardoise' },
+  ecart: { label: 'Écart', classe: 'bg-red-100 text-red-700' },
+  non_evaluable: { label: 'Non évaluable', classe: 'bg-gray-100 text-gray-700' },
 }
 
 // "Validation manager" renommé en "Validation" tant que le rôle de qui
@@ -123,8 +122,8 @@ function libelleLigneEcart(module, ligne) {
 }
 
 const TYPE_REMARQUE_INFO = {
-  information: { label: 'Information', classe: 'bg-maquette-attente-fond text-maquette-attente' },
-  demande_correction: { label: 'Demande de correction', classe: 'bg-maquette-ecart-fond text-maquette-ecart' },
+  information: { label: 'Information', classe: 'bg-orange-100 text-orange-700' },
+  demande_correction: { label: 'Demande de correction', classe: 'bg-red-100 text-red-700' },
 }
 
 // Numéro affiché d'un compte collectif : celui de la balance générale (« 401000 », maquette),
@@ -743,34 +742,34 @@ function back() {
 </script>
 
 <template>
-  <!-- Mise en page et couleurs de la maquette docs/maquettes/1_Fiabilite_IPE.html (référence visuelle,
-       avant la charte) : jetons maquette-* de style.css, police Nunito Sans. Aucune logique changée. -->
-  <div class="h-full w-full overflow-y-auto bg-maquette-fond font-maquette text-maquette-texte">
+  <!-- Disposition de la maquette docs/maquettes/1_Fiabilite_IPE.html ; couleurs et police de la charte
+       (CLAUDE.md, section charte d'interface). -->
+  <div class="h-full w-full overflow-y-auto bg-[#f5f7fa] text-gray-800">
     <div class="p-7 flex flex-col gap-5">
 
       <!-- En-tête : carte centrée (maquette) ; « Retour » seulement hors de la barre latérale -->
-      <section class="relative bg-white rounded-[14px] shadow-[0_1px_3px_rgba(15,58,90,0.08)] px-7 py-6 flex flex-col gap-1.5 text-center">
+      <section class="relative bg-white rounded-[14px] shadow px-7 py-6 flex flex-col gap-1.5 text-center">
         <button
           v-if="!integre"
-          class="absolute left-7 top-1/2 -translate-y-1/2 text-maquette-marine font-semibold hover:underline flex items-center gap-2"
+          class="absolute left-7 top-1/2 -translate-y-1/2 text-blue-ycube font-semibold hover:underline flex items-center gap-2"
           @click="back"
         >
           <i class="fa-solid fa-arrow-left"></i> Retour
         </button>
-        <h1 class="m-0 text-[26px] font-bold text-maquette-marine">Fiabilité IPE</h1>
-        <p class="m-0 text-maquette-texte-doux">{{ sousTitreEnTete }}</p>
+        <h1 class="m-0 text-[26px] font-bold text-blue-ycube">Fiabilité IPE</h1>
+        <p class="m-0 text-gray-500">{{ sousTitreEnTete }}</p>
       </section>
 
       <!-- Circuit de revue (docs/PLAN_ecrans_lot1.md §2.1) : quatre étapes, l'étape en cours mise en avant ;
            seules les actions du statut courant, l'action attendue visible avec la raison du blocage.
            Le serveur reste juge (revue_ipe_service). TODO(décision) : qui peut soumettre, valider,
            demander une correction n'est pas vérifié. -->
-      <section v-if="ipeEtat" class="bg-white rounded-[14px] shadow-[0_1px_3px_rgba(15,58,90,0.08)] px-7 py-6 flex flex-col gap-[18px]">
+      <section v-if="ipeEtat" class="bg-white rounded-[14px] shadow px-7 py-6 flex flex-col gap-[18px]">
         <div class="flex items-center justify-between gap-3 flex-wrap">
-          <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-maquette-marine">Circuit de revue</h2>
+          <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-blue-ycube">Circuit de revue</h2>
           <span
             class="px-3 py-1 rounded-full text-[13px] font-semibold"
-            :class="ipeEtat.verrou_applicable ? (STATUT_CIRCUIT_INFO[statutCircuit]?.classe || 'bg-maquette-gris text-maquette-ardoise') : 'bg-maquette-gris text-maquette-ardoise'"
+            :class="ipeEtat.verrou_applicable ? (STATUT_CIRCUIT_INFO[statutCircuit]?.classe || 'bg-gray-100 text-gray-700') : 'bg-gray-100 text-gray-700'"
             :title="ipeEtat.verrou_applicable ? '' : 'Mission antérieure à l\'activation du verrou IPE : jamais bloquée, ce rapprochement reste informatif.'"
           >
             {{ IPE_STATUT_LABELS[ipeEtat.statut_affiche] || 'Non commencé' }}
@@ -782,40 +781,40 @@ function back() {
             v-for="(etape, i) in ETAPES_CIRCUIT"
             :key="etape.cle"
             class="px-3.5 py-3 rounded-[10px] text-sm flex items-center gap-2"
-            :class="statutCircuit === etape.cle ? 'bg-maquette-marine text-white font-bold' : 'bg-maquette-gris text-maquette-ardoise font-semibold'"
+            :class="statutCircuit === etape.cle ? 'bg-blue-ycube text-white font-bold' : 'bg-gray-100 text-gray-700 font-semibold'"
             :aria-current="statutCircuit === etape.cle ? 'step' : null"
           >
-            <i v-if="etapesFranchies.has(etape.cle)" class="fa-solid fa-check text-maquette-vert"></i>
+            <i v-if="etapesFranchies.has(etape.cle)" class="fa-solid fa-check text-green-ycube-2"></i>
             {{ i + 1 }} · {{ etape.libelle }}
           </li>
         </ol>
 
-        <p v-if="!ipeEtat.verrou_applicable" class="m-0 -mt-1.5 text-[13px] text-maquette-texte-doux">
+        <p v-if="!ipeEtat.verrou_applicable" class="m-0 -mt-1.5 text-[13px] text-gray-500">
           Mission antérieure à l'activation du verrou IPE : jamais bloquée, ce rapprochement reste informatif.
         </p>
 
         <div class="flex items-center gap-3 flex-wrap">
           <template v-if="statutCircuit === 'en_cours' || statutCircuit === 'en_attente_correction'">
             <button
-              class="h-[46px] px-[22px] rounded-[10px] bg-maquette-marine text-white text-[15px] font-bold hover:bg-maquette-marine-fonce transition disabled:bg-maquette-champ disabled:text-maquette-ardoise disabled:cursor-not-allowed"
+              class="h-[46px] px-[22px] rounded-[10px] bg-blue-ycube text-white text-[15px] font-bold hover:bg-blue-900 transition disabled:bg-gray-300 disabled:text-gray-700 disabled:cursor-not-allowed"
               :disabled="ipeEvaluationEnCours"
               @click="lancerEvaluationIpe"
             >
               {{ ipeEvaluationEnCours ? 'Rapprochement en cours...' : (rapprochementLance ? 'Relancer le rapprochement' : 'Lancer le rapprochement') }}
             </button>
             <button
-              class="h-[46px] px-[22px] rounded-[10px] bg-maquette-marine text-white text-[15px] font-bold hover:bg-maquette-marine-fonce transition disabled:bg-maquette-champ disabled:text-maquette-ardoise disabled:cursor-not-allowed"
+              class="h-[46px] px-[22px] rounded-[10px] bg-blue-ycube text-white text-[15px] font-bold hover:bg-blue-900 transition disabled:bg-gray-300 disabled:text-gray-700 disabled:cursor-not-allowed"
               :disabled="soumissionEnCours || !peutSoumettre"
               @click="soumettrePourRevue"
             >
               {{ soumissionEnCours ? 'Soumission en cours...' : 'Soumettre pour revue' }}
             </button>
-            <span v-if="raisonSoumission" class="text-sm text-maquette-attente bg-maquette-attente-fond px-3 py-2 rounded-lg">{{ raisonSoumission }}</span>
+            <span v-if="raisonSoumission" class="text-sm text-orange-700 bg-orange-100 px-3 py-2 rounded-lg">{{ raisonSoumission }}</span>
           </template>
 
           <template v-else-if="statutCircuit === 'soumis_pour_revue'">
             <button
-              class="h-[46px] px-[22px] rounded-[10px] border border-maquette-ecart bg-white text-maquette-ecart text-[15px] font-bold hover:bg-maquette-ecart-fond transition disabled:border-maquette-champ disabled:text-maquette-ardoise disabled:bg-white disabled:cursor-not-allowed"
+              class="h-[46px] px-[22px] rounded-[10px] border border-red-500 bg-white text-red-700 text-[15px] font-bold hover:bg-red-100 transition disabled:border-gray-300 disabled:text-gray-700 disabled:bg-white disabled:cursor-not-allowed"
               :disabled="!peutDemanderCorrection"
               :title="!utilisateurIdentifie ? 'Utilisateur non identifié : impossible de créer une demande de correction' : ''"
               @click="ouvrirDemandeCorrection"
@@ -823,21 +822,21 @@ function back() {
               Demander une correction
             </button>
             <button
-              class="h-[46px] px-[22px] rounded-[10px] bg-maquette-vert text-white text-[15px] font-bold hover:brightness-95 transition disabled:bg-maquette-champ disabled:text-maquette-ardoise disabled:cursor-not-allowed"
+              class="h-[46px] px-[22px] rounded-[10px] bg-green-ycube-2 text-white text-[15px] font-bold hover:bg-green-ycube transition disabled:bg-gray-300 disabled:text-gray-700 disabled:cursor-not-allowed"
               :disabled="ipeValidationEnCours || !peutValider"
               @click="ouvrirConfirmationValidation"
             >
               Valider la fiabilité IPE
             </button>
-            <span v-if="raisonValidation" class="text-sm text-maquette-attente bg-maquette-attente-fond px-3 py-2 rounded-lg">{{ raisonValidation }}</span>
-            <span v-if="!utilisateurIdentifie" class="text-sm text-maquette-ardoise bg-maquette-gris px-3 py-2 rounded-lg">
+            <span v-if="raisonValidation" class="text-sm text-orange-700 bg-orange-100 px-3 py-2 rounded-lg">{{ raisonValidation }}</span>
+            <span v-if="!utilisateurIdentifie" class="text-sm text-gray-700 bg-gray-100 px-3 py-2 rounded-lg">
               Connectez-vous pour demander une correction
             </span>
           </template>
 
           <template v-else-if="statutCircuit === 'valide'">
             <button
-              class="h-[46px] px-[22px] rounded-[10px] border border-maquette-champ bg-white text-maquette-ardoise text-[15px] font-bold hover:bg-maquette-gris transition disabled:cursor-not-allowed disabled:opacity-60"
+              class="h-[46px] px-[22px] rounded-[10px] border border-gray-300 bg-white text-gray-700 text-[15px] font-bold hover:bg-gray-100 transition disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="ipeValidationEnCours"
               @click="ouvrirConfirmationInvalidation"
             >
@@ -847,7 +846,7 @@ function back() {
 
           <a
             href="#commentaires-generaux"
-            class="ml-auto text-sm font-semibold text-maquette-marine underline hover:text-maquette-marine-fonce"
+            class="ml-auto text-sm font-semibold text-blue-ycube underline hover:text-blue-900"
             @click.prevent="allerAuxCommentairesGeneraux"
           >
             Commentaires généraux ({{ remarquesGenerales.length }})
@@ -855,67 +854,67 @@ function back() {
         </div>
 
         <!-- Confirmations (commentaire obligatoire, enregistré dans l'historique) -->
-        <div v-if="confirmationDemandeCorrectionOuverte" class="rounded-xl bg-maquette-ecart-fond p-4 flex flex-col gap-2.5">
-          <p class="m-0 text-[15px] font-bold text-maquette-ecart">Confirmer la demande de correction</p>
+        <div v-if="confirmationDemandeCorrectionOuverte" class="rounded-xl bg-red-100 p-4 flex flex-col gap-2.5">
+          <p class="m-0 text-[15px] font-bold text-red-700">Confirmer la demande de correction</p>
           <textarea
             v-model="commentaireDemandeCorrection"
             rows="2"
-            class="text-[15px] px-3 py-2.5 border border-maquette-champ rounded-[10px] bg-white resize-y focus:outline-none focus:ring-2 focus:ring-maquette-marine"
+            class="text-[15px] px-3 py-2.5 border border-gray-300 rounded-[10px] bg-white resize-y focus:outline-none focus:ring-2 focus:ring-blue-ycube"
             placeholder="Commentaire (obligatoire, enregistré dans l'historique)"
           ></textarea>
           <div class="flex gap-3">
             <button
-              class="h-11 px-[18px] rounded-[10px] bg-maquette-ecart text-white font-bold hover:brightness-95 transition disabled:opacity-50"
+              class="h-11 px-[18px] rounded-[10px] bg-red-500 text-white font-bold hover:bg-red-600 transition disabled:opacity-50"
               :disabled="demandeCorrectionEnCours"
               @click="confirmerDemandeCorrection"
             >
               Confirmer
             </button>
-            <button class="h-11 px-[18px] rounded-[10px] border border-maquette-champ bg-white text-maquette-ardoise font-bold hover:bg-maquette-gris transition" @click="annulerDemandeCorrection">
+            <button class="h-11 px-[18px] rounded-[10px] border border-gray-300 bg-white text-gray-700 font-bold hover:bg-gray-100 transition" @click="annulerDemandeCorrection">
               Annuler
             </button>
           </div>
         </div>
 
-        <div v-if="confirmationValidationOuverte" class="rounded-xl bg-maquette-clair p-4 flex flex-col gap-2.5">
-          <p class="m-0 text-[15px] font-bold text-maquette-marine">Confirmer la validation de la fiabilité IPE</p>
+        <div v-if="confirmationValidationOuverte" class="rounded-xl bg-gray-50 p-4 flex flex-col gap-2.5">
+          <p class="m-0 text-[15px] font-bold text-blue-ycube">Confirmer la validation de la fiabilité IPE</p>
           <textarea
             v-model="commentaireValidation"
             rows="2"
-            class="text-[15px] px-3 py-2.5 border border-maquette-champ rounded-[10px] bg-white resize-y focus:outline-none focus:ring-2 focus:ring-maquette-marine"
+            class="text-[15px] px-3 py-2.5 border border-gray-300 rounded-[10px] bg-white resize-y focus:outline-none focus:ring-2 focus:ring-blue-ycube"
             placeholder="Commentaire (obligatoire, enregistré dans l'historique)"
           ></textarea>
           <div class="flex gap-3">
             <button
-              class="h-11 px-[18px] rounded-[10px] bg-maquette-vert text-white font-bold hover:brightness-95 transition disabled:opacity-50"
+              class="h-11 px-[18px] rounded-[10px] bg-green-ycube-2 text-white font-bold hover:bg-green-ycube transition disabled:opacity-50"
               :disabled="ipeValidationEnCours"
               @click="confirmerValidation"
             >
               Confirmer
             </button>
-            <button class="h-11 px-[18px] rounded-[10px] border border-maquette-champ bg-white text-maquette-ardoise font-bold hover:bg-maquette-gris transition" @click="annulerValidation">
+            <button class="h-11 px-[18px] rounded-[10px] border border-gray-300 bg-white text-gray-700 font-bold hover:bg-gray-100 transition" @click="annulerValidation">
               Annuler
             </button>
           </div>
         </div>
 
-        <div v-if="confirmationInvalidationOuverte" class="rounded-xl bg-maquette-clair p-4 flex flex-col gap-2.5">
-          <p class="m-0 text-[15px] font-bold text-maquette-ardoise">Confirmer l'invalidation de la fiabilité IPE ?</p>
+        <div v-if="confirmationInvalidationOuverte" class="rounded-xl bg-gray-50 p-4 flex flex-col gap-2.5">
+          <p class="m-0 text-[15px] font-bold text-gray-700">Confirmer l'invalidation de la fiabilité IPE ?</p>
           <textarea
             v-model="commentaireInvalidation"
             rows="2"
-            class="text-[15px] px-3 py-2.5 border border-maquette-champ rounded-[10px] bg-white resize-y focus:outline-none focus:ring-2 focus:ring-maquette-marine"
+            class="text-[15px] px-3 py-2.5 border border-gray-300 rounded-[10px] bg-white resize-y focus:outline-none focus:ring-2 focus:ring-blue-ycube"
             placeholder="Commentaire (obligatoire, enregistré dans l'historique)"
           ></textarea>
           <div class="flex gap-3">
             <button
-              class="h-11 px-[18px] rounded-[10px] bg-maquette-marine text-white font-bold hover:bg-maquette-marine-fonce transition disabled:opacity-50"
+              class="h-11 px-[18px] rounded-[10px] bg-blue-ycube text-white font-bold hover:bg-blue-900 transition disabled:opacity-50"
               :disabled="ipeValidationEnCours"
               @click="confirmerInvalidation"
             >
               Confirmer
             </button>
-            <button class="h-11 px-[18px] rounded-[10px] border border-maquette-champ bg-white text-maquette-ardoise font-bold hover:bg-maquette-gris transition" @click="annulerInvalidation">
+            <button class="h-11 px-[18px] rounded-[10px] border border-gray-300 bg-white text-gray-700 font-bold hover:bg-gray-100 transition" @click="annulerInvalidation">
               Annuler
             </button>
           </div>
@@ -927,12 +926,12 @@ function back() {
         <div class="flex-[999_1_560px] min-w-0 flex flex-col gap-5">
 
           <!-- Synthèse (§2.2) : un clic sur une ligne choisit le module affiché en détail -->
-          <section class="bg-white rounded-[14px] shadow-[0_1px_3px_rgba(15,58,90,0.08)] px-7 py-6 flex flex-col gap-3.5">
-            <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-maquette-marine">Synthèse</h2>
+          <section class="bg-white rounded-[14px] shadow px-7 py-6 flex flex-col gap-3.5">
+            <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-blue-ycube">Synthèse</h2>
             <div class="overflow-x-auto">
               <table class="w-full border-collapse text-[15px]">
                 <thead>
-                  <tr class="bg-maquette-marine text-white text-left">
+                  <tr class="bg-blue-ycube text-white text-left">
                     <th class="px-4 py-3.5">Module</th>
                     <th class="px-4 py-3.5">Fichier</th>
                     <th class="px-4 py-3.5">Statut</th>
@@ -945,24 +944,24 @@ function back() {
                     :key="ligne.cle"
                     class="transition"
                     :class="[
-                      i < syntheseModules.length - 1 ? 'border-b border-maquette-trait' : '',
-                      ipeEtat.modules?.[ligne.cle] ? 'cursor-pointer hover:bg-maquette-clair' : '',
-                      cleModuleAffiche === ligne.cle ? 'bg-maquette-clair' : '',
+                      i < syntheseModules.length - 1 ? 'border-b border-gray-200' : '',
+                      ipeEtat.modules?.[ligne.cle] ? 'cursor-pointer hover:bg-gray-50' : '',
+                      cleModuleAffiche === ligne.cle ? 'bg-gray-50' : '',
                     ]"
                     :aria-selected="cleModuleAffiche === ligne.cle"
                     @click="ipeEtat.modules?.[ligne.cle] && (moduleChoisi = ligne.cle)"
                   >
                     <td class="px-4 py-3.5" :class="cleModuleAffiche === ligne.cle ? 'font-bold' : ''">{{ ligne.libelle }}</td>
-                    <td class="px-4 py-3.5 text-maquette-texte-doux">{{ fichierDuModule(ligne.cle) }}</td>
+                    <td class="px-4 py-3.5 text-gray-500">{{ fichierDuModule(ligne.cle) }}</td>
                     <td class="px-4 py-3.5">
                       <span
                         class="px-2.5 py-1 rounded-full text-[13px] font-bold whitespace-nowrap"
-                        :class="ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.classe : 'bg-maquette-gris text-maquette-ardoise'"
+                        :class="ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.classe : 'bg-gray-100 text-gray-700'"
                       >
                         {{ ligne.statut ? STATUT_MODULE_INFO[ligne.statut]?.label : 'Non évalué' }}
                       </span>
                     </td>
-                    <td class="px-4 py-3.5 text-right tabular-nums whitespace-nowrap" :class="ligne.ecartGlobal === null ? 'text-maquette-texte-doux' : ''">
+                    <td class="px-4 py-3.5 text-right tabular-nums whitespace-nowrap" :class="ligne.ecartGlobal === null ? 'text-gray-500' : ''">
                       {{ ligne.ecartGlobal === null ? '—' : formatMontant(ligne.ecartGlobal) }}
                     </td>
                   </tr>
@@ -972,33 +971,33 @@ function back() {
           </section>
 
           <!-- Détail du module choisi (§2.3) -->
-          <section class="bg-white rounded-[14px] shadow-[0_1px_3px_rgba(15,58,90,0.08)] px-7 py-6 flex flex-col gap-3.5">
+          <section class="bg-white rounded-[14px] shadow px-7 py-6 flex flex-col gap-3.5">
             <template v-if="ipeEtat.modules && Object.keys(ipeEtat.modules).length">
               <template v-for="(module, cle) in modulesAffiches" :key="cle">
                 <div class="flex justify-between items-center gap-3 flex-wrap">
-                  <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-maquette-marine flex items-center gap-3">
+                  <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-blue-ycube flex items-center gap-3">
                     {{ (LIBELLES_MODULE[cle] || cle).split(' (')[0] }} · détail {{ estImmobilisations(module) ? 'par compte' : 'par compte collectif' }}
                     <span
                       class="px-2.5 py-1 rounded-full text-[13px] font-bold normal-case tracking-normal"
-                      :class="STATUT_MODULE_INFO[module.statut]?.classe || 'bg-maquette-gris text-maquette-ardoise'"
+                      :class="STATUT_MODULE_INFO[module.statut]?.classe || 'bg-gray-100 text-gray-700'"
                     >
                       {{ STATUT_MODULE_INFO[module.statut]?.label || module.statut }}
                     </span>
                   </h2>
-                  <a href="#" class="text-sm font-semibold text-maquette-marine underline hover:text-maquette-marine-fonce" @click.prevent="ouvrirFichiersComplementaires">
+                  <a href="#" class="text-sm font-semibold text-blue-ycube underline hover:text-blue-900" @click.prevent="ouvrirFichiersComplementaires">
                     Voir le fichier dans Fichiers complémentaires
                   </a>
                 </div>
 
                 <template v-if="module.derniere_evaluation">
-                  <p v-if="module.statut === 'non_evaluable'" class="m-0 text-sm text-maquette-texte-doux">
+                  <p v-if="module.statut === 'non_evaluable'" class="m-0 text-sm text-gray-500">
                     Non évaluable — {{ module.derniere_evaluation.motif_non_evaluable === 'fichier_complementaire_absent'
                       ? (estImmobilisations(module) ? 'aucun fichier des immobilisations importé.' : 'aucun fichier complémentaire actif pour ce module.')
                       : (estImmobilisations(module) ? 'aucun compte d\'immobilisation trouvé dans la balance générale.' : 'aucun compte collectif trouvé dans la balance générale pour ce module.') }}
                     Justification à écrire dans « Modules non évaluables ».
                   </p>
 
-                  <p v-else-if="estImmobilisations(module)" class="m-0 text-sm text-maquette-ardoise">
+                  <p v-else-if="estImmobilisations(module)" class="m-0 text-sm text-gray-700">
                     Écart global sur les valeurs brutes :
                     <span class="font-bold tabular-nums">{{ formatMontant(module.derniere_evaluation.ecart_global) }}</span>
                     — comparaison {{ module.derniere_evaluation.mode_comparaison === 'par_compte' ? 'par compte' : 'par total (aucun compte par bien dans le fichier)' }}
@@ -1009,7 +1008,7 @@ function back() {
                   <div v-if="estImmobilisations(module) && module.derniere_evaluation.detail_collectifs?.length" class="overflow-x-auto">
                     <table class="w-full border-collapse text-[15px]">
                       <thead>
-                        <tr class="bg-maquette-marine text-white text-left">
+                        <tr class="bg-blue-ycube text-white text-left">
                           <th class="px-4 py-3.5">Compte</th>
                           <th class="px-4 py-3.5">Nature</th>
                           <th class="px-4 py-3.5 text-right">Balance générale</th>
@@ -1024,10 +1023,10 @@ function back() {
                         <tr
                           v-for="c in module.derniere_evaluation.detail_collectifs"
                           :key="c.numero_compte"
-                          class="border-b border-maquette-trait"
+                          class="border-b border-gray-200"
                           :class="[
-                            !c.ok && module.statut === 'ecart' ? 'cursor-pointer hover:bg-maquette-clair' : '',
-                            panneau?.cle === cle && panneau?.numeroCompte === c.numero_compte ? '!bg-maquette-selection' : '',
+                            !c.ok && module.statut === 'ecart' ? 'cursor-pointer hover:bg-gray-50' : '',
+                            panneau?.cle === cle && panneau?.numeroCompte === c.numero_compte ? '!bg-blue-ycube/10' : '',
                           ]"
                           @click="!c.ok && module.statut === 'ecart' && ouvrirPanneau(cle, c.numero_compte)"
                         >
@@ -1036,13 +1035,13 @@ function back() {
                           <td class="px-4 py-3.5 text-right tabular-nums whitespace-nowrap">{{ montantImmo(c, c.solde_balance_generale) }}</td>
                           <td class="px-4 py-3.5 text-right tabular-nums whitespace-nowrap">{{ montantImmo(c, c.montant_fichier) }}</td>
                           <td class="px-4 py-3.5 text-right">{{ c.nb_biens }}</td>
-                          <td class="px-4 py-3.5 text-right tabular-nums whitespace-nowrap" :class="!c.ok && module.statut === 'ecart' ? 'font-bold text-maquette-ecart' : 'text-maquette-texte-doux'">{{ montantImmo(c, c.ecart) }}</td>
+                          <td class="px-4 py-3.5 text-right tabular-nums whitespace-nowrap" :class="!c.ok && module.statut === 'ecart' ? 'font-bold text-red-700' : 'text-gray-500'">{{ montantImmo(c, c.ecart) }}</td>
                           <td class="px-4 py-3.5">
-                            <span v-if="c.ok || module.statut !== 'ecart'" class="text-maquette-texte-doux">—</span>
+                            <span v-if="c.ok || module.statut !== 'ecart'" class="text-gray-500">—</span>
                             <span
                               v-else
                               class="px-2.5 py-1 rounded-full text-[13px] font-bold whitespace-nowrap"
-                              :class="qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-maquette-attente-fond text-maquette-attente'"
+                              :class="qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
                             >
                               {{ qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'Qualifiée' : 'À qualifier' }}
                             </span>
@@ -1050,7 +1049,7 @@ function back() {
                           <td class="px-4 py-3.5">
                             <button
                               v-if="!c.ok && module.statut === 'ecart'"
-                              class="h-9 px-3 rounded-lg border border-maquette-marine bg-white text-maquette-marine font-bold inline-flex items-center gap-1.5 whitespace-nowrap hover:bg-maquette-clair transition"
+                              class="h-9 px-3 rounded-lg border border-blue-ycube bg-white text-blue-ycube font-bold inline-flex items-center gap-1.5 whitespace-nowrap hover:bg-gray-50 transition"
                               @click.stop="ouvrirPanneau(cle, c.numero_compte)"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
@@ -1061,7 +1060,7 @@ function back() {
                       </tbody>
                     </table>
                   </div>
-                  <div v-if="estImmobilisations(module) && module.statut !== 'non_evaluable'" class="flex flex-col gap-1 text-sm text-maquette-ardoise">
+                  <div v-if="estImmobilisations(module) && module.statut !== 'non_evaluable'" class="flex flex-col gap-1 text-sm text-gray-700">
                     <p v-if="module.derniere_evaluation.mode_comparaison === 'par_compte' && module.derniere_evaluation.totaux" class="m-0">
                       Totaux — valeurs brutes : balance générale
                       <span class="tabular-nums">{{ formatMontant(module.derniere_evaluation.totaux.valeur_brute.solde_balance_generale) }}</span>,
@@ -1070,10 +1069,10 @@ function back() {
                       <span class="tabular-nums">{{ montantImmo(module.derniere_evaluation.totaux.amortissements, module.derniere_evaluation.totaux.amortissements.solde_balance_generale) }}</span>,
                       fichier <span class="tabular-nums">{{ montantImmo(module.derniere_evaluation.totaux.amortissements, module.derniere_evaluation.totaux.amortissements.montant_fichier) }}</span>.
                     </p>
-                    <p v-if="!module.derniere_evaluation.controle_vnc?.applicable" class="m-0 text-maquette-texte-doux">
+                    <p v-if="!module.derniere_evaluation.controle_vnc?.applicable" class="m-0 text-gray-500">
                       Contrôle de la valeur nette non effectué : le fichier ne fournit pas de valeur nette.
                     </p>
-                    <p v-else-if="module.derniere_evaluation.controle_vnc.biens_en_ecart.length" class="m-0 text-maquette-ecart">
+                    <p v-else-if="module.derniere_evaluation.controle_vnc.biens_en_ecart.length" class="m-0 text-red-700">
                       Valeur nette ≠ valeur brute − amortissements pour
                       {{ module.derniere_evaluation.controle_vnc.biens_en_ecart.length }} bien(s) sur
                       {{ module.derniere_evaluation.controle_vnc.nb_biens_controles }} :
@@ -1082,22 +1081,22 @@ function back() {
                     <p v-else class="m-0 text-green-700">
                       Valeur nette cohérente pour les {{ module.derniere_evaluation.controle_vnc.nb_biens_controles }} bien(s) contrôlé(s).
                     </p>
-                    <p v-if="module.derniere_evaluation.biens_sans_compte_correspondant?.length" class="m-0 text-maquette-ecart">
+                    <p v-if="module.derniere_evaluation.biens_sans_compte_correspondant?.length" class="m-0 text-red-700">
                       Biens dont le compte n'existe pas dans la balance générale :
                       {{ module.derniere_evaluation.biens_sans_compte_correspondant.join(', ') }}
                     </p>
-                    <p v-if="module.derniere_evaluation.biens_amortis_sans_compte_amortissement?.length" class="m-0 text-maquette-ecart">
+                    <p v-if="module.derniere_evaluation.biens_amortis_sans_compte_amortissement?.length" class="m-0 text-red-700">
                       Biens amortis sans compte d'amortissement (28) correspondant :
                       {{ module.derniere_evaluation.biens_amortis_sans_compte_amortissement.join(', ') }}
                     </p>
-                    <p class="m-0 text-maquette-texte-doux">Dépréciations (comptes 29) non prises en compte — TODO(spec: CAC-IPE-01 §3).</p>
+                    <p class="m-0 text-gray-500">Dépréciations (comptes 29) non prises en compte — TODO(spec: CAC-IPE-01 §3).</p>
                   </div>
 
                   <!-- Tiers (IPE-1, IPE-2) : compte de la balance générale (« 401000 »), comme la maquette -->
                   <div v-if="!estImmobilisations(module) && module.derniere_evaluation.detail_collectifs?.length" class="overflow-x-auto">
                     <table class="w-full border-collapse text-[15px]">
                       <thead>
-                        <tr class="bg-maquette-marine text-white text-left">
+                        <tr class="bg-blue-ycube text-white text-left">
                           <th class="px-4 py-3.5">Compte</th>
                           <th class="px-4 py-3.5 text-right">Balance générale</th>
                           <th class="px-4 py-3.5 text-right">Auxiliaire</th>
@@ -1111,10 +1110,10 @@ function back() {
                         <tr
                           v-for="c in module.derniere_evaluation.detail_collectifs"
                           :key="c.numero_compte"
-                          class="border-b border-maquette-trait"
+                          class="border-b border-gray-200"
                           :class="[
-                            !c.ok && module.statut === 'ecart' ? 'cursor-pointer hover:bg-maquette-clair' : '',
-                            panneau?.cle === cle && panneau?.numeroCompte === c.numero_compte ? '!bg-maquette-selection' : '',
+                            !c.ok && module.statut === 'ecart' ? 'cursor-pointer hover:bg-gray-50' : '',
+                            panneau?.cle === cle && panneau?.numeroCompte === c.numero_compte ? '!bg-blue-ycube/10' : '',
                           ]"
                           @click="!c.ok && module.statut === 'ecart' && ouvrirPanneau(cle, c.numero_compte)"
                         >
@@ -1122,13 +1121,13 @@ function back() {
                           <td class="px-4 py-3.5 text-right tabular-nums whitespace-nowrap">{{ formatMontant(c.solde_balance_generale) }}</td>
                           <td class="px-4 py-3.5 text-right tabular-nums whitespace-nowrap">{{ formatMontant(c.solde_auxiliaire) }}</td>
                           <td class="px-4 py-3.5 text-right">{{ c.nb_tiers_rattaches }}</td>
-                          <td class="px-4 py-3.5 text-right tabular-nums whitespace-nowrap" :class="!c.ok && module.statut === 'ecart' ? 'font-bold text-maquette-ecart' : 'text-maquette-texte-doux'">{{ formatMontant(c.ecart) }}</td>
+                          <td class="px-4 py-3.5 text-right tabular-nums whitespace-nowrap" :class="!c.ok && module.statut === 'ecart' ? 'font-bold text-red-700' : 'text-gray-500'">{{ formatMontant(c.ecart) }}</td>
                           <td class="px-4 py-3.5">
-                            <span v-if="c.ok || module.statut !== 'ecart'" class="text-maquette-texte-doux">—</span>
+                            <span v-if="c.ok || module.statut !== 'ecart'" class="text-gray-500">—</span>
                             <span
                               v-else
                               class="px-2.5 py-1 rounded-full text-[13px] font-bold whitespace-nowrap"
-                              :class="qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-maquette-attente-fond text-maquette-attente'"
+                              :class="qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
                             >
                               {{ qualificationComplete(qualificationPour(cle, c.numero_compte)) ? 'Qualifiée' : 'À qualifier' }}
                             </span>
@@ -1136,7 +1135,7 @@ function back() {
                           <td class="px-4 py-3.5">
                             <button
                               v-if="!c.ok && module.statut === 'ecart'"
-                              class="h-9 px-3 rounded-lg border border-maquette-marine bg-white text-maquette-marine font-bold inline-flex items-center gap-1.5 whitespace-nowrap hover:bg-maquette-clair transition"
+                              class="h-9 px-3 rounded-lg border border-blue-ycube bg-white text-blue-ycube font-bold inline-flex items-center gap-1.5 whitespace-nowrap hover:bg-gray-50 transition"
                               @click.stop="ouvrirPanneau(cle, c.numero_compte)"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
@@ -1147,16 +1146,16 @@ function back() {
                       </tbody>
                     </table>
                   </div>
-                  <p v-else-if="!estImmobilisations(module) && module.statut !== 'non_evaluable'" class="m-0 text-sm text-maquette-texte-doux">
+                  <p v-else-if="!estImmobilisations(module) && module.statut !== 'non_evaluable'" class="m-0 text-sm text-gray-500">
                     Aucun compte collectif trouvé dans la balance générale pour ce module.
                   </p>
 
                   <!-- Tiers sans compte collectif : traitement attendu TODO(spec: CAC-IPE-01) -->
                   <div
                     v-if="module.derniere_evaluation.tiers_orphelins?.auxiliaire_seulement?.length || module.derniere_evaluation.tiers_orphelins?.balance_generale_seulement?.length"
-                    class="flex items-center justify-between gap-3 flex-wrap px-4 py-3.5 rounded-[10px] bg-maquette-clair"
+                    class="flex items-center justify-between gap-3 flex-wrap px-4 py-3.5 rounded-[10px] bg-gray-50"
                   >
-                    <span class="text-sm text-maquette-ardoise">
+                    <span class="text-sm text-gray-700">
                       <template v-if="module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement?.length">
                         <strong>{{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.length }} tiers de l'auxiliaire</strong>
                         sans compte collectif dans la balance générale
@@ -1168,15 +1167,15 @@ function back() {
                       </template>
                       Traitement à confirmer par la spec.
                     </span>
-                    <a href="#" class="text-sm font-semibold text-maquette-marine underline hover:text-maquette-marine-fonce" @click.prevent="listeOrphelinsOuverte = true">Voir la liste</a>
+                    <a href="#" class="text-sm font-semibold text-blue-ycube underline hover:text-blue-900" @click.prevent="listeOrphelinsOuverte = true">Voir la liste</a>
                   </div>
 
                   <!-- Liste complète (modale) -->
                   <div v-if="listeOrphelinsOuverte" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="listeOrphelinsOuverte = false">
-                    <div class="bg-white rounded-[14px] w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4 text-sm shadow-[0_8px_24px_rgba(15,58,90,0.16)]">
+                    <div class="bg-white rounded-[14px] w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4 text-sm shadow-[0_8px_24px_rgba(4,60,93,0.16)]">
                       <div class="flex justify-between items-start gap-3">
-                        <h3 class="m-0 text-lg font-bold text-maquette-marine">{{ (LIBELLES_MODULE[cle] || cle).split(' (')[0] }} · rattachements manquants</h3>
-                        <button class="w-11 h-11 rounded-[10px] bg-maquette-fond text-maquette-marine hover:bg-maquette-gris transition" aria-label="Fermer" @click="listeOrphelinsOuverte = false">
+                        <h3 class="m-0 text-lg font-bold text-blue-ycube">{{ (LIBELLES_MODULE[cle] || cle).split(' (')[0] }} · rattachements manquants</h3>
+                        <button class="w-11 h-11 rounded-[10px] bg-[#f5f7fa] text-blue-ycube hover:bg-gray-100 transition" aria-label="Fermer" @click="listeOrphelinsOuverte = false">
                           <i class="fa-solid fa-xmark"></i>
                         </button>
                       </div>
@@ -1185,36 +1184,36 @@ function back() {
                           Tiers de l'auxiliaire sans compte collectif dans la balance générale
                           ({{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.length }})
                         </p>
-                        <p class="m-0 text-maquette-ardoise leading-relaxed">{{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.join(', ') }}</p>
+                        <p class="m-0 text-gray-700 leading-relaxed">{{ module.derniere_evaluation.tiers_orphelins.auxiliaire_seulement.join(', ') }}</p>
                       </div>
                       <div v-if="module.derniere_evaluation.tiers_orphelins.balance_generale_seulement?.length">
                         <p class="m-0 mb-1 font-bold">
                           Comptes collectifs de la balance générale sans tiers dans l'auxiliaire
                           ({{ module.derniere_evaluation.tiers_orphelins.balance_generale_seulement.length }})
                         </p>
-                        <p class="m-0 text-maquette-ardoise">{{ module.derniere_evaluation.tiers_orphelins.balance_generale_seulement.join(', ') }}</p>
+                        <p class="m-0 text-gray-700">{{ module.derniere_evaluation.tiers_orphelins.balance_generale_seulement.join(', ') }}</p>
                       </div>
-                      <p class="m-0 text-xs text-maquette-texte-doux">Traitement de ces rattachements : à confirmer par la spécification CAC-IPE-01.</p>
+                      <p class="m-0 text-xs text-gray-500">Traitement de ces rattachements : à confirmer par la spécification CAC-IPE-01.</p>
                     </div>
                   </div>
-                  <p v-if="module.derniere_evaluation.lignes_non_calculables?.length" class="m-0 text-sm text-maquette-attente">
+                  <p v-if="module.derniere_evaluation.lignes_non_calculables?.length" class="m-0 text-sm text-orange-700">
                     {{ module.derniere_evaluation.lignes_non_calculables.length }}
                     {{ estImmobilisations(module) ? 'bien(s) sans valeur brute exploitable' : 'ligne(s) auxiliaire(s) sans montant exploitable' }} (mapping incomplet).
                   </p>
                 </template>
               </template>
             </template>
-            <p v-else class="m-0 text-sm text-maquette-texte-doux">Aucune évaluation IPE encore lancée pour cette mission.</p>
+            <p v-else class="m-0 text-sm text-gray-500">Aucune évaluation IPE encore lancée pour cette mission.</p>
           </section>
 
           <!-- Modules non évaluables · justification (§2.5) : exigée dès la soumission et à la validation.
                Traitement métier : TODO(spec: CAC-IPE-01). -->
-          <section v-if="modulesNonEvaluables.length" class="bg-white rounded-[14px] shadow-[0_1px_3px_rgba(15,58,90,0.08)] px-7 py-6 flex flex-col gap-3">
-            <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-maquette-marine">Modules non évaluables · justification</h2>
+          <section v-if="modulesNonEvaluables.length" class="bg-white rounded-[14px] shadow px-7 py-6 flex flex-col gap-3">
+            <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-blue-ycube">Modules non évaluables · justification</h2>
             <div v-for="cleModule in modulesNonEvaluables" :key="cleModule" class="flex flex-col gap-1.5">
               <label :for="`justification-${cleModule}`" class="text-sm font-bold">
                 {{ (LIBELLES_MODULE[cleModule] || cleModule).split(' (')[0] }}
-                <span v-if="ipeEtat.justifications_non_evaluables?.[cleModule]" class="font-normal text-maquette-texte-doux">
+                <span v-if="ipeEtat.justifications_non_evaluables?.[cleModule]" class="font-normal text-gray-500">
                   — enregistrée par {{ ipeEtat.justifications_non_evaluables[cleModule].utilisateur_id || 'Non identifié' }},
                   {{ formatHorodatage(ipeEtat.justifications_non_evaluables[cleModule].horodatage) }}
                 </span>
@@ -1224,12 +1223,12 @@ function back() {
                 v-model="justificationsEnCours[cleModule]"
                 :disabled="!peutEditerAuditeur"
                 rows="2"
-                class="text-[15px] px-3 py-2.5 border border-maquette-champ rounded-[10px] resize-y focus:outline-none focus:ring-2 focus:ring-maquette-marine disabled:bg-maquette-clair"
+                class="text-[15px] px-3 py-2.5 border border-gray-300 rounded-[10px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
                 :placeholder="`Pourquoi ce module ne peut pas être évalué (au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères)`"
               ></textarea>
               <div>
                 <button
-                  class="h-10 px-4 rounded-[10px] bg-maquette-marine text-white text-sm font-bold hover:bg-maquette-marine-fonce transition disabled:bg-maquette-champ disabled:text-maquette-ardoise disabled:cursor-not-allowed"
+                  class="h-10 px-4 rounded-[10px] bg-blue-ycube text-white text-sm font-bold hover:bg-blue-900 transition disabled:bg-gray-300 disabled:text-gray-700 disabled:cursor-not-allowed"
                   :disabled="!peutEditerAuditeur || justificationEnCours === cleModule"
                   :title="!peutEditerAuditeur ? 'Modifiable uniquement « En cours » ou « En attente de correction »' : ''"
                   @click="enregistrerJustification(cleModule)"
@@ -1245,14 +1244,14 @@ function back() {
         <aside
           v-if="lignePanneau"
           :aria-label="`Panneau de qualification du compte ${numeroBalanceGenerale(lignePanneau.ligne)}`"
-          class="flex-[1_1_380px] max-w-[460px] lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-y-auto bg-white rounded-[14px] shadow-[0_8px_24px_rgba(15,58,90,0.16)] p-6 flex flex-col gap-4"
+          class="flex-[1_1_380px] max-w-[460px] lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-y-auto bg-white rounded-[14px] shadow-[0_8px_24px_rgba(4,60,93,0.16)] p-6 flex flex-col gap-4"
         >
           <div class="flex justify-between items-start gap-3">
             <div class="flex flex-col gap-1">
-              <h2 class="m-0 text-lg font-bold text-maquette-marine">
+              <h2 class="m-0 text-lg font-bold text-blue-ycube">
                 Écart · {{ estImmobilisations(lignePanneau.module) ? libelleLigneEcart(lignePanneau.module, lignePanneau.ligne) : `compte ${numeroBalanceGenerale(lignePanneau.ligne)}` }}
               </h2>
-              <span class="text-sm text-maquette-texte-doux">
+              <span class="text-sm text-gray-500">
                 <template v-if="estImmobilisations(lignePanneau.module)">
                   {{ montantImmo(lignePanneau.ligne, lignePanneau.ligne.ecart) }} · {{ lignePanneau.ligne.nb_biens }} bien(s)
                 </template>
@@ -1261,18 +1260,18 @@ function back() {
                 </template>
               </span>
             </div>
-            <button class="w-11 h-11 shrink-0 rounded-[10px] bg-maquette-fond text-maquette-marine hover:bg-maquette-gris transition flex items-center justify-center" aria-label="Fermer le panneau" @click="fermerPanneau">
+            <button class="w-11 h-11 shrink-0 rounded-[10px] bg-[#f5f7fa] text-blue-ycube hover:bg-gray-100 transition flex items-center justify-center" aria-label="Fermer le panneau" @click="fermerPanneau">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </div>
 
           <!-- Qualification : cause de la liste provisoire (TODO(spec: CAC-IPE-01)) + commentaire -->
-          <div class="flex flex-col gap-2.5 p-4 rounded-xl bg-maquette-clair">
+          <div class="flex flex-col gap-2.5 p-4 rounded-xl bg-gray-50">
             <div class="flex items-center justify-between gap-2">
               <h3 class="m-0 text-[15px] font-bold">Qualification</h3>
               <span
                 class="px-2.5 py-1 rounded-full text-[13px] font-bold"
-                :class="qualificationComplete(qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-maquette-attente-fond text-maquette-attente'"
+                :class="qualificationComplete(qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte)) ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
               >
                 {{ qualificationComplete(qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte)) ? 'Qualifiée' : 'À qualifier' }}
               </span>
@@ -1282,7 +1281,7 @@ function back() {
               <select
                 v-model="formulairesQualification[`${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`].cause"
                 :disabled="!peutEditerAuditeur"
-                class="h-11 text-[15px] font-normal px-2.5 border border-maquette-champ rounded-[10px] bg-white focus:outline-none focus:ring-2 focus:ring-maquette-marine disabled:bg-maquette-clair"
+                class="h-11 text-[15px] font-normal px-2.5 border border-gray-300 rounded-[10px] bg-white focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
               >
                 <option value="" disabled>Choisir une cause</option>
                 <option v-for="cause in causesEcart" :key="cause" :value="cause">{{ cause }}</option>
@@ -1294,19 +1293,19 @@ function back() {
                 v-model="formulairesQualification[`${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`].commentaire"
                 :disabled="!peutEditerAuditeur"
                 rows="3"
-                class="text-[15px] font-normal px-3 py-2.5 border border-maquette-champ rounded-[10px] bg-white resize-y focus:outline-none focus:ring-2 focus:ring-maquette-marine disabled:bg-maquette-clair"
+                class="text-[15px] font-normal px-3 py-2.5 border border-gray-300 rounded-[10px] bg-white resize-y focus:outline-none focus:ring-2 focus:ring-blue-ycube disabled:bg-gray-50"
                 :placeholder="`Expliquer l'écart (au moins ${LONGUEUR_MIN_COMMENTAIRE} caractères)`"
               ></textarea>
             </label>
             <button
-              class="h-11 rounded-[10px] bg-maquette-vert text-white text-[15px] font-bold hover:brightness-95 transition disabled:bg-maquette-champ disabled:text-maquette-ardoise disabled:cursor-not-allowed"
+              class="h-11 rounded-[10px] bg-green-ycube-2 text-white text-[15px] font-bold hover:bg-green-ycube transition disabled:bg-gray-300 disabled:text-gray-700 disabled:cursor-not-allowed"
               :disabled="!peutEditerAuditeur || qualificationEnCours === `${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`"
               :title="!peutEditerAuditeur ? 'Modifiable uniquement « En cours » ou « En attente de correction »' : ''"
               @click="enregistrerQualification(lignePanneau.cle, lignePanneau.ligne.numero_compte)"
             >
               Enregistrer la qualification
             </button>
-            <p v-if="qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte)" class="m-0 text-[13px] text-maquette-texte-doux">
+            <p v-if="qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte)" class="m-0 text-[13px] text-gray-500">
               Qualifiée par {{ qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte).utilisateur_id || 'Non identifié' }},
               {{ formatHorodatage(qualificationPour(lignePanneau.cle, lignePanneau.ligne.numero_compte).horodatage) }}
             </p>
@@ -1315,28 +1314,28 @@ function back() {
           <!-- Fil des remarques (niveau 2) : « Répondre » et « Marquer traitée » conservés (circuit de revue) -->
           <div class="flex flex-col gap-2.5">
             <h3 class="m-0 text-[15px] font-bold">Remarques ({{ remarquesPourCollectif(lignePanneau.cle, lignePanneau.ligne.numero_compte).length }})</h3>
-            <p v-if="!remarquesPourCollectif(lignePanneau.cle, lignePanneau.ligne.numero_compte).length" class="m-0 text-sm text-maquette-texte-doux">Aucune remarque.</p>
+            <p v-if="!remarquesPourCollectif(lignePanneau.cle, lignePanneau.ligne.numero_compte).length" class="m-0 text-sm text-gray-500">Aucune remarque.</p>
             <article
               v-for="r in remarquesPourCollectif(lignePanneau.cle, lignePanneau.ligne.numero_compte)"
               :key="r._id"
-              class="border border-maquette-trait rounded-xl p-3.5 flex flex-col gap-1.5"
+              class="border border-gray-200 rounded-xl p-3.5 flex flex-col gap-1.5"
             >
               <div class="flex justify-between gap-2 flex-wrap">
                 <span class="text-[13px] font-bold px-2 py-0.5 rounded-md" :class="TYPE_REMARQUE_INFO[r.type]?.classe || TYPE_REMARQUE_INFO.information.classe">
                   {{ TYPE_REMARQUE_INFO[r.type]?.label || 'Information' }}
                 </span>
-                <span class="text-[13px] text-maquette-texte-doux">{{ r.utilisateur_id || 'Non identifié' }} · {{ formatHorodatage(r.horodatage) }}</span>
+                <span class="text-[13px] text-gray-500">{{ r.utilisateur_id || 'Non identifié' }} · {{ formatHorodatage(r.horodatage) }}</span>
               </div>
               <p class="m-0 text-sm">{{ r.commentaire }}</p>
-              <p v-if="r.reponse" class="m-0 ml-3 text-sm text-maquette-ardoise italic">
+              <p v-if="r.reponse" class="m-0 ml-3 text-sm text-gray-700 italic">
                 Réponse de {{ r.reponse.utilisateur_id || 'Non identifié' }} ({{ formatHorodatage(r.reponse.horodatage) }}) : {{ r.reponse.commentaire }}
               </p>
               <div class="flex items-center gap-2 text-[13px]">
-                <span class="px-2 py-0.5 rounded-md font-bold" :class="r.traitee ? 'bg-green-100 text-green-700' : 'bg-maquette-gris text-maquette-ardoise'">
+                <span class="px-2 py-0.5 rounded-md font-bold" :class="r.traitee ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'">
                   {{ r.traitee ? 'Traitée' : 'Non traitée' }}
                 </span>
                 <button
-                  class="font-semibold text-maquette-marine underline disabled:text-maquette-champ disabled:no-underline disabled:cursor-not-allowed"
+                  class="font-semibold text-blue-ycube underline disabled:text-gray-300 disabled:no-underline disabled:cursor-not-allowed"
                   :disabled="!!raisonMarquageImpossible(r)"
                   :title="raisonMarquageImpossible(r)"
                   @click="basculerTraitee(r)"
@@ -1349,9 +1348,9 @@ function back() {
                   v-model="reponsesEnCours[r._id]"
                   type="text"
                   placeholder="Répondre..."
-                  class="flex-1 h-9 text-sm px-2.5 border border-maquette-champ rounded-lg focus:outline-none focus:ring-2 focus:ring-maquette-marine"
+                  class="flex-1 h-9 text-sm px-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-ycube"
                 />
-                <button class="text-sm font-semibold text-maquette-marine underline" @click="envoyerReponse(r)">Répondre</button>
+                <button class="text-sm font-semibold text-blue-ycube underline" @click="envoyerReponse(r)">Répondre</button>
               </div>
             </article>
 
@@ -1360,7 +1359,7 @@ function back() {
               <textarea
                 v-model="nouvellesRemarquesEcart[`${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`]"
                 rows="2"
-                class="text-[15px] font-normal px-3 py-2.5 border border-maquette-champ rounded-[10px] resize-y focus:outline-none focus:ring-2 focus:ring-maquette-marine"
+                class="text-[15px] font-normal px-3 py-2.5 border border-gray-300 rounded-[10px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-ycube"
                 placeholder="Ajouter une remarque sur cet écart"
               ></textarea>
             </label>
@@ -1368,14 +1367,14 @@ function back() {
               <select
                 aria-label="Type de remarque"
                 :value="typesNouvellesRemarquesEcart[`${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`] || 'information'"
-                class="h-11 text-[15px] px-2.5 border border-maquette-champ rounded-[10px] bg-white focus:outline-none focus:ring-2 focus:ring-maquette-marine"
+                class="h-11 text-[15px] px-2.5 border border-gray-300 rounded-[10px] bg-white focus:outline-none focus:ring-2 focus:ring-blue-ycube"
                 @change="typesNouvellesRemarquesEcart[`${lignePanneau.cle}:${lignePanneau.ligne.numero_compte}`] = $event.target.value"
               >
                 <option value="information">Information</option>
                 <option value="demande_correction" :disabled="!utilisateurIdentifie">Demande de correction</option>
               </select>
               <button
-                class="h-11 px-[18px] rounded-[10px] bg-maquette-marine text-white font-bold hover:bg-maquette-marine-fonce transition"
+                class="h-11 px-[18px] rounded-[10px] bg-blue-ycube text-white font-bold hover:bg-blue-900 transition"
                 @click="ajouterRemarqueEcart(lignePanneau.cle, lignePanneau.ligne.numero_compte)"
               >
                 Ajouter
@@ -1386,27 +1385,27 @@ function back() {
       </div>
 
       <!-- Commentaires généraux (niveau 1) : hors maquette, gardés en bas dans le même style -->
-      <section id="commentaires-generaux" v-if="ipeEtat" class="scroll-mt-4 bg-white rounded-[14px] shadow-[0_1px_3px_rgba(15,58,90,0.08)] px-7 py-6 flex flex-col gap-3">
-        <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-maquette-marine">Commentaires généraux</h2>
-        <p v-if="!remarquesGenerales.length" class="m-0 text-sm text-maquette-texte-doux">Aucun commentaire général.</p>
+      <section id="commentaires-generaux" v-if="ipeEtat" class="scroll-mt-4 bg-white rounded-[14px] shadow px-7 py-6 flex flex-col gap-3">
+        <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-blue-ycube">Commentaires généraux</h2>
+        <p v-if="!remarquesGenerales.length" class="m-0 text-sm text-gray-500">Aucun commentaire général.</p>
 
-        <article v-for="r in remarquesGenerales" :key="r._id" class="border border-maquette-trait rounded-xl p-3.5 flex flex-col gap-1.5">
+        <article v-for="r in remarquesGenerales" :key="r._id" class="border border-gray-200 rounded-xl p-3.5 flex flex-col gap-1.5">
           <div class="flex justify-between gap-2 flex-wrap">
             <span class="text-[13px] font-bold px-2 py-0.5 rounded-md" :class="TYPE_REMARQUE_INFO[r.type]?.classe || TYPE_REMARQUE_INFO.information.classe">
               {{ TYPE_REMARQUE_INFO[r.type]?.label || 'Information' }}
             </span>
-            <span class="text-[13px] text-maquette-texte-doux">{{ r.utilisateur_id || 'Non identifié' }} · {{ formatHorodatage(r.horodatage) }}</span>
+            <span class="text-[13px] text-gray-500">{{ r.utilisateur_id || 'Non identifié' }} · {{ formatHorodatage(r.horodatage) }}</span>
           </div>
           <p class="m-0 text-sm">{{ r.commentaire }}</p>
-          <p v-if="r.reponse" class="m-0 ml-3 text-sm text-maquette-ardoise italic">
+          <p v-if="r.reponse" class="m-0 ml-3 text-sm text-gray-700 italic">
             Réponse de {{ r.reponse.utilisateur_id || 'Non identifié' }} ({{ formatHorodatage(r.reponse.horodatage) }}) : {{ r.reponse.commentaire }}
           </p>
           <div class="flex items-center gap-2 text-[13px]">
-            <span class="px-2 py-0.5 rounded-md font-bold" :class="r.traitee ? 'bg-green-100 text-green-700' : 'bg-maquette-gris text-maquette-ardoise'">
+            <span class="px-2 py-0.5 rounded-md font-bold" :class="r.traitee ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'">
               {{ r.traitee ? 'Traitée' : 'Non traitée' }}
             </span>
             <button
-              class="font-semibold text-maquette-marine underline disabled:text-maquette-champ disabled:no-underline disabled:cursor-not-allowed"
+              class="font-semibold text-blue-ycube underline disabled:text-gray-300 disabled:no-underline disabled:cursor-not-allowed"
               :disabled="!!raisonMarquageImpossible(r)"
               :title="raisonMarquageImpossible(r)"
               @click="basculerTraitee(r)"
@@ -1419,9 +1418,9 @@ function back() {
               v-model="reponsesEnCours[r._id]"
               type="text"
               placeholder="Répondre..."
-              class="flex-1 h-9 text-sm px-2.5 border border-maquette-champ rounded-lg focus:outline-none focus:ring-2 focus:ring-maquette-marine"
+              class="flex-1 h-9 text-sm px-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-ycube"
             />
-            <button class="text-sm font-semibold text-maquette-marine underline" @click="envoyerReponse(r)">Répondre</button>
+            <button class="text-sm font-semibold text-blue-ycube underline" @click="envoyerReponse(r)">Répondre</button>
           </div>
         </article>
 
@@ -1429,7 +1428,7 @@ function back() {
           <select
             v-model="typeNouvelleRemarqueGenerale"
             aria-label="Type de commentaire"
-            class="h-11 text-[15px] px-2.5 border border-maquette-champ rounded-[10px] bg-white focus:outline-none focus:ring-2 focus:ring-maquette-marine"
+            class="h-11 text-[15px] px-2.5 border border-gray-300 rounded-[10px] bg-white focus:outline-none focus:ring-2 focus:ring-blue-ycube"
           >
             <option value="information">Information</option>
             <option value="demande_correction" :disabled="!utilisateurIdentifie">Demande de correction</option>
@@ -1438,10 +1437,10 @@ function back() {
             v-model="nouvelleRemarqueGenerale"
             type="text"
             placeholder="Ajouter un commentaire général sur le contrôle..."
-            class="flex-1 min-w-[16rem] h-11 text-[15px] px-3 border border-maquette-champ rounded-[10px] focus:outline-none focus:ring-2 focus:ring-maquette-marine"
+            class="flex-1 min-w-[16rem] h-11 text-[15px] px-3 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-blue-ycube"
           />
           <button
-            class="h-11 px-[18px] rounded-[10px] bg-maquette-marine text-white font-bold hover:bg-maquette-marine-fonce transition"
+            class="h-11 px-[18px] rounded-[10px] bg-blue-ycube text-white font-bold hover:bg-blue-900 transition"
             @click="ajouterRemarqueGenerale"
           >
             Ajouter
@@ -1450,13 +1449,13 @@ function back() {
       </section>
 
       <!-- Historique : hors maquette, gardé en bas dans le même style -->
-      <section v-if="ipeEtat" class="bg-white rounded-[14px] shadow-[0_1px_3px_rgba(15,58,90,0.08)] px-7 py-6 flex flex-col gap-3.5">
-        <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-maquette-marine">Historique</h2>
-        <p v-if="!historiqueRecent.length" class="m-0 text-sm text-maquette-texte-doux">Aucune action enregistrée pour le moment.</p>
+      <section v-if="ipeEtat" class="bg-white rounded-[14px] shadow px-7 py-6 flex flex-col gap-3.5">
+        <h2 class="m-0 text-[17px] font-bold tracking-[0.3px] uppercase text-blue-ycube">Historique</h2>
+        <p v-if="!historiqueRecent.length" class="m-0 text-sm text-gray-500">Aucune action enregistrée pour le moment.</p>
         <div v-else class="overflow-x-auto">
           <table class="w-full border-collapse text-[15px]">
             <thead>
-              <tr class="bg-maquette-marine text-white text-left">
+              <tr class="bg-blue-ycube text-white text-left">
                 <th class="px-4 py-3.5">Date</th>
                 <th class="px-4 py-3.5">Action</th>
                 <th class="px-4 py-3.5">Utilisateur</th>
@@ -1465,12 +1464,12 @@ function back() {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(entree, i) in historiqueRecent" :key="i" class="border-b border-maquette-trait align-top">
+              <tr v-for="(entree, i) in historiqueRecent" :key="i" class="border-b border-gray-200 align-top">
                 <td class="px-4 py-3.5 whitespace-nowrap tabular-nums">{{ formatHorodatage(entree.horodatage) }}</td>
                 <td class="px-4 py-3.5">{{ ACTION_HISTORIQUE_LABELS[entree.action] || entree.action }}</td>
                 <td class="px-4 py-3.5">{{ entree.utilisateur_id || 'Non identifié' }}</td>
                 <td class="px-4 py-3.5">{{ resultatHistorique(entree) }}</td>
-                <td class="px-4 py-3.5 text-maquette-texte-doux">{{ entree.commentaire || '—' }}</td>
+                <td class="px-4 py-3.5 text-gray-500">{{ entree.commentaire || '—' }}</td>
               </tr>
             </tbody>
           </table>

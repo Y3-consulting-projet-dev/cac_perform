@@ -10,34 +10,6 @@
     --color-green-ycube: #589654;
     --color-gray-ycube: #F2F2F2;
     --color-gray-ycube-1: #B2B2B2;
-
-    /* Palette des maquettes V2 (docs/maquettes/) — référence visuelle des écrans
-       refaits d'après maquette (Fiabilité IPE, barre latérale de la mission).
-       Proches de la charte mais différentes : à reporter dans la charte. */
-    --color-maquette-marine: #0F3A5A;
-    --color-maquette-marine-fonce: #0B2A42;
-    --color-maquette-fond: #F4F6F9;
-    --color-maquette-trait: #E3E8EF;
-    --color-maquette-gris: #EEF1F5;
-    --color-maquette-ardoise: #3E4A59;
-    --color-maquette-texte-doux: #5B6675;
-    --color-maquette-texte: #1F2937;
-    --color-maquette-champ: #C9D4DE;
-    --color-maquette-clair: #F7FAFC;
-    --color-maquette-selection: #EAF2FA;
-    --color-maquette-vert: #6BA539;
-    --color-maquette-ecart-fond: #FDECEC;
-    --color-maquette-ecart: #A61B1B;
-    --color-maquette-attente-fond: #FFF4E5;
-    --color-maquette-attente: #8A4B08;
-    --color-maquette-barre: #0B3654;
-    --color-maquette-barre-bloc: #1E4766;
-    --color-maquette-barre-retour: #2E5675;
-    --color-maquette-barre-progression: #0E3F60;
-    --color-maquette-barre-jauge: #3B6283;
-    --color-maquette-barre-sous: #B9CBDB;
-    --color-maquette-barre-sous-2: #D5E1EC;
-    --font-maquette: "Nunito Sans", Arial, sans-serif;
 }
 
 html, body, #app {

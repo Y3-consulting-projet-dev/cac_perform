@@ -2500,18 +2500,18 @@ function formatAmount(value) {
 
 <template>
   <div class="flex w-full overflow-hidden">
-    <!-- Barre latérale de la mission : mise en page et couleurs de la maquette
-         docs/maquettes/0_Barre_laterale.html (jetons maquette-*, police Nunito Sans).
+    <!-- Barre latérale de la mission : disposition de la maquette docs/maquettes/0_Barre_laterale.html,
+         couleurs et police de la charte (CLAUDE.md).
          `data-barre-mission` : repère stable du test de parcours. -->
 <nav
   data-barre-mission
   aria-label="Navigation de la mission"
-  class="min-w-[320px] w-[340px] shrink-0 bg-maquette-barre text-white font-maquette flex flex-col gap-4 px-5 py-6 overflow-y-auto"
+  class="min-w-[320px] w-[340px] shrink-0 bg-blue-ycube text-white flex flex-col gap-4 px-5 py-6 overflow-y-auto"
 >
 
   <!-- Retour -->
   <button
-    class="min-h-12 px-[18px] rounded-xl bg-maquette-barre-retour hover:brightness-110 text-[17px] font-bold flex items-center gap-2.5 transition text-left"
+    class="min-h-12 px-[18px] rounded-xl bg-white/20 hover:brightness-110 text-[17px] font-bold flex items-center gap-2.5 transition text-left"
     @click="back">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6" /></svg>
     Retour
@@ -2520,22 +2520,22 @@ function formatAmount(value) {
   <!-- Écran de données (pas une étape d'audit) : hors de la progression ; affiché dans la zone principale. -->
   <button
     class="min-h-[46px] px-[18px] rounded-xl flex items-center gap-2.5 transition text-left"
-    :class="componentKey === ECRAN_FICHIERS_COMPLEMENTAIRES ? 'bg-white text-maquette-barre font-bold' : 'bg-maquette-barre-bloc text-white font-semibold hover:brightness-110'"
+    :class="componentKey === ECRAN_FICHIERS_COMPLEMENTAIRES ? 'bg-white text-blue-ycube font-bold' : 'bg-white/10 text-white font-semibold hover:brightness-110'"
     @click="showComponent(ECRAN_FICHIERS_COMPLEMENTAIRES)">
     Fichiers complémentaires
   </button>
 
   <!-- Progression globale -->
-  <div class="px-[18px] py-4 rounded-xl bg-maquette-barre-progression flex flex-col gap-2.5">
+  <div class="px-[18px] py-4 rounded-xl bg-blue-ycube-1 flex flex-col gap-2.5">
     <span class="font-bold">Progression de l’audit</span>
-    <div class="h-2 rounded-full bg-maquette-barre-jauge overflow-hidden">
-      <div class="h-2 rounded-full bg-maquette-vert transition-all duration-500" :style="{ width: progress + '%' }"></div>
+    <div class="h-2 rounded-full bg-white/20 overflow-hidden">
+      <div class="h-2 rounded-full bg-green-ycube-2 transition-all duration-500" :style="{ width: progress + '%' }"></div>
     </div>
-    <span class="text-sm text-maquette-barre-sous-2">{{ completedSteps }} / 9 étapes validées</span>
+    <span class="text-sm text-white/70">{{ completedSteps }} / 9 étapes validées</span>
   </div>
 
   <template v-for="(phase, idx) in workflowPhases" :key="phase.id">
-    <div class="p-3.5 rounded-xl bg-maquette-barre-bloc flex flex-col gap-2">
+    <div class="p-3.5 rounded-xl bg-white/10 flex flex-col gap-2">
 
       <!-- En-tête de phase (repli / dépli conservé) -->
       <button
@@ -2543,11 +2543,11 @@ function formatAmount(value) {
         @click="togglePhase(phase)"
       >
         <span>{{ phase.label }}</span>
-        <i class="fa-solid text-sm text-maquette-barre-sous-2" :class="phase.open ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+        <i class="fa-solid text-sm text-white/70" :class="phase.open ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
       </button>
 
       <!-- Résumé de la phase, seulement quand elle est repliée -->
-      <p v-if="!phase.open && RESUMES_PHASES[phase.id]" class="m-0 px-1 text-sm text-maquette-barre-sous-2">
+      <p v-if="!phase.open && RESUMES_PHASES[phase.id]" class="m-0 px-1 text-sm text-white/70">
         {{ RESUMES_PHASES[phase.id] }}
       </p>
 
@@ -2559,7 +2559,7 @@ function formatAmount(value) {
           :data-etape="step.key"
           :class="[
             'px-3 py-2.5 rounded-[10px] flex items-start gap-3 transition text-[15px]',
-            isActiveStep(step) ? 'bg-white text-maquette-barre' : 'bg-maquette-barre',
+            isActiveStep(step) ? 'bg-white text-blue-ycube' : 'bg-blue-ycube',
             step.static ? '' : 'cursor-pointer hover:brightness-125',
             etapeEstVerrouillee(step) ? 'opacity-60' : ''
           ]"
@@ -2569,16 +2569,16 @@ function formatAmount(value) {
           <input
             v-if="step.static"
             type="checkbox"
-            class="mt-1 accent-maquette-vert cursor-pointer"
+            class="mt-1 accent-green-ycube-2 cursor-pointer"
             v-model="step.checked"
             @click.stop
           />
           <!-- Cadenas (étape verrouillée par IPE-GLOBAL-01) -->
-          <i v-else-if="etapeEstVerrouillee(step)" class="fa-solid fa-lock text-maquette-barre-sous mt-1"></i>
+          <i v-else-if="etapeEstVerrouillee(step)" class="fa-solid fa-lock text-white/60 mt-1"></i>
 
           <div class="flex flex-col">
             <span :class="isActiveStep(step) ? 'font-bold' : ''">{{ step.name }}</span>
-            <span class="text-[13px]" :class="isActiveStep(step) ? 'text-maquette-ardoise' : 'text-maquette-barre-sous'">
+            <span class="text-[13px]" :class="isActiveStep(step) ? 'text-gray-700' : 'text-white/60'">
               <template v-if="etapeEstVerrouillee(step)">Cycle verrouillé : fiabilité IPE non validée</template>
               <template v-else>Étape {{ step.id }}</template>
             </span>
@@ -2592,36 +2592,36 @@ function formatAmount(value) {
     <div
       v-if="idx === 0"
       class="px-4 py-3.5 rounded-xl flex justify-between items-center gap-2.5 cursor-pointer transition"
-      :class="componentKey === ECRAN_FIABILITE_IPE ? 'bg-white text-maquette-barre' : 'bg-maquette-barre-bloc text-white hover:brightness-110'"
+      :class="componentKey === ECRAN_FIABILITE_IPE ? 'bg-white text-blue-ycube' : 'bg-white/10 text-white hover:brightness-110'"
       @click="allerVersFiabiliteIpe"
     >
       <span class="flex flex-col min-w-0">
         <strong>Fiabilité IPE</strong>
-        <span class="text-[13px] leading-snug" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-maquette-ardoise' : 'text-maquette-barre-sous-2'">{{ ipeSousTitre }}</span>
+        <span class="text-[13px] leading-snug" :class="componentKey === ECRAN_FIABILITE_IPE ? 'text-gray-700' : 'text-white/70'">{{ ipeSousTitre }}</span>
       </span>
       <span
         class="shrink-0 text-[13px] font-bold px-2.5 py-1.5 rounded-lg"
-        :class="componentKey === ECRAN_FIABILITE_IPE ? 'bg-maquette-gris' : 'bg-maquette-barre-retour'"
+        :class="componentKey === ECRAN_FIABILITE_IPE ? 'bg-gray-100' : 'bg-white/20'"
       >
         Détail
       </span>
     </div>
 
     <!-- Circularisation : entre la Phase 2 et la Phase 3 (écrans à venir, non cliquables) -->
-    <div v-if="phase.id === 2" class="p-3.5 rounded-xl bg-maquette-barre-bloc flex flex-col gap-2">
+    <div v-if="phase.id === 2" class="p-3.5 rounded-xl bg-white/10 flex flex-col gap-2">
       <span class="px-1 py-1 font-bold">Circularisation</span>
       <div
         v-for="entree in ENTREES_A_VENIR.circularisation"
         :key="entree.cle"
-        class="px-3 py-2.5 rounded-[10px] bg-maquette-barre flex items-start justify-between gap-2 opacity-60 cursor-not-allowed"
+        class="px-3 py-2.5 rounded-[10px] bg-blue-ycube flex items-start justify-between gap-2 opacity-60 cursor-not-allowed"
         aria-disabled="true"
         :title="`${entree.libelle} : écran à venir`"
       >
         <span class="flex flex-col">
           <span class="text-[15px]">{{ entree.libelle }}</span>
-          <span class="text-[13px] text-maquette-barre-sous">{{ entree.sousTitre }}</span>
+          <span class="text-[13px] text-white/60">{{ entree.sousTitre }}</span>
         </span>
-        <span class="shrink-0 text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-maquette-barre-retour">à venir</span>
+        <span class="shrink-0 text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/20">à venir</span>
       </div>
     </div>
   </template>
@@ -2630,12 +2630,12 @@ function formatAmount(value) {
   <div
     v-for="entree in ENTREES_A_VENIR.bas"
     :key="entree.cle"
-    class="min-h-[46px] px-[18px] rounded-xl bg-maquette-barre-bloc flex items-center justify-between gap-2 font-semibold opacity-60 cursor-not-allowed"
+    class="min-h-[46px] px-[18px] rounded-xl bg-white/10 flex items-center justify-between gap-2 font-semibold opacity-60 cursor-not-allowed"
     aria-disabled="true"
     :title="`${entree.libelle} : écran à venir`"
   >
     <span>{{ entree.libelle }}</span>
-    <span class="shrink-0 text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-maquette-barre-retour">à venir</span>
+    <span class="shrink-0 text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/20">à venir</span>
   </div>
 
 </nav>
