@@ -81,6 +81,11 @@ FAMILLES_IPE: Dict[str, Dict[str, str]] = {
 RACINES_IMMOBILISATIONS_BRUTES = ("20", "21", "22", "23", "24", "25", "26", "27")
 RACINE_AMORTISSEMENTS = "28"
 
+# Écart toléré entre la balance générale et le fichier complémentaire, en
+# FCFA : aucun (tout écart non nul est un écart). Décision provisoire —
+# TODO(spec: CAC-IPE-01 §2) : tolérance d'écart (seuil absolu et/ou en %).
+TOLERANCE_ECART_IPE = 0.0
+
 
 def _solde_ligne_balance_generale(ligne: Dict[str, Any]) -> Optional[float]:
     """solde_reel est fiable quel que soit le format détecté par model.py (= debit_fin - credit_fin)."""
@@ -135,7 +140,7 @@ def rapprocher_famille(
     lignes_auxiliaire: List[Dict[str, Any]],
     racine_collectif: str,
     cle_identifiante: Optional[str],
-    tolerance: float = 0.0,
+    tolerance: float = TOLERANCE_ECART_IPE,
 ) -> Dict[str, Any]:
     """
     Rapprochement compte collectif par compte collectif (voir docstring du
@@ -261,7 +266,7 @@ def _ligne_comparaison(numero_compte, nature, solde_bg, montant_fichier, nb_bien
 def rapprocher_immobilisations(
     lignes_balance_generale: List[Dict[str, Any]],
     biens: List[Dict[str, Any]],
-    tolerance: float = 0.0,
+    tolerance: float = TOLERANCE_ECART_IPE,
 ) -> Dict[str, Any]:
     """
     IPE-3 (docs/PLAN_verrou_IPE.md) : compare le fichier des immobilisations

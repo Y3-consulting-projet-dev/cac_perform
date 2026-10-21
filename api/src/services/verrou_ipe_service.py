@@ -30,29 +30,31 @@ COLLECTION_MISSION = "Mission1"
 # du séquencement de CLAUDE.md ("après ouverture des cycles"), pas une règle
 # actée par CAC-IPE-01. Unique paramètre à modifier ici — jamais de condition
 # dispersée ailleurs dans le code.
-ENDPOINTS_VERROUILLABLES = {
-    # matérialité (étape 5)
-    "mission.materialite_route", "mission.get_benchmarks", "mission.save_materiality",
-    "mission.validate_materiality", "mission.get_materiality",
-    # analyse quantitative (étape 6)
-    "mission.analyse_quantitative_route", "mission.save_quantitative_threshold_mode",
-    "mission.save_quantitative_threshold_mode_alias", "mission.make_quantitative_analysis",
-    "mission.download_analyse_quantitative",
-    # analyse qualitative (étape 7)
-    "mission.analyse_qualitative_route", "mission.init_qualitative_responses_route",
-    "mission.save_qualitative_responses_route", "mission.make_qualitative_analysis",
-    "mission.download_analyse_qualitative",
-    # décision finale des comptes à tester (étape 8)
-    "mission.presentation_comptes_significatifs_route",
-    # grouping / préparation des leads (étape 9)
-    "mission.get_grouping_with_qualitative", "mission.make_final", "mission.download_grouping",
-    # états financiers préliminaires (étape 10)
-    "mission.etats_financiers_preliminaires_route", "mission.classement_bilan_route",
-    # revue analytique finale (étape 11)
-    "mission.revue_analytique_route", "mission.update_commentaire_route",
-    "mission.revue_analytique_finale_route", "mission.save_revue_analytique_route",
-    "mission.download_revue_analytique",
-}
+# Regroupés par étape (numéro et libellé affichés dans l'écran Paramètres).
+ETAPES_VERROUILLABLES = (
+    {"etape": 5, "libelle": "Calcul des seuils", "endpoints": {
+        "mission.materialite_route", "mission.get_benchmarks", "mission.save_materiality",
+        "mission.validate_materiality", "mission.get_materiality"}},
+    {"etape": 6, "libelle": "Analyse quantitative", "endpoints": {
+        "mission.analyse_quantitative_route", "mission.save_quantitative_threshold_mode",
+        "mission.save_quantitative_threshold_mode_alias", "mission.make_quantitative_analysis",
+        "mission.download_analyse_quantitative"}},
+    {"etape": 7, "libelle": "Analyse qualitative", "endpoints": {
+        "mission.analyse_qualitative_route", "mission.init_qualitative_responses_route",
+        "mission.save_qualitative_responses_route", "mission.make_qualitative_analysis",
+        "mission.download_analyse_qualitative"}},
+    {"etape": 8, "libelle": "Décision finale des comptes à tester", "endpoints": {
+        "mission.presentation_comptes_significatifs_route"}},
+    {"etape": 9, "libelle": "Préparation des leads", "endpoints": {
+        "mission.get_grouping_with_qualitative", "mission.make_final", "mission.download_grouping"}},
+    {"etape": 10, "libelle": "États financiers préliminaires", "endpoints": {
+        "mission.etats_financiers_preliminaires_route", "mission.classement_bilan_route"}},
+    {"etape": 11, "libelle": "Revue analytique finale", "endpoints": {
+        "mission.revue_analytique_route", "mission.update_commentaire_route",
+        "mission.revue_analytique_finale_route", "mission.save_revue_analytique_route",
+        "mission.download_revue_analytique"}},
+)
+ENDPOINTS_VERROUILLABLES = frozenset().union(*(e["endpoints"] for e in ETAPES_VERROUILLABLES))
 
 
 def verrou_actif() -> bool:

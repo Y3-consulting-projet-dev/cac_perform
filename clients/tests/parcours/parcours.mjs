@@ -213,12 +213,22 @@ async function parcours(navigateur, d) {
       const r = await fetch(${JSON.stringify(API)} + '/api/v1/missions/' + ${JSON.stringify(d.mission_id)} + '/journal/export?module=Import');
       if (!r.ok || !r.headers.get('content-type').includes('spreadsheetml')) throw new Error('export HTTP ' + r.status); })()`),
     { url: /step=journal_audit/, texte: 'Exporter (Excel)', barre: true })
+  // Paramètres (page C) : consultation seule, valeurs lues côté serveur.
+  await etape(navigateur, 'Barre latérale : Paramètres', () => cliquer(navigateur, 'Paramètres'),
+    { url: /step=parametres/, texte: "Erreur d'imputation", barre: true })
+  await etape(navigateur, 'Paramètres : consultation seule (aucun champ modifiable, aucun bouton actif)', () => navigateur.evaluer(`(() => {
+      const champs = [...document.querySelectorAll('input')].filter((i) => !i.readOnly && !i.disabled && i.closest('section'));
+      if (champs.length) throw new Error(champs.length + ' champ(s) modifiable(s)');
+      const actifs = [...document.querySelectorAll('section button')].filter((b) => !b.disabled);
+      if (actifs.length) throw new Error('bouton actif : ' + actifs[0].textContent.trim());
+    })()`),
+    { url: /step=parametres/, texte: "Modification réservée aux administrateurs, disponible avec l'authentification", barre: true })
   await etape(navigateur, 'Barre latérale : étape « Contrôle d’intangibilité »', () => navigateur.evaluer(`(() => {
       const el = [...document.querySelectorAll('span')].find((s) => s.textContent.trim().startsWith('Contrôle d') && s.textContent.includes('intangibilit'));
       if (!el) throw new Error('étape introuvable'); el.closest('[data-etape]').click() })()`),
     { url: /step=intang/, barre: true })
   // Entrées « à venir » (docs/PLAN_ecrans_lot1.md §1) : visibles, mais un clic ne change pas d'écran.
-  for (const entree of ['Sélection des tiers', 'Courriers', 'Suivi des réponses', 'Paramètres']) {
+  for (const entree of ['Sélection des tiers', 'Courriers', 'Suivi des réponses']) {
     await etape(navigateur, `Barre latérale : « ${entree} » à venir, non cliquable`, () => cliquer(navigateur, entree),
       { url: /step=intang/, texte: 'Circularisation', barre: true })
   }

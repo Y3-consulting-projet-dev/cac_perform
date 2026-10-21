@@ -28,6 +28,7 @@ from src.resources.mission_resources import MissionResource
 from src.resources.import_resources import ImportResource
 from src.resources.ipe_resources import IpeResource
 from src.resources.journal_resources import JournalResource
+from src.resources.parametres_resources import ParametresResource
 from src.mission import mission
 from src.services.verrou_ipe_service import (
     verifier_verrou_ipe,
@@ -246,6 +247,16 @@ def register_routes(app):
 
     # Enregistrer le blueprint mission
     app.register_blueprint(mission_bp)
+
+    # --- Paramètres communs (page C) : consultation seule, aucune route d'écriture ---
+    parametres_bp = Blueprint('parametres_api', __name__, url_prefix='/api/v1/parametres')
+
+    @parametres_bp.route('', methods=['GET'])
+    def lire_parametres():
+        """GET /api/v1/parametres - Réglages communs à toutes les missions (lecture seule)"""
+        return ParametresResource.lire()
+
+    app.register_blueprint(parametres_bp)
     
     
     # ========================================

@@ -13,6 +13,7 @@ import { formatDateHeureFr } from '@/utils/formatDate';
 import FiabiliteIpeView from '@/views/FiabiliteIpeView.vue';
 import FichiersComplementairesView from '@/views/FichiersComplementairesView.vue';
 import JournalAuditView from '@/views/JournalAuditView.vue';
+import ParametresView from '@/views/ParametresView.vue';
 
 
 const axios = inject('axios');
@@ -610,7 +611,8 @@ const stepKeys = computed(() => new Set(
 const ECRAN_FIABILITE_IPE = 'fiabilite_ipe';
 const ECRAN_FICHIERS_COMPLEMENTAIRES = 'fichiers_complementaires';
 const ECRAN_JOURNAL_AUDIT = 'journal_audit';
-const ECRANS_HORS_ETAPES = new Set([ECRAN_FIABILITE_IPE, ECRAN_FICHIERS_COMPLEMENTAIRES, ECRAN_JOURNAL_AUDIT]);
+const ECRAN_PARAMETRES = 'parametres';
+const ECRANS_HORS_ETAPES = new Set([ECRAN_FIABILITE_IPE, ECRAN_FICHIERS_COMPLEMENTAIRES, ECRAN_JOURNAL_AUDIT, ECRAN_PARAMETRES]);
 
 function isValidStepKey(key) {
   return typeof key === 'string' && (stepKeys.value.has(key) || ECRANS_HORS_ETAPES.has(key));
@@ -710,7 +712,7 @@ const ENTREES_A_VENIR = {
   ],
   bas: [
     { cle: ECRAN_JOURNAL_AUDIT, libelle: "Journal d'audit", disponible: true },
-    { cle: 'parametres', libelle: 'Paramètres', disponible: false },
+    { cle: ECRAN_PARAMETRES, libelle: 'Paramètres', disponible: true },
   ],
 };
 
@@ -1068,6 +1070,12 @@ function showComponent(type, options = {}) {
   if (type === ECRAN_JOURNAL_AUDIT) {
     // Lecture seule de l'historique de la mission (page B).
     renderComponent.value = h(JournalAuditView, { missionId: props.missionId });
+    return;
+  }
+
+  if (type === ECRAN_PARAMETRES) {
+    // Réglages communs à toutes les missions, en consultation seule (page C).
+    renderComponent.value = h(ParametresView);
     return;
   }
 
