@@ -147,3 +147,9 @@ def test_import_de_modele_versionne(base):
     fichier = courriers.lire_fichier_modele(c2["_id"])
     assert fichier["nom_fichier"] == "c2_v2.docx" and courriers.champs_du_modele(fichier["contenu"]) == ["entite"]
     assert "dont inconnus : adresse_retour" in base["db"]["CirJournal"].docs[-2]["detail"]
+
+
+def test_paragraphes_pour_l_apercu():
+    contenu = docx("<w:p><w:r><w:t>Objet : confirmation</w:t></w:r></w:p><w:p></w:p><w:p></w:p>"
+                   "<w:p><w:r><w:t>Solde :</w:t></w:r><w:r><w:tab/><w:t>{{ solde }} &amp; plus</w:t></w:r></w:p><w:p></w:p>")
+    assert courriers.paragraphes_du_modele(contenu) == ["Objet : confirmation", "", "Solde : {{ solde }} & plus"]

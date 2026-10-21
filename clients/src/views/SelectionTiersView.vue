@@ -118,17 +118,13 @@ function formatMontant(valeur) {
 const formatEntier = (v) => (v === null || v === undefined ? '—' : new Intl.NumberFormat('fr-FR').format(Math.round(v)))
 const formatTaux = (v) => (v === null || v === undefined ? '—' : `${v.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`)
 
-// Prérequis IPE (maquette : « Rapprochement en cours, non validé… ») — couleurs de la charte.
+// Prérequis IPE (maquette : « Rapprochement en cours, non validé… »).
 const prerequisIpe = computed(() => {
   const statut = etat.value?.ipe?.statut_affiche
-  if (statut === 'valide') return { classe: 'bg-green-100 text-green-700', badge: 'Validée', texte: 'Fiabilité IPE validée : la population peut être utilisée.' }
-  if (statut === 'anterieure_au_verrou') {
-    return { classe: 'bg-gray-100 text-gray-700', badge: 'Antérieure au verrou', texte: 'Mission antérieure au verrou IPE : le rapprochement reste informatif.' }
-  }
+  if (statut === 'valide') return { texte: 'Fiabilité IPE validée : la population peut être utilisée.' }
+  if (statut === 'anterieure_au_verrou') return { texte: 'Mission antérieure au verrou IPE : le rapprochement reste informatif.' }
   const libelles = { non_commence: 'non commencé', en_cours: 'en cours', soumis_pour_revue: 'soumis pour revue', en_attente_correction: 'en attente de correction' }
   return {
-    classe: 'bg-orange-100 text-orange-700',
-    badge: 'Non validée',
     texte: `Rapprochement ${libelles[statut] || 'non commencé'}, non validé. La population ne doit être utilisée qu'après validation de la fiabilité.`,
   }
 })
@@ -172,7 +168,7 @@ const RADIO = 'flex gap-2.5 items-start text-[15px]'
         <p class="m-0 text-gray-500">
           <template v-if="etat?.mission?.entite">{{ etat.mission.entite }} · </template>
           <template v-if="etat?.mission?.exercice">exercice {{ etat.mission.exercice }} · </template>
-          CIR-01 · sélection manuelle (seuils SEUILS-01 et échantillonnage ECH-01 à venir)
+          CIR-01, à partir des seuils de SEUILS-01 et de l'échantillonnage ECH-01
         </p>
       </section>
 
@@ -182,16 +178,14 @@ const RADIO = 'flex gap-2.5 items-start text-[15px]'
         <!-- Prérequis IPE et seuils de l'étape 5 -->
         <section class="grid grid-cols-1 xl:grid-cols-2 gap-5">
           <div :class="[CARTE, 'px-6 py-5 flex flex-col gap-2']">
-            <div class="flex items-center justify-between gap-3">
-              <h2 class="m-0 text-[15px] font-bold tracking-[0.3px] uppercase text-blue-ycube">Prérequis · Fiabilité IPE</h2>
-              <span :class="['px-3 py-1 rounded-full text-xs font-semibold', prerequisIpe.classe]">{{ prerequisIpe.badge }}</span>
-            </div>
-            <p class="m-0 text-sm text-gray-700">{{ prerequisIpe.texte }}</p>
-            <button type="button" class="self-start text-sm font-semibold text-blue-ycube hover:underline" @click="emit('ouvrir-ecran', 'fiabilite_ipe')">
+            <h2 class="m-0 text-[15px] font-bold tracking-[0.3px] uppercase text-blue-ycube">Prérequis · Fiabilité IPE</h2>
+            <p class="m-0 text-sm text-gray-800">{{ prerequisIpe.texte }}</p>
+            <button type="button" class="self-start text-sm font-semibold text-blue-ycube underline" @click="emit('ouvrir-ecran', 'fiabilite_ipe')">
               Ouvrir Fiabilité IPE
             </button>
           </div>
-          <div :class="[CARTE, 'px-6 py-5 flex flex-col gap-2.5']">
+          <div :class="[CARTE, 'px-6 py-5 flex flex-col gap-2.5']"
+               :title="`${etat.seuils.disponible ? `Benchmark retenu : ${etat.seuils.benchmark}` : 'Aucun benchmark retenu à l’étape 5'} · ${etat.seuils.correspondance}`">
             <h2 class="m-0 text-[15px] font-bold tracking-[0.3px] uppercase text-blue-ycube">Seuils retenus · Étape 5</h2>
             <div class="grid grid-cols-3 gap-2.5">
               <div v-for="s in etat.seuils.valeurs" :key="s.cle" class="px-3 py-2.5 rounded-[10px] bg-gray-50">
@@ -199,10 +193,6 @@ const RADIO = 'flex gap-2.5 items-start text-[15px]'
                 <div class="font-extrabold text-[17px]">{{ etat.seuils.disponible ? formatEntier(s.valeur) : 'Non calculé' }}</div>
               </div>
             </div>
-            <span class="text-[13px] text-gray-500">
-              {{ etat.seuils.disponible ? `Benchmark retenu : ${etat.seuils.benchmark}` : 'Aucun benchmark retenu à l’étape 5' }}
-              · {{ etat.seuils.correspondance }} · non utilisés par la sélection manuelle
-            </span>
           </div>
         </section>
 
@@ -231,7 +221,7 @@ const RADIO = 'flex gap-2.5 items-start text-[15px]'
           <template v-else-if="type">
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
               <fieldset :class="FIELDSET">
-                <legend class="px-1 text-sm font-semibold">Méthode</legend>
+                <legend class="px-1 text-[15px] font-semibold">Méthode</legend>
                 <label :class="[RADIO, 'text-gray-400 cursor-not-allowed']" title="Sous-lot d : en attente de CAC-SEUILS-01 et ECH-01">
                   <input type="radio" disabled class="w-[18px] h-[18px] mt-0.5" />
                   Seuils SS/SP/TS et échantillonnage MUS (ECH-01) · à venir
@@ -242,15 +232,15 @@ const RADIO = 'flex gap-2.5 items-start text-[15px]'
                 </label>
               </fieldset>
               <fieldset :class="FIELDSET">
-                <legend class="px-1 text-sm font-semibold">Tirage reproductible</legend>
+                <legend class="px-1 text-[15px] font-semibold">Tirage reproductible</legend>
                 <label class="flex flex-col gap-1.5 text-sm font-semibold text-gray-400">Graine du tirage
                   <input type="text" disabled value="Sélection automatique à venir"
                          class="h-11 px-3 text-[15px] font-normal border border-gray-300 rounded-[10px] bg-gray-50" />
                 </label>
-                <span class="text-[13px] text-gray-500">Enregistrée au journal : le tirage pourra être rejoué à l'identique (sous-lot d).</span>
+                <span class="text-[13px] text-gray-500">Enregistrée au journal : le tirage peut être rejoué à l'identique.</span>
               </fieldset>
               <fieldset :class="FIELDSET">
-                <legend class="px-1 text-sm font-semibold">Mode de confirmation</legend>
+                <legend class="px-1 text-[15px] font-semibold">Mode de confirmation</legend>
                 <label :class="RADIO">
                   <input type="radio" name="mode" class="w-[18px] h-[18px] mt-0.5 accent-blue-ycube"
                          :checked="(selection?.mode?.valeur || 'positif') === 'positif'"
@@ -284,7 +274,7 @@ const RADIO = 'flex gap-2.5 items-start text-[15px]'
                 :disabled="enCours || !type.fichier_actif || selection?.statut === 'soumis_pour_revue'"
                 @click="constituer"
               >
-                {{ selection ? 'Constituer à nouveau la population' : 'Constituer la population' }}
+                {{ selection ? 'Lancer à nouveau la sélection' : 'Lancer la sélection' }}
               </button>
               <button
                 type="button"
@@ -314,7 +304,7 @@ const RADIO = 'flex gap-2.5 items-start text-[15px]'
             <div :class="[CARTE, 'px-5 py-[18px]']">
               <div class="text-[13px] text-gray-500">Valeur de la population</div>
               <div class="text-2xl font-extrabold text-blue-ycube">{{ formatEntier(selection.indicateurs.valeur_population) }}</div>
-              <div class="text-[13px] text-gray-500">Somme des soldes (valeur absolue)</div>
+              <div class="text-[13px] text-gray-500" title="Soldes pris en valeur absolue (convention provisoire, CAC-CIR-01 à confirmer)">Somme des soldes</div>
             </div>
             <div :class="[CARTE, 'px-5 py-[18px]']">
               <div class="text-[13px] text-gray-500">Valeur couverte</div>
@@ -372,12 +362,9 @@ const RADIO = 'flex gap-2.5 items-start text-[15px]'
                       <span v-else-if="t.origine === 'exclusion_manuelle'" class="px-2.5 py-0.5 rounded-full text-[13px] font-bold bg-gray-100 text-gray-700">Exclusion manuelle</span>
                       <span v-else class="text-gray-500">Non retenu</span>
                     </td>
-                    <td class="px-4 py-3 text-gray-500">
-                      <template v-if="t.motif">
-                        {{ t.motif }}
-                        <span class="block text-[13px]">{{ t.utilisateur_id }} · {{ formatDateHeureFr(t.horodatage) }}</span>
-                      </template>
-                      <template v-else>—</template>
+                    <td class="px-4 py-3" :class="t.motif ? 'text-gray-800' : 'text-gray-500'"
+                        :title="t.motif ? `${t.utilisateur_id} · ${formatDateHeureFr(t.horodatage)}` : ''">
+                      {{ t.motif || '—' }}
                     </td>
                   </tr>
                   <tr v-if="!tiersAffiches.length">

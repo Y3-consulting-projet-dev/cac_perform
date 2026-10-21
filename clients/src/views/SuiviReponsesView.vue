@@ -149,6 +149,8 @@ onMounted(charger)
 const CARTE = 'bg-white rounded-[14px] shadow'
 const TITRE = 'm-0 text-[17px] font-bold tracking-[0.3px] uppercase text-blue-ycube'
 const BOUTON_LIGNE = 'h-9 px-3 rounded-lg border border-blue-ycube bg-white text-blue-ycube text-sm font-bold hover:bg-blue-ycube hover:text-white transition whitespace-nowrap'
+const LIEN = 'font-bold text-blue-ycube underline text-left whitespace-nowrap'
+const TYPE_SINGULIER = { clients: 'client', fournisseurs: 'fournisseur', avocats: 'avocat', bailleurs: 'bailleur', banques: 'banque' }
 const CHAMP = 'h-11 px-3 text-[15px] font-normal border border-gray-300 rounded-[10px] bg-white focus:outline-none focus:ring-2 focus:ring-blue-ycube'
 </script>
 
@@ -234,7 +236,7 @@ const CHAMP = 'h-11 px-3 text-[15px] font-normal border border-gray-300 rounded-
               <tbody>
                 <tr v-for="d in demandes" :key="d._id" class="border-b border-gray-200 last:border-b-0 hover:bg-gray-50 align-top">
                   <td class="px-4 py-3"><strong>{{ d.libelle }}</strong><br />
-                    <span class="text-[13px] text-gray-500">{{ d.numero }} · {{ d.type_libelle.toLowerCase() }} · {{ d.canal }}</span></td>
+                    <span class="text-[13px] text-gray-500" :title="`Envoi : ${d.canal === 'postal' ? 'courrier' : 'courriel'} · ${d.destinataire}`">{{ d.numero }} · {{ TYPE_SINGULIER[d.type_tiers] }}</span></td>
                   <td class="px-4 py-3 whitespace-nowrap">{{ formatJour(d.date_envoi) }}</td>
                   <td class="px-4 py-3 whitespace-nowrap">
                     <span :class="['px-2.5 py-0.5 rounded-full text-[13px] font-bold', BADGES[d.statut.cle]]">{{ d.statut.libelle }}</span>
@@ -250,11 +252,13 @@ const CHAMP = 'h-11 px-3 text-[15px] font-normal border border-gray-300 rounded-
                     {{ derniere(d.reponses) ? formatEntier(derniere(d.reponses).ecart) : '—' }}
                   </td>
                   <td class="px-4 py-3">
+                    <!-- Maquette : un bouton pour l'action attendue, des liens pour les suites (écart, procédure). -->
                     <div class="flex flex-col gap-1.5 items-start">
                       <button v-if="d.statut.cle === 'a_relancer'" type="button" :class="BOUTON_LIGNE" @click="ouvrir('relance', d)">Enregistrer la relance</button>
-                      <button v-if="d.statut.cle === 'ecart' && !d.analyses_ecart.length" type="button" :class="BOUTON_LIGNE" @click="ouvrir('analyse', d)">Analyser l’écart</button>
-                      <button v-if="d.statut.cle === 'sans_reponse' && !d.procedures_alternatives.length" type="button" :class="BOUTON_LIGNE" @click="ouvrir('procedure', d)">Documenter</button>
-                      <button type="button" :class="BOUTON_LIGNE" @click="ouvrir('reponse', d)">
+                      <button v-if="d.statut.cle === 'ecart' && !d.analyses_ecart.length" type="button" :class="LIEN" @click="ouvrir('analyse', d)">Analyser l’écart</button>
+                      <button v-if="d.statut.cle === 'sans_reponse' && !d.procedures_alternatives.length" type="button" :class="LIEN" @click="ouvrir('procedure', d)">Documenter</button>
+                      <button v-if="['envoye', 'relance_1', 'relance_2'].includes(d.statut.cle)" type="button" :class="BOUTON_LIGNE" @click="ouvrir('reponse', d)">Saisir la réponse</button>
+                      <button v-else type="button" :class="LIEN" @click="ouvrir('reponse', d)">
                         {{ d.reponses.length ? 'Corriger la réponse' : 'Saisir la réponse' }}
                       </button>
                     </div>

@@ -75,6 +75,17 @@ const LIBELLES_IPE = {
   en_attente_correction: 'en attente de correction, non validée',
 }
 
+// Version du mémo affichée : celle soumise ou validée, sinon la prochaine soumission.
+const versionAffichee = computed(() => {
+  if (!doc.value) return 1
+  return statut.value === 'soumis' || statut.value === 'valide' ? doc.value.version : doc.value.version + 1
+})
+const majuscule = (texte) => (texte ? texte.charAt(0).toUpperCase() + texte.slice(1) : '—')
+const formatJour = (iso) => {
+  if (!iso) return '—'
+  const d = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('fr-FR')
+}
 const formatEntier = (v) => (v === null || v === undefined ? '—' : new Intl.NumberFormat('fr-FR').format(Math.round(v)))
 const formatTaux = (v) => (v === null || v === undefined ? '—' : `${v.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`)
 
@@ -97,7 +108,7 @@ const TITRE_ASIDE = 'm-0 text-[15px] font-bold tracking-[0.3px] uppercase text-b
         <div class="text-center">
           <h1 class="m-0 text-[26px] font-bold text-blue-ycube">Mémo de sélection</h1>
           <p v-if="c" class="m-0 text-gray-500">
-            {{ c.type_tiers }} · {{ doc ? `version ${doc.version}` : 'non encore soumis' }} · à verser au dossier
+            {{ c.type_tiers }} · version {{ versionAffichee }} · à verser au dossier
           </p>
         </div>
         <span v-if="statut" :class="['px-3.5 py-1.5 rounded-full text-sm font-bold', STATUTS[statut].classe]">{{ STATUTS[statut].libelle }}</span>
@@ -114,7 +125,8 @@ const TITRE_ASIDE = 'm-0 text-[15px] font-bold tracking-[0.3px] uppercase text-b
               <div class="text-[26px] font-extrabold text-blue-ycube">Y<span class="text-green-ycube-2">3</span> Audit &amp; Conseils</div>
               <div class="text-sm text-gray-500">Mémo de sélection des tiers à circulariser</div>
             </div>
-            <div class="text-right text-sm text-gray-700">Exercice {{ c.exercice || '—' }}</div>
+            <!-- SYSCOHADA (AUDCIF) : l'exercice couvre l'année civile, clos le 31 décembre. -->
+            <div class="text-right text-sm text-gray-700">Exercice clos le 31/12/{{ c.exercice || '—' }}</div>
           </div>
           <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
             <div><strong>Entité</strong> · {{ c.entite || '—' }}</div>
@@ -126,10 +138,9 @@ const TITRE_ASIDE = 'm-0 text-[15px] font-bold tracking-[0.3px] uppercase text-b
           <section class="flex flex-col gap-1.5">
             <h2 class="m-0 text-[17px] font-bold text-blue-ycube">1. Population de départ</h2>
             <p class="m-0">
-              <span class="first-letter:uppercase inline-block">{{ c.population.libelle_fichier }}</span>
-              ({{ c.population.nom_fichier }}), version {{ c.population.version }}, importée le
-              {{ formatDateHeureFr(c.population.date_import) }} : {{ c.population.nb_tiers }} tiers.
-              Fiabilité IPE à la constitution de la population : {{ LIBELLES_IPE[c.ipe?.statut_affiche] || c.ipe?.statut_affiche || '—' }}.
+              <span :title="c.population.nom_fichier">{{ majuscule(c.population.libelle_fichier) }}</span>, version {{ c.population.version }},
+              importée le {{ formatJour(c.population.date_import) }} : {{ c.population.nb_tiers }} comptes.
+              Fiabilité IPE : {{ LIBELLES_IPE[c.ipe?.statut_affiche] || c.ipe?.statut_affiche || '—' }}.
             </p>
           </section>
           <section class="flex flex-col gap-1.5">
@@ -153,18 +164,19 @@ const TITRE_ASIDE = 'm-0 text-[15px] font-bold tracking-[0.3px] uppercase text-b
             <h2 class="m-0 text-[17px] font-bold text-blue-ycube">4. Ajouts et exclusions manuels</h2>
             <p v-if="!c.decisions.length" class="m-0 text-gray-500">Aucun.</p>
             <p v-for="(d, i) in c.decisions" :key="i" class="m-0">
-              {{ d.numero }} {{ d.libelle }} {{ d.retenu ? 'ajouté' : 'exclu' }} par {{ d.utilisateur_id }}
-              le {{ formatDateHeureFr(d.horodatage) }} : {{ d.motif }}.
+              <span :title="d.libelle">{{ d.numero }}</span> {{ d.retenu ? 'ajouté' : 'exclu' }} par {{ d.utilisateur_id }}
+              le {{ formatJour(d.horodatage) }} : {{ d.motif }}.
             </p>
           </section>
           <section class="grid grid-cols-2 gap-4 mt-3">
             <div class="border-t border-gray-300 pt-2.5 text-sm">
               <strong>Préparé par</strong><br />
-              {{ doc?.soumis_par || '—' }}<br />{{ doc?.soumis_le ? formatDateHeureFr(doc.soumis_le) : '—' }}
+              <template v-if="statut === 'soumis' || statut === 'valide'">{{ doc.soumis_par }}<br />{{ formatJour(doc.soumis_le) }}</template>
+              <template v-else>{{ utilisateurConnecte() || '—' }}<br />—</template>
             </div>
             <div class="border-t border-gray-300 pt-2.5 text-sm">
               <strong>Revu par</strong><br />
-              <template v-if="statut === 'valide'">{{ doc.decision.utilisateur_id }}<br />{{ formatDateHeureFr(doc.decision.horodatage) }}</template>
+              <template v-if="statut === 'valide'">{{ doc.decision.utilisateur_id }}<br />{{ formatJour(doc.decision.horodatage) }}</template>
               <template v-else>—<br />—</template>
             </div>
           </section>
@@ -201,18 +213,15 @@ const TITRE_ASIDE = 'm-0 text-[15px] font-bold tracking-[0.3px] uppercase text-b
               Validé par {{ doc.decision.utilisateur_id }} le {{ formatDateHeureFr(doc.decision.horodatage) }} : « {{ doc.decision.commentaire }} »
             </p>
           </section>
-          <section :class="CARTE_ASIDE">
+          <section :class="CARTE_ASIDE" title="PDF et Word : bibliothèques de génération à valider. Dossier de travail : à définir (PLAN_circularisation §5).">
             <h2 :class="TITRE_ASIDE">Télécharger</h2>
             <button type="button" disabled class="h-11 rounded-[10px] border border-blue-ycube bg-white text-blue-ycube font-bold opacity-50 cursor-not-allowed">PDF</button>
             <button type="button" disabled class="h-11 rounded-[10px] border border-blue-ycube bg-white text-blue-ycube font-bold opacity-50 cursor-not-allowed">Word</button>
             <button type="button" disabled class="h-11 rounded-[10px] bg-green-ycube-2 text-white font-bold opacity-50 cursor-not-allowed">Verser au dossier de travail</button>
-            <span class="text-[13px] text-gray-500">
-              PDF et Word : bibliothèques de génération à valider. Dossier de travail : à définir (PLAN_circularisation §5).
-            </span>
           </section>
           <section :class="CARTE_ASIDE">
             <h2 :class="TITRE_ASIDE">Étape suivante</h2>
-            <button type="button" class="self-start font-bold text-blue-ycube hover:underline text-left" @click="emit('ouvrir-ecran', 'courriers')">
+            <button type="button" class="self-start font-bold text-blue-ycube underline text-left" @click="emit('ouvrir-ecran', 'courriers')">
               Préparer les courriers de circularisation
             </button>
           </section>

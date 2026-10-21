@@ -168,7 +168,7 @@ const LIBELLE = 'flex flex-col gap-1.5 text-sm font-semibold'
               </li>
               <li class="flex items-center gap-2.5 text-gray-500">
                 <input type="checkbox" disabled :title="MENTION_LECTURE_SEULE" class="w-[18px] h-[18px]" />
-                Circularisation · sélection, courriers, suivi (modules à venir)
+                Circularisation · sélection, courriers, suivi · non bloquée (décision à prendre)
               </li>
             </ul>
             <p class="m-0 text-[13px] text-gray-500 flex flex-wrap items-center gap-2">

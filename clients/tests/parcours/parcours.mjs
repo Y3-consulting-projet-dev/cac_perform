@@ -226,8 +226,8 @@ async function parcours(navigateur, d) {
   // Circularisation, sous-lot a (docs/PLAN_circularisation.md) : population, tiers retenu avec motif, mémo soumis.
   await etape(navigateur, 'Barre latérale : Sélection des tiers', () => cliquer(navigateur, 'Sélection des tiers'),
     { url: /step=selection_tiers/, texte: 'Sélection des tiers à circulariser', barre: true })
-  await etape(navigateur, 'Sélection des tiers : « Constituer la population » (fournisseurs)',
-    () => cliquer(navigateur, 'Constituer la population'),
+  await etape(navigateur, 'Sélection des tiers : « Lancer la sélection » (fournisseurs)',
+    () => cliquer(navigateur, 'Lancer la sélection'),
     { url: /step=selection_tiers/, texte: 'FOURNISSEUR TEST', barre: true })
   await etape(navigateur, 'Sélection des tiers : retenir 4011TEST avec un motif', async () => {
     await navigateur.evaluer(`document.querySelector('[aria-label="Retenir 4011TEST"]').click()`)
@@ -247,13 +247,15 @@ async function parcours(navigateur, d) {
   await etape(navigateur, 'Barre latérale : Courriers', () => cliquer(navigateur, 'Courriers'),
     { url: /step=courriers/, texte: 'Importer un modèle Word', barre: true })
   await etape(navigateur, 'Courriers : coordonnées du tiers retenu enregistrées', async () => {
+    await cliquer(navigateur, 'Coordonnées du tiers')
+    await attendre(400)
     await navigateur.evaluer(`(() => {
       const saisir = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })) };
       saisir(document.querySelector('form textarea'), 'BP 1 Abidjan');
       saisir(document.querySelector('form input[type=email]'), 'compta@fournisseur-test.ci') })()`)
     await attendre(200)
     await cliquer(navigateur, 'Enregistrer les coordonnées')
-  }, { url: /step=courriers/, texte: 'Version 1, par', barre: true })
+  }, { url: /step=courriers/, texte: 'Prêt', barre: true })
   // Circularisation, sous-lot c : suivi des réponses (envoi enregistré, réponse saisie ; aucun envoi réel).
   await etape(navigateur, 'Barre latérale : Suivi des réponses', () => cliquer(navigateur, 'Suivi des réponses'),
     { url: /step=suivi_reponses/, texte: 'Enregistrer l’envoi', barre: true })

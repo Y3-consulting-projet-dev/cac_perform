@@ -13,6 +13,7 @@ Collections : `CirCoordonnees` (annuaire par client, une version par
 modification), `CirModele` (versions de chaque modèle C1 à C5) ; actions au
 journal `CirJournal` (module « Courriers »). Rien n'est supprimé.
 """
+import html
 import io
 import re
 import zipfile
@@ -103,12 +104,33 @@ def champs_du_modele(contenu: bytes) -> List[str]:
     return champs
 
 
+def paragraphes_du_modele(contenu: bytes) -> List[str]:
+    """
+    Texte du corps du document, paragraphe par paragraphe (aperçu à l'écran,
+    sans mise en page). Tabulations et sauts de ligne Word conservés comme
+    espace et retour à la ligne ; paragraphes vides successifs fusionnés.
+    """
+    with zipfile.ZipFile(io.BytesIO(contenu)) as archive:
+        xml = archive.read("word/document.xml").decode("utf-8", "replace")
+    paragraphes: List[str] = []
+    for morceau in xml.split("</w:p>")[:-1] if "</w:p>" in xml else [xml]:
+        morceau = re.sub(r"<w:tab\s*/>", " ", morceau)
+        morceau = re.sub(r"<w:br\s*/>", "\n", morceau)
+        texte = html.unescape(re.sub(r"<[^>]+>", "", morceau)).strip()
+        if texte or (paragraphes and paragraphes[-1]):
+            paragraphes.append(texte)
+    while paragraphes and not paragraphes[-1]:
+        paragraphes.pop()
+    return paragraphes
+
+
 def resume_modele(doc: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if not doc:
         return None
     return {
         "_id": str(doc["_id"]), "version": doc["version"], "nom_fichier": doc["nom_fichier"],
         "importe_par": doc["importe_par"], "importe_le": doc["importe_le"], "champs": doc["champs"],
+        "paragraphes": doc.get("paragraphes") or [],
         "champs_inconnus": [c for c in doc["champs"] if c not in CHAMPS_DISPONIBLES],
     }
 
@@ -268,6 +290,7 @@ def importer_modele(mission_id: str, code: str, nom_fichier: Optional[str], cont
     if len(contenu) > TAILLE_MAX_MODELE:
         raise ValueError("Fichier trop volumineux (10 Mo au plus).")
     champs = champs_du_modele(contenu)
+    paragraphes = paragraphes_du_modele(contenu)
     fichier_id = _gridfs().put(contenu, filename=nom_fichier, mission_id=mission_id, nature="modele_courrier")
     db = _db()
     precedent = _modele_actif(code)
@@ -276,7 +299,7 @@ def importer_modele(mission_id: str, code: str, nom_fichier: Optional[str], cont
     version = (precedent["version"] + 1) if precedent else 1
     db[COLLECTION_MODELE].insert_one({
         "code": code, "type_tiers": _MODELES[code]["type_tiers"], "version": version, "actif": True,
-        "nom_fichier": nom_fichier, "fichier_id": fichier_id, "champs": champs,
+        "nom_fichier": nom_fichier, "fichier_id": fichier_id, "champs": champs, "paragraphes": paragraphes,
         "importe_par": utilisateur_id, "importe_le": _maintenant(), "mission_id": mission_id,
     })
     inconnus = [c for c in champs if c not in CHAMPS_DISPONIBLES]

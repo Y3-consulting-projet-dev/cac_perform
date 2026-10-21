@@ -19,7 +19,7 @@ def test_valeurs_lues_a_la_source(monkeypatch):
     p = parametres_service.lire_parametres()
     assert p["rapprochements"]["racines"][0]["valeur"] == "411"
     assert p["causes_ecart"]["valeurs"] == ["Cause A"]
-    assert p["rapprochements"]["seuils"][0]["valeur"] == 1.5
+    assert p["rapprochements"]["seuils"][1]["valeur"] == 1.5
 
 
 def test_valeurs_actuelles():
@@ -28,11 +28,11 @@ def test_valeurs_actuelles():
     assert [r["valeur"] for r in p["rapprochements"]["racines"]] == ["41", "40"]
     assert p["rapprochements"]["immobilisations"]["valeur"] == "20 à 28"
     assert p["rapprochements"]["immobilisations"]["detail"] == "20 à 27 : valeurs brutes · 28 : amortissements"
-    assert p["rapprochements"]["seuils"][0]["valeur"] == 0.0
-    assert p["rapprochements"]["seuils"][1]["valeur"] is None
-    assert p["rapprochements"]["seuils"][1]["applique"] is False
+    assert p["rapprochements"]["seuils"][1]["valeur"] == 0.0
+    assert p["rapprochements"]["seuils"][0]["valeur"] is None
+    assert p["rapprochements"]["seuils"][0]["applique"] is False
     # Proposés par le cahier des charges §2.4, affichés mais non appliqués : la tolérance reste 0.
-    assert [s["propose"] for s in p["rapprochements"]["seuils"]] == [500_000, 0.5]
+    assert [s["propose"] for s in p["rapprochements"]["seuils"]] == [0.5, 500_000]
     assert "non appliqués" in p["rapprochements"]["seuils_source"]["reference"]
     assert [c["valeur"] for c in p["circularisation"]["cadence"]] == ["J0", "J+15", "J+30", "J+45"]
     assert [e["etape"] for e in p["etapes_verrou"]["bloquees"]] == [5, 6, 7, 8, 9, 10, 11]

@@ -83,12 +83,13 @@ def lire_parametres() -> Dict[str, Any]:
             "immobilisations": {"libelle": "Immobilisations", **_racines_immobilisations(),
                                 "exclusion": "dépréciations (29) non prises en compte"},
             "immobilisations_source": _source(SPEC_A_CONFIRMER, "Périmètre IPE-3 à confirmer par CAC-IPE-01 §3"),
+            # Ordre de la maquette 7_Parametres : % puis FCFA.
             "seuils": [
+                {"libelle": "Seuil d'écart significatif (%)", "valeur": None, "applique": False,
+                 "propose_unite": "%", "propose": SEUILS_PROPOSES_CAHIER_DES_CHARGES["pourcentage"]},
                 {"libelle": "Seuil d'écart absolu (FCFA)", "valeur": rapprochement.TOLERANCE_ECART_IPE,
                  "applique": True, "propose_unite": "FCFA",
                  "propose": SEUILS_PROPOSES_CAHIER_DES_CHARGES["absolu_fcfa"]},
-                {"libelle": "Seuil d'écart significatif (%)", "valeur": None, "applique": False,
-                 "propose_unite": "%", "propose": SEUILS_PROPOSES_CAHIER_DES_CHARGES["pourcentage"]},
             ],
             "seuils_source": _source(DECISION_PROVISOIRE,
                                      "Aucune tolérance appliquée : tout écart non nul est un écart. "
