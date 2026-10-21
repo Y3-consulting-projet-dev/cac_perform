@@ -33,7 +33,8 @@ Mission1.ipe = {
 - **Additif et rétrocompatible** : absent sur toute mission existante tant qu'aucune évaluation IPE n'a eu lieu. Le code qui lit `Mission1` (API modernes comme `model.py`) doit traiter `ipe` manquant comme « non évalué », jamais comme une erreur.
 - **`verrou_applicable`** : décidé une fois pour toutes à la création de la mission (§2 bis), jamais recalculé après — une mission créée avant l'activation du verrou reste « antérieure au verrou » même si le verrou est activé plus tard pendant qu'elle est encore en cours.
 - **Historique horodaté (qui, quand)** : chaque entrée de `historique` a besoin d'un `utilisateur_id`. Aujourd'hui, aucune route mission ne reçoit d'utilisateur authentifié (pas de `jwt_required`, voir `RECAP_V1_CAC_PERFORM.md` §5) — on prévoit le champ (`utilisateur_id: null` par défaut), sans l'exiger. **Décision à faire remonter** (§8) : faut-il un minimum d'identification pour `historique.utilisateur_id`, ou `null` acceptable pour cette ossature ?
-- Le détail de ce que contient `"derniere_evaluation"` dépend du calcul de rapprochement (§4) — structure proposée là-bas.
+- Le détail de ce que contient `"derniere_evaluation"` 
+dépend du calcul de rapprochement (§4) — structure proposée là-bas.
 
 ## 2. Activation — paramètre désactivé par défaut
 
