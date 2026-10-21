@@ -16,6 +16,7 @@ import FichiersComplementairesView from '@/views/FichiersComplementairesView.vue
 import JournalAuditView from '@/views/JournalAuditView.vue';
 import ParametresView from '@/views/ParametresView.vue';
 import SelectionTiersView from '@/views/SelectionTiersView.vue';
+import CourriersView from '@/views/CourriersView.vue';
 
 
 const axios = inject('axios');
@@ -615,8 +616,10 @@ const ECRAN_FICHIERS_COMPLEMENTAIRES = 'fichiers_complementaires';
 const ECRAN_JOURNAL_AUDIT = 'journal_audit';
 const ECRAN_PARAMETRES = 'parametres';
 const ECRAN_SELECTION_TIERS = 'selection_tiers';
+const ECRAN_COURRIERS = 'courriers';
 const ECRANS_HORS_ETAPES = new Set([
   ECRAN_FIABILITE_IPE, ECRAN_FICHIERS_COMPLEMENTAIRES, ECRAN_JOURNAL_AUDIT, ECRAN_PARAMETRES, ECRAN_SELECTION_TIERS,
+  ECRAN_COURRIERS,
 ]);
 
 function isValidStepKey(key) {
@@ -722,7 +725,7 @@ const ipeSousTitre = computed(() => {
 const ENTREES_A_VENIR = {
   circularisation: [
     { cle: ECRAN_SELECTION_TIERS, libelle: 'Sélection des tiers', sousTitre: 'Module 2 · seuils SS/SP/TS, MUS', disponible: true },
-    { cle: 'courriers', libelle: 'Courriers', sousTitre: 'Module 3 · modèles, génération, envoi', disponible: false },
+    { cle: ECRAN_COURRIERS, libelle: 'Courriers', sousTitre: 'Module 3 · modèles, génération, envoi', disponible: true },
     { cle: 'suivi_reponses', libelle: 'Suivi des réponses', get sousTitre() { return cadenceRelances.value && `Relances ${cadenceRelances.value}`; }, disponible: false },
   ],
   bas: [
@@ -1092,6 +1095,15 @@ function showComponent(type, options = {}) {
   if (type === ECRAN_SELECTION_TIERS) {
     // Circularisation, sous-lot a : population, sélection manuelle, mémo (docs/PLAN_circularisation.md).
     renderComponent.value = h(SelectionTiersView, {
+      missionId: props.missionId,
+      onOuvrirEcran: (ecran) => { if (ECRANS_HORS_ETAPES.has(ecran)) showComponent(ecran); },
+    });
+    return;
+  }
+
+  if (type === ECRAN_COURRIERS) {
+    // Circularisation, sous-lot b : modèles, coordonnées, valeurs de fusion (docs/PLAN_circularisation.md).
+    renderComponent.value = h(CourriersView, {
       missionId: props.missionId,
       onOuvrirEcran: (ecran) => { if (ECRANS_HORS_ETAPES.has(ecran)) showComponent(ecran); },
     });

@@ -243,6 +243,17 @@ async function parcours(navigateur, d) {
     { url: /step=selection_tiers/, texte: 'Valider le mémo', barre: true })
   await etape(navigateur, 'Mémo : « Retour à la sélection » (sélection figée)', () => cliquer(navigateur, 'Retour à la sélection'),
     { url: /step=selection_tiers/, texte: 'Mémo soumis pour revue', barre: true })
+  // Circularisation, sous-lot b : courriers (bibliothèque de modèles, coordonnées du tiers retenu).
+  await etape(navigateur, 'Barre latérale : Courriers', () => cliquer(navigateur, 'Courriers'),
+    { url: /step=courriers/, texte: 'Importer un modèle Word', barre: true })
+  await etape(navigateur, 'Courriers : coordonnées du tiers retenu enregistrées', async () => {
+    await navigateur.evaluer(`(() => {
+      const saisir = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })) };
+      saisir(document.querySelector('form textarea'), 'BP 1 Abidjan');
+      saisir(document.querySelector('form input[type=email]'), 'compta@fournisseur-test.ci') })()`)
+    await attendre(200)
+    await cliquer(navigateur, 'Enregistrer les coordonnées')
+  }, { url: /step=courriers/, texte: 'Version 1, par', barre: true })
   await etape(navigateur, 'Barre latérale : étape « Contrôle d’intangibilité »', () => navigateur.evaluer(`(() => {
       const el = [...document.querySelectorAll('span')].find((s) => s.textContent.trim().startsWith('Contrôle d') && s.textContent.includes('intangibilit'));
       if (!el) throw new Error('étape introuvable'); el.closest('[data-etape]').click() })()`),
@@ -250,7 +261,7 @@ async function parcours(navigateur, d) {
   // Entrées « à venir » (docs/PLAN_ecrans_lot1.md §1) : visibles, mais un clic ne change pas d'écran.
   await etape(navigateur, 'Barre latérale : cadence de relance lue sur le serveur', async () => {},
     { url: /step=intang/, texte: 'Relances J0 / J+15 / J+30 / J+45', barre: true })
-  for (const entree of ['Courriers', 'Suivi des réponses']) {
+  for (const entree of ['Suivi des réponses']) {
     await etape(navigateur, `Barre latérale : « ${entree} » à venir, non cliquable`, () => cliquer(navigateur, entree),
       { url: /step=intang/, texte: 'Circularisation', barre: true })
   }

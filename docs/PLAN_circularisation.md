@@ -9,8 +9,27 @@ Ce plan ne fixe aucune règle métier : tout ce qui en dépend est listé en
 questions (§5). Rien dans `api/src/model.py` ni dans `/cors` : services
 dédiés dans `api/src/services/`, routes `/api/v1/missions/<id>/circularisation/...`.
 
-Statut : plan validé le 21/10/2026. **Sous-lot a livré** (voir « Sous-lot a :
-choix provisoires » ci-dessous) ; sous-lots b, c, d à venir.
+Statut : plan validé le 21/10/2026. **Sous-lot a livré**, **sous-lot b livré en
+partie** (voir les choix provisoires ci-dessous) ; sous-lots c, d à venir.
+
+### Sous-lot b : choix provisoires (décidés le 21/10/2026)
+
+- Fichiers rangés dans **GridFS** (base MongoDB, collection `cir_fichiers`),
+  sans nouvelle dépendance.
+- Coordonnées des tiers **saisies par l'auditeur** dans un **annuaire par
+  client** (`CirCoordonnees`, une version par modification), réutilisé d'une
+  mission à l'autre. Il faut une adresse ou un courriel. État d'un tiers :
+  « Prêt » (courriel), « Courriel manquant » (adresse seule), « Coordonnées
+  manquantes ».
+- Bibliothèque `CirModele` : C1 Clients, C2 Fournisseurs, C3 Avocats,
+  C4 Bailleurs, C5 Banques (maquette), **communs au cabinet**
+  (`TODO(décision)`), une version par import ; champs `{{ champ }}` (syntaxe
+  docxtpl) détectés dans le .docx ; champs que l'outil ne sait pas alimenter
+  signalés. Liste des champs disponibles : `courriers_service.CHAMPS_DISPONIBLES`
+  (`TODO(spec: CAC-CIR-01)`).
+- **Non livré, en attente de décision** : génération Word / PDF et aperçu mis
+  en page (bibliothèques à valider avec la personne qui gère le serveur),
+  donc étapes 2 à 4 de l'écran Courriers désactivées.
 
 ### Sous-lot a : choix provisoires (en l'absence de réponse aux questions §5)
 

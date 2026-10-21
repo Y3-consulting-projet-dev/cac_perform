@@ -75,8 +75,13 @@ def supprimer(client_id, mission_id):
         # d'une mission de test, identifiée par son marqueur ci-dessus.
         balances += db["Balance"].delete_many({"mission_id": mission_id}).deleted_count
         # Circularisation faite pendant le test (même condition : mission de test).
-        for collection in ("CirSelection", "CirMemo", "CirJournal"):
+        for collection in ("CirSelection", "CirMemo", "CirJournal", "CirCoordonnees", "CirModele"):
             db[collection].delete_many({"mission_id": mission_id})
+        # Modèles de courrier importés pendant le test (GridFS, rattachés à la mission de test).
+        import gridfs
+        fichiers = gridfs.GridFS(db, collection="cir_fichiers")
+        for f in db["cir_fichiers.files"].find({"mission_id": mission_id}, {"_id": 1}):
+            fichiers.delete(f["_id"])
     resultat = {
         "balances": balances,
         "missions": db["Mission1"].delete_many({"$or": [{"_id": ObjectId(mission_id)}, {"id_client": client_id}], **MARQUEUR}).deleted_count,

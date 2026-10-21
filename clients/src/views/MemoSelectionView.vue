@@ -212,7 +212,9 @@ const TITRE_ASIDE = 'm-0 text-[15px] font-bold tracking-[0.3px] uppercase text-b
           </section>
           <section :class="CARTE_ASIDE">
             <h2 :class="TITRE_ASIDE">Étape suivante</h2>
-            <span class="font-bold text-gray-400" title="Sous-lot b : modèles et courriers">Préparer les courriers de circularisation · à venir</span>
+            <button type="button" class="self-start font-bold text-blue-ycube hover:underline text-left" @click="emit('ouvrir-ecran', 'courriers')">
+              Préparer les courriers de circularisation
+            </button>
           </section>
         </aside>
       </div>

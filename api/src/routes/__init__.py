@@ -30,6 +30,7 @@ from src.resources.ipe_resources import IpeResource
 from src.resources.journal_resources import JournalResource
 from src.resources.parametres_resources import ParametresResource
 from src.resources.circularisation_resources import CircularisationResource
+from src.resources.courriers_resources import CourriersResource
 from src.mission import mission
 from src.services.verrou_ipe_service import (
     verifier_verrou_ipe,
@@ -287,6 +288,28 @@ def register_routes(app):
     def demander_correction_memo_cir(mission_id, type_tiers):
         """POST /api/v1/missions/<id>/circularisation/<type_tiers>/memo/demander-correction - Demande une correction du mémo"""
         return CircularisationResource.demander_correction_memo(mission_id, type_tiers)
+
+    # --- Circularisation, sous-lot b : courriers (docs/PLAN_circularisation.md) ---
+
+    @mission_bp.route('/<mission_id>/courriers', methods=['GET'])
+    def lire_courriers_cir(mission_id):
+        """GET /api/v1/missions/<id>/courriers - Modèles, tiers retenus, état et valeurs de fusion"""
+        return CourriersResource.lire(mission_id)
+
+    @mission_bp.route('/<mission_id>/courriers/coordonnees', methods=['PUT'])
+    def coordonnees_tiers_cir(mission_id):
+        """PUT /api/v1/missions/<id>/courriers/coordonnees - Coordonnées d'un tiers (annuaire du client)"""
+        return CourriersResource.enregistrer_coordonnees(mission_id)
+
+    @mission_bp.route('/<mission_id>/courriers/modeles', methods=['POST'])
+    def importer_modele_cir(mission_id):
+        """POST /api/v1/missions/<id>/courriers/modeles - Nouvelle version d'un modèle Word"""
+        return CourriersResource.importer_modele(mission_id)
+
+    @mission_bp.route('/<mission_id>/courriers/modeles/<modele_id>/fichier', methods=['GET'])
+    def telecharger_modele_cir(mission_id, modele_id):
+        """GET /api/v1/missions/<id>/courriers/modeles/<modele_id>/fichier - Fichier Word d'une version de modèle"""
+        return CourriersResource.telecharger_modele(mission_id, modele_id)
 
     # Enregistrer le blueprint mission
     app.register_blueprint(mission_bp)
