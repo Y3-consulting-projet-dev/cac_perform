@@ -104,6 +104,8 @@ Relevée sur le code réel de `ClientSpace.vue`, `ClientsView.vue`, `MissionsVie
 
 **Ne jamais modifier les fins de ligne d'un fichier. Avant chaque commit, vérifier `git diff --stat` : un nombre de lignes anormalement élevé signale un problème de fins de ligne.** Ce dépôt a `core.autocrlf=true` et des fichiers enregistrés en CRLF (ex. `GroupingAnalyse.vue`) comme en LF : une réécriture complète d'un fichier peut convertir toutes ses lignes. Contrôle : `git diff --stat` comparé à `git diff --stat --ignore-cr-at-eol` (les deux doivent donner le même nombre de lignes). Pour enregistrer un fichier CRLF tel quel : `git -c core.autocrlf=false add <fichier>`.
 
+**Avant tout enregistrement (`git add`), vérifier le format stocké de chaque fichier** avec `git ls-files --eol <fichier>` (colonne `i/` : `i/lf` ou `i/crlf`). N'utiliser `git -c core.autocrlf=false add` **que pour les fichiers stockés en CRLF** (`i/crlf`) ; un fichier stocké en LF (`i/lf`) s'enregistre avec un `git add` ordinaire — l'enregistrer avec `core.autocrlf=false` le convertit entièrement en CRLF dans le dépôt. Un nouveau fichier s'enregistre avec un `git add` ordinaire.
+
 ## Point de sécurité connu (à garder en tête, pas à régler maintenant)
 
 Aujourd'hui, **aucune authentification ni cloisonnement par mission** ne s'applique aux clients et aux missions (voir `RECAP_V1_CAC_PERFORM.md`, section 5). Ce chantier ne refait pas l'authentification. On pose seulement, dans le nouveau code, les bases d'un filtrage par mission (ex. prévoir un champ/paramètre de mission dans les nouveaux services), sans l'appliquer rétroactivement à l'existant.
