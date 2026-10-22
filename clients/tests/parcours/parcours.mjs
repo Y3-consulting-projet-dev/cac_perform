@@ -331,6 +331,16 @@ async function parcours(navigateur, d) {
     await navigateur.evaluer(`document.querySelector('[role=dialog]').parentElement.click()`)
     await verifierFermee()
   }, { url: /step=courriers/, texte: 'Tiers bloqués', barre: true })
+  await etape(navigateur, 'Courriers : « Générer » en mode « Un seul tiers », liste non vide', async () => {
+    await ouvrirFenetre('Générer')
+    await navigateur.evaluer(`document.querySelector('[role=dialog] input[value=unitaire]').click()`)
+    await attendre(400)
+    const nb = await navigateur.evaluer(`(() => { const s = document.querySelector('[role=dialog] select[aria-label="Tiers à générer"]');
+      if (!s) throw new Error('liste des tiers absente'); return [...s.options].filter((o) => o.value).length })()`)
+    if (!nb) throw new Error('liste des tiers vide')
+    await navigateur.evaluer(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await verifierFermee()
+  }, { url: /step=courriers/, texte: 'Tiers bloqués', barre: true })
   await etape(navigateur, 'Courriers : « Précédent » revient à l’étape Aperçu', () => cliquer(navigateur, 'Précédent'),
     { url: /step=courriers/, texte: 'Les champs fusionnés sont surlignés', barre: true })
   // Circularisation, sous-lot c : suivi des réponses (envoi enregistré, réponse saisie ; aucun envoi réel).

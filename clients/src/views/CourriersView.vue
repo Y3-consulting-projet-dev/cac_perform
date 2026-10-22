@@ -75,6 +75,23 @@ function raisonBlocage(t) {
 const tiersBloques = computed(() => tousLesTiers.value.map((t) => ({ ...t, raison: raisonBlocage(t) })).filter((t) => t.raison))
 const tiersPrets = computed(() => tousLesTiers.value.filter((t) => !raisonBlocage(t)))
 
+// Génération d'un seul tiers : TOUS les tiers retenus sont listés ; seuls ceux qui
+// ont un modèle et un courriel (état « Prêt ») sont sélectionnables, les autres
+// restent visibles avec leur raison.
+function raisonNonSelectionnable(t) {
+  return raisonBlocage(t) || (t.etat === 'courriel_manquant' ? 'Courriel manquant' : null)
+}
+const cleTiers = (t) => `${t.type_tiers}|${t.numero}`
+const optionsTiersUnitaire = computed(() => tousLesTiers.value.map((t) => {
+  const raison = raisonNonSelectionnable(t)
+  return {
+    valeur: cleTiers(t),
+    selectionnable: !raison,
+    libelle: raison ? `${nomTiers(t)} · ${t.numero} — ${raison}` : `${nomTiers(t)} · ${t.numero} · ${ETATS[t.etat].libelle}`,
+  }
+}))
+const aucunTiersSelectionnable = computed(() => !optionsTiersUnitaire.value.some((o) => o.selectionnable))
+
 // Étapes terminées (cochées).
 const modelesComplets = computed(() => tousLesTiers.value.length > 0
   && [...new Set(tousLesTiers.value.map((t) => t.code_modele))].every((code) => modeleActif(code)))
@@ -161,8 +178,17 @@ function ouvrirCoordonnees(t) {
 }
 
 function ouvrirGeneration() {
-  optionsGeneration.value = { mode: 'lot', tiers: tiersPrets.value[0] ? `${tiersPrets.value[0].type_tiers}|${tiersPrets.value[0].numero}` : '', formats: ['pdf'], canal: 'courriel' }
+  // Présélection : le tiers affiché dans l'aperçu s'il est sélectionnable, sinon le premier qui l'est.
+  const options = optionsTiersUnitaire.value
+  const apercu = tiers.value ? options.find((o) => o.valeur === cleTiers(tiers.value) && o.selectionnable) : null
+  const preselection = apercu || options.find((o) => o.selectionnable)
+  optionsGeneration.value = { mode: 'lot', tiers: preselection ? preselection.valeur : '', formats: ['pdf'], canal: 'courriel' }
   fenetre.value = 'generation'
+}
+
+function allerALaSelection() {
+  fenetre.value = null
+  emit('ouvrir-ecran', 'selection_tiers')
 }
 
 const fermer = () => { fenetre.value = null }
@@ -448,7 +474,7 @@ const champsReconnus = computed(() => Object.keys(etat.value?.champs_disponibles
             </tbody>
           </table>
           <div class="flex justify-end">
-            <button type="button" :class="BOUTON_PRIMAIRE" :disabled="!tousLesTiers.length" @click="ouvrirGeneration">Générer</button>
+            <button type="button" :class="BOUTON_PRIMAIRE" @click="ouvrirGeneration">Générer</button>
           </div>
         </section>
 
@@ -559,9 +585,24 @@ const champsReconnus = computed(() => Object.keys(etat.value?.champs_disponibles
         <label class="flex gap-2.5 items-center text-[15px]">
           <input v-model="optionsGeneration.mode" type="radio" value="unitaire" class="w-[18px] h-[18px] accent-blue-ycube" /> Un seul tiers
         </label>
-        <select v-if="optionsGeneration.mode === 'unitaire'" v-model="optionsGeneration.tiers" :class="CHAMP">
-          <option v-for="t in tiersPrets" :key="t.type_tiers + t.numero" :value="`${t.type_tiers}|${t.numero}`">{{ t.numero }} · {{ nomTiers(t) }}</option>
-        </select>
+        <template v-if="optionsGeneration.mode === 'unitaire'">
+          <p v-if="!tousLesTiers.length" class="m-0 px-3.5 py-3 rounded-[10px] bg-orange-100 text-orange-700 text-sm">
+            Aucun tiers retenu : complétez d'abord la sélection.
+            <button type="button" class="font-semibold underline" @click="allerALaSelection">Ouvrir Sélection des tiers</button>
+          </p>
+          <template v-else>
+            <select v-model="optionsGeneration.tiers" aria-label="Tiers à générer" :class="[CHAMP, 'w-full min-w-0']">
+              <option v-if="aucunTiersSelectionnable" value="" disabled>Aucun tiers prêt</option>
+              <option v-for="o in optionsTiersUnitaire" :key="o.valeur" :value="o.valeur" :disabled="!o.selectionnable">{{ o.libelle }}</option>
+            </select>
+            <span v-if="optionsTiersUnitaire.some((o) => !o.selectionnable)" class="text-[13px] text-gray-500">
+              Les tiers grisés ne sont pas sélectionnables : la raison suit leur nom.
+            </span>
+            <span v-if="aucunTiersSelectionnable" class="text-[13px] text-orange-700">
+              Aucun tiers prêt : complétez les coordonnées (étape 2) ou importez le modèle du type de tiers (étape 1).
+            </span>
+          </template>
+        </template>
       </fieldset>
       <fieldset class="m-0 border border-gray-200 rounded-xl px-4 py-3.5 flex flex-col gap-2.5" disabled>
         <legend class="px-1 text-[15px] font-semibold text-gray-400">Formats</legend>
