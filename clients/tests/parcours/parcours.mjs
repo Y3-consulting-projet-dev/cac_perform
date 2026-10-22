@@ -239,8 +239,42 @@ async function parcours(navigateur, d) {
   }, { url: /step=selection_tiers/, texte: 'Ajout manuel', barre: true })
   await etape(navigateur, 'Sélection des tiers : « Générer le mémo de sélection »', () => cliquer(navigateur, 'Générer le mémo de sélection'),
     { url: /step=selection_tiers/, texte: '4. Ajouts et exclusions manuels', barre: true })
-  await etape(navigateur, 'Mémo : « Soumettre pour revue »', () => cliquer(navigateur, 'Soumettre pour revue'),
-    { url: /step=selection_tiers/, texte: 'Valider le mémo', barre: true })
+  // Mémo : actions en barre, fenêtres centrées (croix, Échap, clic à l'extérieur ; focus dans la fenêtre).
+  const fenetreAvecFocus = `(() => { const d = document.querySelector('[role=dialog]');
+    if (!d) throw new Error('fenêtre absente'); if (!d.contains(document.activeElement)) throw new Error('focus hors de la fenêtre') })()`
+  const fenetreFermee = `(() => { if (document.querySelector('[role=dialog]')) throw new Error('fenêtre encore ouverte') })()`
+  const ouvrirFenetre = async (bouton) => { await cliquer(navigateur, bouton); await attendre(500); await navigateur.evaluer(fenetreAvecFocus) }
+  const verifierFermee = async () => { await attendre(400); await navigateur.evaluer(fenetreFermee) }
+  await etape(navigateur, 'Mémo : « Télécharger » ouvre la fenêtre (focus dans la fenêtre)', () => ouvrirFenetre('Télécharger'),
+    { url: /step=selection_tiers/, texte: 'Verser au dossier de travail', barre: true })
+  await etape(navigateur, 'Mémo : fenêtre « Télécharger » fermée par Échap', async () => {
+    await navigateur.evaluer(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await verifierFermee()
+  }, { url: /step=selection_tiers/, texte: '4. Ajouts et exclusions manuels', barre: true })
+  await etape(navigateur, 'Mémo : « Étape suivante : courriers » (mémo non validé) ouvre la fenêtre', () => ouvrirFenetre('Étape suivante : courriers'),
+    { url: /step=selection_tiers/, texte: 'Y aller quand même', barre: true })
+  await etape(navigateur, 'Mémo : fenêtre « Étape suivante » fermée par un clic à l’extérieur', async () => {
+    await navigateur.evaluer(`document.querySelector('[role=dialog]').parentElement.click()`)
+    await verifierFermee()
+  }, { url: /step=selection_tiers/, texte: '4. Ajouts et exclusions manuels', barre: true })
+  await etape(navigateur, 'Mémo : « Soumettre pour revue » ouvre la fenêtre', () => ouvrirFenetre('Soumettre pour revue'),
+    { url: /step=selection_tiers/, texte: 'Confirmer la soumission', barre: true })
+  await etape(navigateur, 'Mémo : fenêtre de soumission fermée par la croix', async () => {
+    await navigateur.evaluer(`document.querySelector('[role=dialog] [aria-label="Fermer"]').click()`)
+    await verifierFermee()
+  }, { url: /step=selection_tiers/, texte: '4. Ajouts et exclusions manuels', barre: true })
+  await etape(navigateur, 'Mémo : soumission confirmée depuis la fenêtre', async () => {
+    await ouvrirFenetre('Soumettre pour revue')
+    await cliquer(navigateur, 'Confirmer la soumission')
+    await verifierFermee()
+  }, { url: /step=selection_tiers/, texte: 'Demander une correction', barre: true })
+  await etape(navigateur, 'Mémo : « Valider » ouvre la fenêtre (commentaire obligatoire), fermée par Échap', async () => {
+    await ouvrirFenetre('Valider')
+    if (!(await navigateur.evaluer(`[...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent.trim() === 'Confirmer la validation').disabled`)))
+      throw new Error('validation possible sans commentaire')
+    await navigateur.evaluer(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await verifierFermee()
+  }, { url: /step=selection_tiers/, texte: 'Soumis pour revue', barre: true })
   await etape(navigateur, 'Mémo : « Retour à la sélection » (sélection figée)', () => cliquer(navigateur, 'Retour à la sélection'),
     { url: /step=selection_tiers/, texte: 'Mémo soumis pour revue', barre: true })
   // Circularisation, sous-lot b : courriers (bibliothèque de modèles, coordonnées du tiers retenu).

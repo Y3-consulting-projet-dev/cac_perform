@@ -23,6 +23,7 @@ import {
   justifierNonEvaluableIpe,
 } from '@/api/ipe.api'
 import { obtenirMission, obtenirClient, listerFichiersComplementaires } from '@/api/imports.api'
+import FenetreCentree from '@/components/FenetreCentree.vue'
 
 // `integre` : écran affiché dans la zone principale de GroupingAnalyse.vue,
 // sous la barre latérale bleue (qui porte déjà le « Retour »).
@@ -1241,32 +1242,21 @@ function back() {
         </div>
 
         <!-- Compte en écart (§2.4) : fenêtre centrée au milieu de la page (demande du 21/10/2026, au lieu
-             du panneau à droite de la maquette) ; modale de la charte (ClientsView). Clic sur le fond : fermeture. -->
-        <div v-if="lignePanneau" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="fermerPanneau">
-        <aside
-          role="dialog"
-          aria-modal="true"
-          :aria-label="`Panneau de qualification du compte ${numeroBalanceGenerale(lignePanneau.ligne)}`"
-          class="bg-white rounded-2xl w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4"
+             du panneau à droite de la maquette) ; composant commun FenetreCentree (croix, Échap, clic à l'extérieur). -->
+        <FenetreCentree
+          v-if="lignePanneau"
+          :titre="`Écart · ${estImmobilisations(lignePanneau.module) ? libelleLigneEcart(lignePanneau.module, lignePanneau.ligne) : `compte ${numeroBalanceGenerale(lignePanneau.ligne)}`}`"
+          libelle-fermer="Fermer le panneau"
+          @fermer="fermerPanneau"
         >
-          <div class="flex justify-between items-start gap-3">
-            <div class="flex flex-col gap-1">
-              <h2 class="m-0 text-lg font-bold text-blue-ycube">
-                Écart · {{ estImmobilisations(lignePanneau.module) ? libelleLigneEcart(lignePanneau.module, lignePanneau.ligne) : `compte ${numeroBalanceGenerale(lignePanneau.ligne)}` }}
-              </h2>
-              <span class="text-sm text-gray-500">
-                <template v-if="estImmobilisations(lignePanneau.module)">
-                  {{ montantImmo(lignePanneau.ligne, lignePanneau.ligne.ecart) }} · {{ lignePanneau.ligne.nb_biens }} bien(s)
-                </template>
-                <template v-else>
-                  {{ formatMontant(lignePanneau.ligne.ecart) }} · {{ lignePanneau.ligne.nb_tiers_rattaches }} tiers rattaché{{ lignePanneau.ligne.nb_tiers_rattaches > 1 ? 's' : '' }}
-                </template>
-              </span>
-            </div>
-            <button class="w-11 h-11 shrink-0 rounded-[10px] bg-[#f5f7fa] text-blue-ycube hover:bg-gray-100 transition flex items-center justify-center" aria-label="Fermer le panneau" @click="fermerPanneau">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-            </button>
-          </div>
+          <template #sous-titre>
+            <template v-if="estImmobilisations(lignePanneau.module)">
+              {{ montantImmo(lignePanneau.ligne, lignePanneau.ligne.ecart) }} · {{ lignePanneau.ligne.nb_biens }} bien(s)
+            </template>
+            <template v-else>
+              {{ formatMontant(lignePanneau.ligne.ecart) }} · {{ lignePanneau.ligne.nb_tiers_rattaches }} tiers rattaché{{ lignePanneau.ligne.nb_tiers_rattaches > 1 ? 's' : '' }}
+            </template>
+          </template>
 
           <!-- Qualification : cause de la liste provisoire (TODO(spec: CAC-IPE-01)) + commentaire -->
           <div class="flex flex-col gap-2.5 p-4 rounded-xl bg-gray-50">
@@ -1384,8 +1374,7 @@ function back() {
               </button>
             </div>
           </div>
-        </aside>
-        </div>
+        </FenetreCentree>
       </div>
 
       <!-- Commentaires généraux (niveau 1) : hors maquette, gardés en bas dans le même style -->
