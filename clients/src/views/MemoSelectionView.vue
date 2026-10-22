@@ -15,6 +15,7 @@ import {
 import { useNotyf } from '@/composables/useNotyf'
 import { formatDateHeureFr } from '@/utils/formatDate'
 import FenetreCentree from '@/components/FenetreCentree.vue'
+import logoY3 from '@/assets/logo_y3.png'
 
 const props = defineProps({ missionId: String, type: String })
 const emit = defineEmits(['retour', 'ouvrir-ecran'])
@@ -209,8 +210,9 @@ const BOUTON_ANNULER = 'h-11 px-5 rounded-[10px] border border-gray-300 text-gra
                class="w-full bg-white rounded-md shadow px-16 py-14 flex flex-col gap-[22px] text-[15px] leading-[1.55]">
         <div class="flex justify-between items-start gap-4 border-b-[3px] border-green-ycube-2 pb-4">
           <div>
-            <div class="text-[26px] font-extrabold text-blue-ycube">Y<span class="text-green-ycube-2">3</span> Audit &amp; Conseils</div>
-            <div class="text-sm text-gray-500">Mémo de sélection des tiers à circulariser</div>
+            <!-- Logo du cabinet : le même fichier que l'en-tête de l'application (Header.vue). -->
+            <img :src="logoY3" alt="Y3 Audit & Conseils" class="h-16 w-auto" />
+            <div class="mt-2 text-sm text-gray-500">Mémo de sélection des tiers à circulariser</div>
           </div>
           <!-- SYSCOHADA (AUDCIF) : l'exercice couvre l'année civile, clos le 31 décembre. -->
           <div class="text-right text-sm text-gray-700">Exercice clos le 31/12/{{ c.exercice || '—' }}</div>
