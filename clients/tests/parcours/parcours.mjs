@@ -277,19 +277,41 @@ async function parcours(navigateur, d) {
   }, { url: /step=selection_tiers/, texte: 'Soumis pour revue', barre: true })
   await etape(navigateur, 'Mémo : « Retour à la sélection » (sélection figée)', () => cliquer(navigateur, 'Retour à la sélection'),
     { url: /step=selection_tiers/, texte: 'Mémo soumis pour revue', barre: true })
-  // Circularisation, sous-lot b : courriers (bibliothèque de modèles, coordonnées du tiers retenu).
-  await etape(navigateur, 'Barre latérale : Courriers', () => cliquer(navigateur, 'Courriers'),
-    { url: /step=courriers/, texte: 'Importer un modèle Word', barre: true })
-  await etape(navigateur, 'Courriers : coordonnées du tiers retenu enregistrées', async () => {
-    await cliquer(navigateur, 'Coordonnées du tiers')
-    await attendre(400)
+  // Circularisation, sous-lot b : courriers en quatre étapes (Modèle, Coordonnées, Aperçu, Génération).
+  await etape(navigateur, 'Barre latérale : Courriers (étape Modèle)', () => cliquer(navigateur, 'Courriers'),
+    { url: /step=courriers/, texte: 'Gérer les modèles', barre: true })
+  await etape(navigateur, 'Courriers : « Gérer les modèles » ouvre la bibliothèque, fermée par Échap', async () => {
+    await ouvrirFenetre('Gérer les modèles')
+    await navigateur.evaluer(`(() => { if (!document.querySelector('[role=dialog]').innerText.includes('Importer un modèle Word')) throw new Error('import absent') })()`)
+    await navigateur.evaluer(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await verifierFermee()
+  }, { url: /step=courriers/, texte: 'Gérer les modèles', barre: true })
+  await etape(navigateur, 'Courriers : « Suivant » mène à l’étape Coordonnées', () => cliquer(navigateur, 'Suivant'),
+    { url: /step=courriers/, texte: '1 à compléter', barre: true })
+  await etape(navigateur, 'Courriers : coordonnées du tiers retenu enregistrées (« Compléter »)', async () => {
+    await ouvrirFenetre('Compléter')
     await navigateur.evaluer(`(() => {
       const saisir = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })) };
       saisir(document.querySelector('form textarea'), 'BP 1 Abidjan');
       saisir(document.querySelector('form input[type=email]'), 'compta@fournisseur-test.ci') })()`)
     await attendre(200)
     await cliquer(navigateur, 'Enregistrer les coordonnées')
-  }, { url: /step=courriers/, texte: 'Prêt', barre: true })
+    await verifierFermee()
+  }, { url: /step=courriers/, texte: '0 à compléter', barre: true })
+  await etape(navigateur, 'Courriers : étape Aperçu (clic sur l’étape)', () => cliquer(navigateur, '3 · Aperçu'),
+    { url: /step=courriers/, texte: 'Les champs fusionnés sont surlignés', barre: true })
+  // Les modèles sont communs au cabinet : l'étape ne suppose ni la présence ni l'absence d'un modèle C2.
+  await etape(navigateur, 'Courriers : étape Génération (résumé)', () => cliquer(navigateur, '4 · Génération'),
+    { url: /step=courriers/, texte: 'Courriers prêts', barre: true })
+  await etape(navigateur, 'Courriers : « Générer » ouvre la fenêtre (confirmation indisponible), fermée par un clic à l’extérieur', async () => {
+    await ouvrirFenetre('Générer')
+    if (!(await navigateur.evaluer(`[...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent.trim() === 'Confirmer la génération').disabled`)))
+      throw new Error('génération confirmable')
+    await navigateur.evaluer(`document.querySelector('[role=dialog]').parentElement.click()`)
+    await verifierFermee()
+  }, { url: /step=courriers/, texte: 'Tiers bloqués', barre: true })
+  await etape(navigateur, 'Courriers : « Précédent » revient à l’étape Aperçu', () => cliquer(navigateur, 'Précédent'),
+    { url: /step=courriers/, texte: 'Les champs fusionnés sont surlignés', barre: true })
   // Circularisation, sous-lot c : suivi des réponses (envoi enregistré, réponse saisie ; aucun envoi réel).
   await etape(navigateur, 'Barre latérale : Suivi des réponses', () => cliquer(navigateur, 'Suivi des réponses'),
     { url: /step=suivi_reponses/, texte: 'Enregistrer l’envoi', barre: true })
