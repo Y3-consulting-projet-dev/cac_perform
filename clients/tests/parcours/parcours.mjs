@@ -300,6 +300,27 @@ async function parcours(navigateur, d) {
   }, { url: /step=courriers/, texte: '0 à compléter', barre: true })
   await etape(navigateur, 'Courriers : étape Aperçu (clic sur l’étape)', () => cliquer(navigateur, '3 · Aperçu'),
     { url: /step=courriers/, texte: 'Les champs fusionnés sont surlignés', barre: true })
+  await etape(navigateur, 'Courriers : aperçu, sélecteur du tiers (recherche, Échap, choix au clavier)', async () => {
+    await navigateur.evaluer(`document.querySelector('[aria-haspopup=listbox]').click()`)
+    await attendre(400)
+    await navigateur.evaluer(`(() => {
+      const r = document.querySelector('input[aria-label="Rechercher un tiers"]');
+      if (!r || document.activeElement !== r) throw new Error('recherche absente ou sans focus');
+      r.value = 'zzz-aucun'; r.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+    await attendre(300)
+    await navigateur.evaluer(`(() => { if (!document.querySelector('[role=listbox]').innerText.includes('Aucun tiers ne correspond')) throw new Error('filtre inopérant');
+      document.querySelector('input[aria-label="Rechercher un tiers"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })()`)
+    await attendre(300)
+    await navigateur.evaluer(`(() => { if (document.querySelector('[role=listbox]')) throw new Error('liste encore ouverte') })()`)
+    await navigateur.evaluer(`document.querySelector('[aria-haspopup=listbox]').click()`)
+    await attendre(400)
+    await navigateur.evaluer(`document.querySelector('input[aria-label="Rechercher un tiers"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`)
+    await attendre(300)
+    await navigateur.evaluer(`(() => {
+      if (document.querySelector('[role=listbox]')) throw new Error('liste encore ouverte après le choix');
+      const b = (t) => [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === t);
+      if (!b('Tiers précédent') || !b('Tiers suivant')) throw new Error('boutons Tiers précédent / suivant absents') })()`)
+  }, { url: /step=courriers/, texte: 'prêt sur 1', barre: true })
   // Les modèles sont communs au cabinet : l'étape ne suppose ni la présence ni l'absence d'un modèle C2.
   await etape(navigateur, 'Courriers : étape Génération (résumé)', () => cliquer(navigateur, '4 · Génération'),
     { url: /step=courriers/, texte: 'Courriers prêts', barre: true })

@@ -6,7 +6,7 @@
 // Génération (résumé ; options dans une fenêtre). Génération Word / PDF : en
 // attente du choix des bibliothèques (PLAN §5). Aucun envoi réel : l'envoi est
 // enregistré dans Suivi des réponses. Le serveur reste juge des règles.
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { lireCourriers, enregistrerCoordonnees, importerModele, urlFichierModele } from '@/api/courriers.api'
 import { useNotyf } from '@/composables/useNotyf'
 import { formatDateHeureFr } from '@/utils/formatDate'
@@ -90,6 +90,54 @@ function allerA(i) {
   etape.value = i
   etapesVues.value = new Set([...etapesVues.value, i])
 }
+
+// --- Sélecteur du tiers (aperçu) : liste déroulante avec recherche ---------------
+const selecteur = ref(null)
+const champRecherche = ref(null)
+const selecteurOuvert = ref(false)
+const recherche = ref('')
+const indexSurvol = ref(0)
+const indexTiers = computed(() => tousLesTiers.value.findIndex(estChoisi))
+const tiersFiltres = computed(() => {
+  const q = recherche.value.trim().toLowerCase()
+  if (!q) return tousLesTiers.value
+  return tousLesTiers.value.filter((t) =>
+    [nomTiers(t), t.numero, ETATS[t.etat].libelle].some((v) => String(v || '').toLowerCase().includes(q)))
+})
+watch(tiersFiltres, () => { indexSurvol.value = 0 })
+
+function choisir(t) {
+  tiersChoisi.value = { type_tiers: t.type_tiers, numero: t.numero }
+  fermerSelecteur()
+}
+function decaler(pas) {
+  const t = tousLesTiers.value[indexTiers.value + pas]
+  if (t) tiersChoisi.value = { type_tiers: t.type_tiers, numero: t.numero }
+}
+function surClicDocument(e) {
+  if (selecteur.value && !selecteur.value.contains(e.target)) fermerSelecteur()
+}
+async function basculerSelecteur() {
+  if (selecteurOuvert.value) return fermerSelecteur()
+  recherche.value = ''
+  indexSurvol.value = Math.max(0, indexTiers.value)
+  selecteurOuvert.value = true
+  document.addEventListener('mousedown', surClicDocument)
+  await nextTick()
+  champRecherche.value?.focus()
+}
+function fermerSelecteur() {
+  selecteurOuvert.value = false
+  document.removeEventListener('mousedown', surClicDocument)
+}
+function surToucheRecherche(e) {
+  const n = tiersFiltres.value.length
+  if (e.key === 'ArrowDown') { e.preventDefault(); indexSurvol.value = n ? (indexSurvol.value + 1) % n : 0 }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); indexSurvol.value = n ? (indexSurvol.value - 1 + n) % n : 0 }
+  else if (e.key === 'Enter') { e.preventDefault(); if (tiersFiltres.value[indexSurvol.value]) choisir(tiersFiltres.value[indexSurvol.value]) }
+  else if (e.key === 'Escape') { e.preventDefault(); fermerSelecteur() }
+}
+onBeforeUnmount(() => document.removeEventListener('mousedown', surClicDocument))
 
 // Premier tiers choisi par défaut pour l'aperçu.
 watch(tousLesTiers, (liste) => {
@@ -313,32 +361,53 @@ const champsReconnus = computed(() => Object.keys(etat.value?.champs_disponibles
           <span class="text-[13px] text-gray-500">Annuaire du client, réutilisé d'une mission à l'autre. Sans courriel, l'envoi se fait par courrier postal.</span>
         </section>
 
-        <!-- 3 · Aperçu : liste des tiers à gauche, lettre à droite -->
-        <div v-if="etape === 2 && tousLesTiers.length" class="flex gap-5 flex-wrap items-start">
-          <section :class="[CARTE, 'flex-[1_1_280px] max-w-[340px] px-[22px] py-5 flex flex-col gap-3']">
-            <h2 class="m-0 text-[15px] font-bold tracking-[0.3px] uppercase text-blue-ycube">Tiers retenus · {{ tousLesTiers.length }}</h2>
-            <ul class="list-none m-0 p-0 flex flex-col gap-2">
-              <li v-for="t in tousLesTiers" :key="t.type_tiers + t.numero">
-                <button type="button"
-                        :class="['w-full flex justify-between gap-2 px-3.5 py-3 rounded-[10px] text-left transition',
-                                 estChoisi(t) ? 'bg-blue-ycube text-white' : 'bg-gray-50 text-gray-800 hover:bg-gray-100']"
-                        @click="tiersChoisi = { type_tiers: t.type_tiers, numero: t.numero }">
-                  <span><strong>{{ nomTiers(t) }}</strong><br /><span class="text-[13px]">{{ t.numero }}</span></span>
-                  <span :class="['text-[13px] self-center font-bold text-right',
-                                 estChoisi(t) ? 'text-white' : (t.etat === 'pret' ? 'text-green-700' : 'text-orange-700')]">
-                    {{ ETATS[t.etat].libelle }}
-                  </span>
-                </button>
-              </li>
-            </ul>
+        <!-- 3 · Aperçu : barre de choix du tiers sur toute la largeur, puis la lettre en pleine largeur -->
+        <template v-if="etape === 2 && tousLesTiers.length">
+          <section aria-label="Choix du tiers" :class="[CARTE, 'px-6 py-4 flex items-center gap-3 flex-wrap']">
+            <!-- Sélecteur du tiers : liste déroulante avec recherche -->
+            <div ref="selecteur" class="relative flex-[1_1_320px] min-w-0">
+              <button type="button" aria-haspopup="listbox" :aria-expanded="selecteurOuvert"
+                      class="w-full h-11 px-3 rounded-[10px] border border-gray-300 bg-white flex items-center gap-2 text-left hover:bg-gray-50 transition focus:outline-none focus:ring-2 focus:ring-blue-ycube"
+                      @click="basculerSelecteur">
+                <template v-if="tiers">
+                  <span class="font-semibold truncate">{{ nomTiers(tiers) }}</span>
+                  <span class="text-[13px] text-gray-500 shrink-0">{{ tiers.numero }}</span>
+                  <span :class="['ml-auto shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold', ETATS[tiers.etat].classe]">{{ ETATS[tiers.etat].libelle }}</span>
+                </template>
+                <i class="fa-solid fa-chevron-down text-gray-500 text-xs shrink-0" :class="tiers ? '' : 'ml-auto'" aria-hidden="true"></i>
+              </button>
+              <div v-if="selecteurOuvert" class="absolute z-40 mt-1 w-full bg-white rounded-[10px] shadow border border-gray-200 p-2 flex flex-col gap-2">
+                <input ref="champRecherche" v-model="recherche" type="search" placeholder="Rechercher un tiers (nom, compte, état)"
+                       aria-label="Rechercher un tiers" :class="[CHAMP, 'w-full']" @keydown="surToucheRecherche" />
+                <ul role="listbox" aria-label="Tiers retenus" class="list-none m-0 p-0 max-h-72 overflow-y-auto">
+                  <li v-for="(t, i) in tiersFiltres" :key="t.type_tiers + t.numero" role="option" :aria-selected="estChoisi(t)"
+                      :class="['px-3 py-2 rounded-lg flex items-center gap-2 cursor-pointer',
+                               i === indexSurvol ? 'bg-gray-100' : '', estChoisi(t) ? 'font-semibold' : '']"
+                      @mouseenter="indexSurvol = i" @mousedown.prevent="choisir(t)">
+                    <span class="truncate">{{ nomTiers(t) }}</span>
+                    <span class="text-[13px] text-gray-500 shrink-0">{{ t.numero }}</span>
+                    <span :class="['ml-auto shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold', ETATS[t.etat].classe]">{{ ETATS[t.etat].libelle }}</span>
+                  </li>
+                  <li v-if="!tiersFiltres.length" class="px-3 py-2 text-sm text-gray-500">Aucun tiers ne correspond.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <button type="button" :class="BOUTON_LIGNE" :disabled="indexTiers <= 0" @click="decaler(-1)">Tiers précédent</button>
+              <button type="button" :class="BOUTON_LIGNE" :disabled="indexTiers >= tousLesTiers.length - 1" @click="decaler(1)">Tiers suivant</button>
+            </div>
+            <span class="text-sm text-gray-700 whitespace-nowrap"><strong>{{ nbPrets }}</strong> prêt{{ nbPrets > 1 ? 's' : '' }} sur {{ tousLesTiers.length }}</span>
+            <button v-if="tiers && tiers.etat !== 'pret'" type="button" :class="BOUTON_LIGNE" @click="ouvrirCoordonnees(tiers)">Compléter</button>
           </section>
-          <section v-if="tiers" :class="[CARTE, 'flex-[999_1_640px] min-w-0 px-7 py-6 flex flex-col gap-3.5']">
+
+          <!-- Aperçu de la lettre : toute la largeur de la zone principale -->
+          <section v-if="tiers" :class="[CARTE, '@container px-7 py-6 flex flex-col gap-3.5']">
             <div class="flex justify-between items-center gap-3 flex-wrap">
               <h2 class="m-0 text-[15px] font-bold tracking-[0.3px] uppercase text-blue-ycube">Aperçu · {{ nomTiers(tiers) }}</h2>
               <span class="text-[13px] text-gray-500">Les champs fusionnés sont surlignés</span>
             </div>
             <article v-if="modeleDuTiers?.paragraphes?.length"
-                     class="border border-gray-200 rounded-lg px-14 py-12 flex flex-col gap-4 text-base leading-[1.7]">
+                     class="w-full border border-gray-200 rounded-lg px-6 py-8 @3xl:px-14 @3xl:py-12 flex flex-col gap-4 text-base leading-[1.7]">
               <p v-for="(p, i) in modeleDuTiers.paragraphes" :key="i" class="m-0 whitespace-pre-line min-h-[1em]">
                 <template v-for="(m, j) in morceaux(p)" :key="j">
                   <mark v-if="m.valeur" class="bg-blue-ycube/10 text-gray-800 px-1 rounded">{{ m.valeur }}</mark>
@@ -352,7 +421,7 @@ const champsReconnus = computed(() => Object.keys(etat.value?.champs_disponibles
               <button type="button" class="font-semibold text-blue-ycube underline" @click="ouvrirModeles(tiers.code_modele)">Gérer les modèles</button>
             </div>
           </section>
-        </div>
+        </template>
 
         <!-- 4 · Génération : résumé, puis options dans une fenêtre -->
         <section v-if="etape === 3" :class="[CARTE, 'px-7 py-6 flex flex-col gap-3.5']">
