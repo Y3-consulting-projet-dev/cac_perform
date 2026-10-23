@@ -218,3 +218,17 @@ export async function fraicheurDonneesV1(missionId) {
   if (data?.success) return data.data
   throw new Error(data?.error || 'Erreur lors du contrôle de fraîcheur des étapes')
 }
+
+// Étape 3, Contrôle de cohérence : pistes d'analyse de chaque balance générale de la
+// mission (lignes de forme sous-total, comptes où ouverture + mouvements ≠ solde
+// final, liste des comptes). Lecture seule, règles du service de balance générale V2.
+export async function lirePistesCoherence(missionId) {
+  let data
+  try {
+    ({ data } = await api.get(`/missions/${missionId}/balance-generale/pistes-coherence`))
+  } catch (e) {
+    throw new Error(messageErreur(e, "Erreur lors de la lecture des pistes d'analyse"))
+  }
+  if (data?.success) return data.data
+  throw new Error(data?.error || "Erreur lors de la lecture des pistes d'analyse")
+}

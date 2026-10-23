@@ -152,6 +152,11 @@ def register_routes(app):
         """GET /api/v1/missions/<id>/balance-generale/fraicheur - Étapes V1 calculées sur une version précédente de la balance"""
         return ImportResource.fraicheur_donnees_v1(mission_id)
 
+    @mission_bp.route('/<mission_id>/balance-generale/pistes-coherence', methods=['GET'])
+    def pistes_coherence_balance(mission_id):
+        """GET /api/v1/missions/<id>/balance-generale/pistes-coherence - Pistes d'analyse de l'étape 3 (lecture seule)"""
+        return ImportResource.pistes_coherence(mission_id)
+
     @mission_bp.route('/<mission_id>/balance-generale/<balance_id>', methods=['GET'])
     def detail_balance_generale(mission_id, balance_id):
         """GET /api/v1/missions/<id>/balance-generale/<balance_id> - Détail d'une balance générale"""

@@ -270,6 +270,55 @@ def _resoudre_mapping(fichier, id_client: str, logiciel_comptable: Optional[str]
     return {"mapping": apercu["mapping_propose"], "apercu": apercu}
 
 
+def pistes_balance(lignes: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Pistes d'analyse d'une balance générale (forme V1), en lecture seule et
+    sans rien recalculer du contrôle V1 : lignes qui ont la forme d'un
+    sous-total (règle de detecter_sous_totaux), comptes où ouverture +
+    mouvements ≠ solde final (controler_bouclage_ligne), équilibre une fois
+    les sous-totaux retirés. Fonction pure.
+    """
+    def montants(l):
+        return {champ: _nombre(l.get(champ)) for champ in CHAMPS_MONTANTS}
+
+    lignes_v1 = [{"numero_compte": str(l.get("numero_compte") or "").strip(),
+                  "libelle": str(l.get("libelle") or "").strip(), **montants(l)} for l in lignes]
+    comptes, sous_totaux, ambigus = detecter_sous_totaux(lignes_v1)
+    formule = cp_service.controler_bouclage_ligne([_vers_noms_bouclage(l) for l in lignes_v1])
+    return {
+        "nb_lignes": len(lignes_v1),
+        "lignes": lignes_v1,
+        "sous_totaux": [{"numero_compte": s["numero_compte"], "libelle": s["libelle"],
+                         "nb_comptes_detail": s["nb_comptes_detail"]} for s in sous_totaux],
+        "ambigus": [{"numero_compte": a["numero_compte"], "libelle": a["libelle"],
+                     "nb_comptes_detail": a["nb_comptes_detail"]} for a in ambigus],
+        "formule_en_ecart": [{"numero_compte": e["numero_compte"], "libelle": e["libelle_compte"], "ecart": e["ecart"]}
+                             for e in formule.get("lignes_en_ecart") or []],
+        "equilibre_hors_sous_totaux": controler_equilibre(comptes),
+    }
+
+
+def lire_pistes_coherence(mission_id: str) -> List[Dict[str, Any]]:
+    """
+    Pistes d'analyse de l'étape 3 (Contrôle de cohérence) pour chaque balance
+    générale de la mission (N, N-1). Lecture seule : find_one uniquement ; le
+    contrôle V1 (api/src/model.py) n'est ni appelé ni modifié.
+    """
+    mission = _mission(mission_id)
+    db = get_database()
+    resultat = []
+    for balance_id in mission.get("balances") or []:
+        try:
+            doc = db["Balance"].find_one({"_id": ObjectId(balance_id)}, {"annee_balance": 1, "balance": 1, "type": 1})
+        except InvalidId:
+            continue
+        if not doc:
+            continue
+        resultat.append({"annee": str(doc.get("annee_balance")), "balance_id": str(doc["_id"]),
+                         "import_v2": doc.get("type") == TYPE_FICHIER, **pistes_balance(doc.get("balance") or [])})
+    return resultat
+
+
 def resume_balance(doc: Dict[str, Any], actif: bool) -> Dict[str, Any]:
     """Résumé affiché sur la carte « Balance générale » (V1 ou V2)."""
     return {

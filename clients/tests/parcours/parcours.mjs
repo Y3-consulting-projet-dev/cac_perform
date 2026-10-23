@@ -372,6 +372,12 @@ async function parcours(navigateur, d) {
     await attendre(300)
     await cliquer(navigateur, 'Contrôle de cohérence')
   }, { url: /step=coherence/, barre: true })
+  await etape(navigateur, 'Contrôle de cohérence : synthèse, totaux et pistes d’analyse', async () => {},
+    { url: /step=coherence/, texte: 'Afficher tous les comptes', barre: true })
+  await etape(navigateur, 'Contrôle de cohérence : « Afficher tous les comptes » (recherche)', () => navigateur.evaluer(`(() => {
+      const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim().startsWith('Afficher tous les comptes'));
+      if (!b) throw new Error('bouton introuvable'); b.click() })()`),
+    { url: /step=coherence/, texte: 'Masquer les comptes', barre: true })
   await etape(navigateur, 'Barre latérale : « Retour »', () => cliquer(navigateur, 'Retour'),
     { url: new RegExp(`^/client/${d.client_id}`), texte: d.client_nom })
 

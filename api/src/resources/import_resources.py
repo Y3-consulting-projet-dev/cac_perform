@@ -260,6 +260,16 @@ class ImportResource:
             return make_response(jsonify({"success": False, "error": f"Erreur serveur: {str(e)}"}), 500)
 
     @staticmethod
+    def pistes_coherence(mission_id: str):
+        """GET /api/v1/missions/<id>/balance-generale/pistes-coherence — pistes d'analyse de l'étape 3 (lecture seule)."""
+        try:
+            return make_response(jsonify({"success": True, "data": balance_generale_service.lire_pistes_coherence(mission_id)}), 200)
+        except ValueError as e:
+            return make_response(jsonify({"success": False, "error": str(e)}), 400)
+        except Exception as e:
+            return make_response(jsonify({"success": False, "error": f"Erreur serveur: {str(e)}"}), 500)
+
+    @staticmethod
     def detail_balance_generale(mission_id: str, balance_id: str):
         """GET /api/v1/missions/<id>/balance-generale/<balance_id> — détail (lecture seule)."""
         try:

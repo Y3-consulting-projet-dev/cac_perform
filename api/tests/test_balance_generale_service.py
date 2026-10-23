@@ -253,3 +253,29 @@ def test_script_de_mesure_d_impact_en_lecture_seule():
     assert (nb_missions, nb_balances, len(touchees)) == (1, 1, 1)
     assert lignes[0][6] == 1 and lignes[0][-1] == "équilibrée"
     assert script.uri_masquee("mongodb://alice:secret@hote:27017/base") == "mongodb://alice:***@hote:27017/base"
+
+
+# --- Pistes d'analyse de l'étape 3 (lecture seule) ----------------------------
+
+def _ligne_v1(numero, libelle, ouv=(0, 0), mvt=(0, 0), fin=(0, 0)):
+    return {"numero_compte": numero, "libelle": libelle, "debit_initial": ouv[0], "credit_initial": ouv[1],
+            "debit_mvt": mvt[0], "credit_mvt": mvt[1], "debit_fin": fin[0], "credit_fin": fin[1], "solde": 0}
+
+
+def test_pistes_balance_sous_totaux_formule_et_equilibre():
+    from src.services.balance_generale_service import pistes_balance
+    lignes = [
+        _ligne_v1("6011", "Achats A", mvt=(100, 0), fin=(100, 0)),
+        _ligne_v1("6012", "Achats B", mvt=(50, 0), fin=(50, 0)),
+        _ligne_v1("601", "total 601", mvt=(150, 0), fin=(150, 0)),   # sous-total : compté deux fois par la V1
+        _ligne_v1("401", "Fournisseurs", mvt=(0, 150), fin=(0, 150)),
+        _ligne_v1("521", "Banque", ouv=(10, 0), mvt=(5, 0), fin=(20, 0)),  # 10 + 5 ≠ 20
+        _ligne_v1("101", "Capital", ouv=(0, 10), fin=(0, 15)),           # 0 − 10 ≠ −15
+    ]
+    pistes = pistes_balance(lignes)
+    assert pistes["nb_lignes"] == 6
+    assert [s["numero_compte"] for s in pistes["sous_totaux"]] == ["601"]
+    assert pistes["sous_totaux"][0]["nb_comptes_detail"] == 2
+    assert {e["numero_compte"] for e in pistes["formule_en_ecart"]} == {"521", "101"}
+    # Hors sous-total, le « total 601 » n'est plus compté deux fois : 155 D − 150 C = 5 (et non 305 − 150).
+    assert pistes["equilibre_hors_sous_totaux"]["paires"]["mouvements"]["ecart"] == 5
