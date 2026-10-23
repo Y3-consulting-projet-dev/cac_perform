@@ -2559,6 +2559,23 @@ function formatAmount(value) {
   return new Intl.NumberFormat('fr-FR').format(n);
 }
 
+// Contrôle de vraisemblance, « Tableau par classe » : colonne « Exceptions et cas
+// particuliers » repliée par défaut, dépliable ligne par ligne (affichage seulement,
+// textes du rapport V1 inchangés côté model.py).
+const exceptionsDepliees = ref({});
+function basculerExceptions(classe) {
+  exceptionsDepliees.value = { ...exceptionsDepliees.value, [classe]: !exceptionsDepliees.value[classe] };
+}
+function deplierToutesExceptions(classes, deplie) {
+  exceptionsDepliees.value = Object.fromEntries((classes || []).map((c) => [c.classe, deplie]));
+}
+// « CRÉDITEUR » / « DÉBITEUR » en minuscules dans le texte, numéros de comptes (109, 28x,
+// 4191…) isolés pour être mis en gras.
+function segmentsException(texte) {
+  const harmonise = String(texte || '').replace(/CRÉDITEUR/g, 'créditeur').replace(/DÉBITEUR/g, 'débiteur');
+  return harmonise.split(/(\b\d{2,}x?\b)/).filter(Boolean).map((t) => ({ texte: t, compte: /^\d{2,}x?$/.test(t) }));
+}
+
 // Textes du rapport V1 (contrôle de cohérence) : montants écrits au format anglais
 // (1,388,434,386) par model.py, réécrits au format français pour l'affichage seulement.
 function montantsEnFrancais(texte) {
@@ -3157,29 +3174,41 @@ function montantsEnFrancais(texte) {
 
                 <!-- Tableau par classe (1 à 7) -->
                 <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-                  <div class="bg-linear-to-r from-blue-ycube to-blue-ycube-3 p-4">
+                  <div class="bg-linear-to-r from-blue-ycube to-blue-ycube-3 p-4 flex items-center justify-between gap-3 flex-wrap">
                     <h2 class="text-xl font-bold text-white">Tableau par Classe de Comptes (1 à 7)</h2>
+                    <div class="flex gap-2">
+                      <button type="button"
+                        class="px-3 py-1 text-sm rounded-lg border border-white text-white font-semibold hover:bg-white hover:text-blue-ycube transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        @click="deplierToutesExceptions(yearReport.verification_vraisemblance.structure.tableau_classes, true)">
+                        Tout déplier
+                      </button>
+                      <button type="button"
+                        class="px-3 py-1 text-sm rounded-lg border border-white text-white font-semibold hover:bg-white hover:text-blue-ycube transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        @click="deplierToutesExceptions(yearReport.verification_vraisemblance.structure.tableau_classes, false)">
+                        Tout replier
+                      </button>
+                    </div>
                   </div>
 
                   <div class="overflow-x-auto">
-                    <table class="min-w-full table-hide-compte divide-y divide-gray-200">
+                    <table class="w-full table-fixed table-hide-compte divide-y divide-gray-200">
                       <thead class="bg-gray-50">
                         <tr>
                           <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                             Classe</th>
-                          <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <th class="w-[22%] px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                             Nature des Comptes</th>
-                          <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Sens
+                          <th class="w-[20%] px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Sens
                             Normal du Solde</th>
-                          <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <th class="w-[22%] px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                             Exceptions et Cas Particuliers</th>
-                          <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <th class="w-[36%] px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                             Anomalies Détectées dans cette Balance</th>
                         </tr>
                       </thead>
                       <tbody class="bg-white divide-y divide-gray-200">
                         <tr v-for="classe in yearReport.verification_vraisemblance.structure.tableau_classes"
-                          :key="classe.classe" class="hover:bg-gray-50">
+                          :key="classe.classe" class="hover:bg-gray-50 align-top">
                           <td class="px-4 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                               <span
@@ -3198,10 +3227,30 @@ function montantsEnFrancais(texte) {
                             </span>
                           </td>
                           <td class="px-4 py-4 text-sm text-gray-700">
-                            <ul class="list-disc list-inside space-y-1">
-                              <li v-for="(exception, idx) in classe.exceptions" :key="idx" class="text-xs">{{ exception
-                              }}</li>
-                            </ul>
+                            <div v-if="classe.exceptions && classe.exceptions.length" class="flex flex-col gap-2">
+                              <div class="flex items-center gap-3 flex-wrap">
+                                <span class="text-gray-500 text-sm">{{ classe.exceptions.length }} cas particulier{{
+                                  classe.exceptions.length > 1 ? 's' : '' }}</span>
+                                <button type="button"
+                                  class="text-blue-ycube font-semibold text-sm hover:underline inline-flex items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-ycube"
+                                  :aria-expanded="!!exceptionsDepliees[classe.classe]"
+                                  :aria-controls="`exceptions-${annee}-${classe.classe}`"
+                                  @click="basculerExceptions(classe.classe)">
+                                  <i :class="['fa-solid text-xs', exceptionsDepliees[classe.classe] ? 'fa-chevron-up' : 'fa-chevron-down']"
+                                    aria-hidden="true"></i>
+                                  {{ exceptionsDepliees[classe.classe] ? 'Masquer' : 'Voir le détail' }}
+                                </button>
+                              </div>
+                              <ul v-show="exceptionsDepliees[classe.classe]" :id="`exceptions-${annee}-${classe.classe}`"
+                                class="list-disc pl-4 space-y-1 text-xs text-gray-700">
+                                <li v-for="(exception, idx) in classe.exceptions" :key="idx">
+                                  <template v-for="(s, j) in segmentsException(exception)" :key="j"><strong
+                                      v-if="s.compte" class="font-semibold text-gray-800">{{ s.texte }}</strong><template
+                                      v-else>{{ s.texte }}</template></template>
+                                </li>
+                              </ul>
+                            </div>
+                            <span v-else class="text-gray-500 text-sm">Aucun cas particulier</span>
                           </td>
                           <td class="px-4 py-4 text-sm text-gray-700">
                             <div v-if="classe.anomalies_detectees && classe.anomalies_detectees.length > 0"
