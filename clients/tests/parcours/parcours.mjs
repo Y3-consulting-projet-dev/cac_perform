@@ -372,7 +372,11 @@ async function parcours(navigateur, d) {
     await attendre(300)
     await cliquer(navigateur, 'Contrôle de cohérence')
   }, { url: /step=coherence/, barre: true })
-  await etape(navigateur, 'Contrôle de cohérence : synthèse, totaux et pistes d’analyse', async () => {},
+  await etape(navigateur, 'Contrôle de cohérence : premier contrôle (équilibre)', async () => {},
+    { url: /step=coherence/, texte: 'Comment vérifier manuellement', barre: true })
+  await etape(navigateur, 'Contrôle de cohérence : second contrôle (formule)', async () => {},
+    { url: /step=coherence/, texte: 'Formule non respectée', barre: true })
+  await etape(navigateur, 'Contrôle de cohérence : pistes d’analyse et liste repliée', async () => {},
     { url: /step=coherence/, texte: 'Afficher tous les comptes', barre: true })
   await etape(navigateur, 'Contrôle de cohérence : « Afficher tous les comptes » (recherche)', () => navigateur.evaluer(`(() => {
       const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim().startsWith('Afficher tous les comptes'));
