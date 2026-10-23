@@ -1173,7 +1173,7 @@ function back() {
 
                   <!-- Liste complète (modale) -->
                   <div v-if="listeOrphelinsOuverte" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="listeOrphelinsOuverte = false">
-                    <div class="bg-white rounded-[14px] w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4 text-sm shadow-[0_8px_24px_rgba(4,60,93,0.16)]">
+                    <div class="bg-white rounded-[14px] w-full max-w-3xl border-[22px] border-white p-0.5 relative max-h-[90vh] overflow-auto flex flex-col gap-4 text-sm shadow-[0_8px_24px_rgba(4,60,93,0.16)]">
                       <div class="flex justify-between items-start gap-3">
                         <h3 class="m-0 text-lg font-bold text-blue-ycube">{{ (LIBELLES_MODULE[cle] || cle).split(' (')[0] }} · rattachements manquants</h3>
                         <button class="w-11 h-11 rounded-[10px] bg-[#f5f7fa] text-blue-ycube hover:bg-gray-100 transition" aria-label="Fermer" @click="listeOrphelinsOuverte = false">

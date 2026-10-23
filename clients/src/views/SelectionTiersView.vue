@@ -387,7 +387,7 @@ const RADIO = 'flex gap-2.5 items-start text-[15px]'
 
     <!-- Fenêtre de motif (charte : modale de ClientsView) -->
     <div v-if="fenetreMotif" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl w-full max-w-xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4">
+      <div class="bg-white rounded-2xl w-full max-w-xl border-[22px] border-white p-0.5 relative max-h-[90vh] overflow-auto flex flex-col gap-4">
         <h3 class="m-0 text-lg font-bold text-blue-ycube">{{ fenetreMotif.titre }}</h3>
         <label class="flex flex-col gap-1.5 text-sm font-semibold">Motif
           <textarea v-model="motif" rows="3" :placeholder="`Au moins ${longueurMin} caractères`"

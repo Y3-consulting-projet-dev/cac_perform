@@ -49,7 +49,7 @@ onBeforeUnmount(() => {
       aria-modal="true"
       :aria-label="props.titre || undefined"
       tabindex="-1"
-      :class="['bg-white rounded-2xl w-full p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4 focus:outline-none', props.largeur]"
+      :class="['bg-white rounded-2xl w-full border-[22px] border-white p-0.5 relative max-h-[90vh] overflow-auto flex flex-col gap-4 focus:outline-none', props.largeur]"
     >
       <div class="flex justify-between items-start gap-3">
         <div class="flex flex-col gap-1">

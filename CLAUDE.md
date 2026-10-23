@@ -92,7 +92,7 @@ Relevée sur le code réel de `ClientSpace.vue`, `ClientsView.vue`, `MissionsVie
 
 **Badges de statut** (référence : statut de mission, `MissionsView.vue`) — pilule `px-3 py-1 rounded-full text-xs font-semibold`, couleur selon le sens : positif `bg-green-100 text-green-700`, négatif/écart `bg-red-100 text-red-700`, neutre/en attente `bg-orange-100 text-orange-700`, « rien à signaler »/non applicable `bg-gray-100 text-gray-700`. Le rouge est réservé à un vrai écart, jamais à « rien à comparer ».
 
-**Modales** (référence : `ClientsView.vue`) — fond `fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4` ; panneau `bg-white rounded-2xl w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto`.
+**Modales** (référence : `ClientsView.vue`, composant commun `components/FenetreCentree.vue` pour les écrans V2) — fond `fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4` ; panneau `bg-white rounded-2xl w-full max-w-3xl border-[22px] border-white p-0.5 relative max-h-[90vh] overflow-auto`. Le cadre est une **bordure blanche** (22 px + 2 px de marge intérieure = 24 px), jamais `p-6` : une bordure reste hors de la zone qui défile, donc les quatre côtés gardent la même largeur même quand la fenêtre défile (avec `p-6`, la barre de défilement mangeait le côté droit et le contenu était coupé contre le bord bas).
 
 **Mise en page/défilement** : toute vue rendue par `pageLayout.vue` porte sa propre hauteur et son propre défilement à la racine — `h-full w-full overflow-y-auto` (jamais `h-screen`/`min-h-screen`, qui dépasse la hauteur réellement allouée dès que le `Header` est affiché, et rend le bas de l'écran inaccessible).
 

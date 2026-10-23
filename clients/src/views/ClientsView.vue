@@ -156,7 +156,7 @@
 
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto">
+        <div class="bg-white rounded-2xl w-full max-w-3xl border-[22px] border-white p-0.5 relative max-h-[90vh] overflow-auto">
           <div class="flex justify-end gap-4">
 
             <button

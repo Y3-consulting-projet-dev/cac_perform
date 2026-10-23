@@ -282,7 +282,7 @@ const CHAMP = 'h-11 px-3 text-[15px] font-normal border border-gray-300 rounded-
 
     <!-- Fenêtre de saisie centrée (modale de la charte) -->
     <div v-if="fenetre" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="fenetre = null">
-      <div role="dialog" aria-modal="true" class="bg-white rounded-2xl w-full max-w-xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4">
+      <div role="dialog" aria-modal="true" class="bg-white rounded-2xl w-full max-w-xl border-[22px] border-white p-0.5 relative max-h-[90vh] overflow-auto flex flex-col gap-4">
         <div class="flex justify-between items-start gap-3">
           <div>
             <h3 class="m-0 text-lg font-bold text-blue-ycube">{{ TITRES[fenetre.mode] }} · {{ fenetre.cible.raison_sociale || fenetre.cible.libelle }}</h3>

@@ -541,7 +541,7 @@ function back() {
     <!-- Alertes avant enregistrement (type de comptes, exercice) — rien n'est
          enregistré tant que l'utilisateur n'a pas choisi. Modale : charte CLAUDE.md. -->
     <div v-if="importEnAttente" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4">
+      <div class="bg-white rounded-2xl w-full max-w-3xl border-[22px] border-white p-0.5 relative max-h-[90vh] overflow-auto flex flex-col gap-4">
         <div>
           <h3 class="text-xl font-bold text-blue-ycube">Vérifier avant d'importer</h3>
           <p class="text-sm text-gray-500">
@@ -648,7 +648,7 @@ function back() {
     <!-- Retrait d'un fichier importé par erreur : archivé, tracé, jamais supprimé -->
     <div v-if="retraitOuvert" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       @click.self="retraitOuvert = null">
-      <div class="bg-white rounded-2xl w-full max-w-3xl p-6 relative max-h-[90vh] overflow-auto flex flex-col gap-4">
+      <div class="bg-white rounded-2xl w-full max-w-3xl border-[22px] border-white p-0.5 relative max-h-[90vh] overflow-auto flex flex-col gap-4">
         <div>
           <h3 class="text-xl font-bold text-blue-ycube">Retirer un fichier</h3>
           <p class="text-sm text-gray-500">
@@ -692,7 +692,7 @@ function back() {
     <!-- Détail d'un fichier — même recette de modale que ClientsView.vue (charte CLAUDE.md) -->
     <div v-if="detailOuvert" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       @click.self="fermerDetail">
-      <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-auto p-6 relative flex flex-col gap-4">
+      <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-auto border-[22px] border-white p-0.5 relative flex flex-col gap-4">
         <div class="flex justify-between items-start">
           <div>
             <h3 class="font-bold text-blue-ycube">
