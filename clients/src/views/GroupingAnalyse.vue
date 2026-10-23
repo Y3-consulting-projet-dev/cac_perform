@@ -2559,6 +2559,12 @@ function formatAmount(value) {
   return new Intl.NumberFormat('fr-FR').format(n);
 }
 
+// Textes du rapport V1 (contrôle de cohérence) : montants écrits au format anglais
+// (1,388,434,386) par model.py, réécrits au format français pour l'affichage seulement.
+function montantsEnFrancais(texte) {
+  return String(texte || '').replace(/-?\d{1,3}(?:,\d{3})+(?:\.\d+)?/g, (m) => formatAmount(m.replace(/,/g, '')));
+}
+
 </script>
 
 
@@ -2962,18 +2968,8 @@ function formatAmount(value) {
 
           <div v-if="filteredCoherenceReport && selectedYearCoherence" class="space-y-4">
             <template v-for="(yearReport, annee) in filteredCoherenceReport" :key="annee">
-              <!-- Contrôle arithmétique : affichage V2 (synthèse, totaux, pistes d'analyse, liste des comptes).
-                   Le calcul reste celui de la V1 (/cors/mission/controle_coherence, model.py inchangé). -->
-              <CoherenceArithmetique
-                v-if="selectedControlType === 'arithmetique'"
-                :mission-id="props.missionId"
-                :annee="String(annee)"
-                :rapport="yearReport"
-                @ouvrir-ecran="(ecran) => { if (ECRANS_HORS_ETAPES.has(ecran)) showComponent(ecran); }"
-              />
-
-              <!-- Résumé de l'année (contrôle de vraisemblance) -->
-              <div v-if="selectedControlType !== 'arithmetique'" class="bg-white rounded-lg p-4 border border-blue-200 mb-4">
+              <!-- Résumé de l'année -->
+              <div class="bg-white rounded-lg p-4 border border-blue-200 mb-4">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-4">
                     <div
@@ -3000,6 +2996,125 @@ function formatAmount(value) {
                           {{ yearReport.erreurs.length || 0 }} erreur(s) détectée(s)
                         </span>
                       </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Explication de la vérification de l'équilibre (si contrôle arithmétique) -->
+              <div v-if="selectedControlType === 'arithmetique' && yearReport.verification_equilibre"
+                :class="yearReport.equilibre_global ? 'mb-4 bg-emerald-50 border-l-4 border-emerald-400 rounded-md p-4' : 'mb-4 bg-red-50 border-l-4 border-red-400 rounded-md p-4'">
+                <div class="flex items-start">
+                  <div class="shrink-0">
+                    <svg v-if="yearReport.equilibre_global" class="h-6 w-6 text-emerald-500" fill="none"
+                      stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <svg v-else class="h-6 w-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </div>
+                  <div class="ml-3 flex-1">
+                    <h3
+                      :class="yearReport.equilibre_global ? 'text-sm font-semibold text-emerald-800 mb-2' : 'text-sm font-semibold text-red-800 mb-2'">
+                      <span v-if="yearReport.equilibre_global">✅</span>
+                      <span v-else>🔴</span>
+                      Premier Contrôle Arithmétique : Vérification de l'Équilibre
+                    </h3>
+                    <div
+                      :class="yearReport.equilibre_global ? 'text-sm text-emerald-700 space-y-2' : 'text-sm text-red-700 space-y-2'">
+                      <p><strong>Résultats exacts de la vérification :</strong></p>
+                      <div class="mt-3 grid grid-cols-2 gap-4 text-sm font-mono">
+                        <div class="bg-white p-2 rounded border">
+                          <span class="font-semibold text-gray-700">Total des débits :</span>
+                          <span class="ml-2 font-bold text-blue-700">{{
+                            formatAmount(yearReport.verification_equilibre.total_debits) }} FCFA</span>
+                        </div>
+                        <div class="bg-white p-2 rounded border">
+                          <span class="font-semibold text-gray-700">Total des crédits :</span>
+                          <span class="ml-2 font-bold text-green-700">{{
+                            formatAmount(yearReport.verification_equilibre.total_credits) }} FCFA</span>
+                        </div>
+                        <div
+                          v-if="!yearReport.equilibre_global && yearReport.verification_equilibre.ecart !== undefined"
+                          class="bg-white p-2 rounded border col-span-2">
+                          <span class="font-semibold text-gray-700">Écart détecté :</span>
+                          <span class="ml-2 font-bold text-red-700">{{
+                            formatAmount(yearReport.verification_equilibre.ecart) }} FCFA</span>
+                        </div>
+                        <div class="col-span-2 text-xs text-gray-600">
+                          <span class="font-semibold">Nombre de comptes analysés :</span>
+                          <span class="ml-2">{{ yearReport.verification_equilibre.nb_comptes_analyses }}</span>
+                        </div>
+                      </div>
+                      <div class="mt-3 p-2 rounded text-xs"
+                        :class="yearReport.equilibre_global ? 'bg-emerald-100' : 'bg-red-100'">
+                        <p><strong>Explication :</strong> {{ montantsEnFrancais(yearReport.verification_equilibre.explication) }}</p>
+                      </div>
+                      <div class="mt-2 p-2 bg-gray-100 rounded text-xs">
+                        <strong>Comment vérifier manuellement :</strong> Additionnez toutes les valeurs de la colonne
+                        "Débit fin" de tous les comptes, puis additionnez toutes les valeurs de la colonne "Crédit fin".
+                        Les deux totaux doivent être identiques.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Explication de la vérification de la formule (si contrôle arithmétique) -->
+              <div v-if="selectedControlType === 'arithmetique' && yearReport.verification_formule"
+                :class="yearReport.verification_formule.statut === 'OK' ? 'mb-4 bg-emerald-50 border-l-4 border-emerald-400 rounded-md p-4' : 'mb-4 bg-amber-50 border-l-4 border-amber-400 rounded-md p-4'">
+                <div class="flex items-start">
+                  <div class="shrink-0">
+                    <svg v-if="yearReport.verification_formule.statut === 'OK'" class="h-6 w-6 text-emerald-500"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <svg v-else class="h-6 w-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                      </path>
+                    </svg>
+                  </div>
+                  <div class="ml-3 flex-1">
+                    <h3
+                      :class="yearReport.verification_formule.statut === 'OK' ? 'text-sm font-semibold text-emerald-800 mb-2' : 'text-sm font-semibold text-amber-800 mb-2'">
+                      {{ yearReport.verification_formule.statut === 'OK' ? '✅' : '⚠️' }} Second Contrôle Arithmétique :
+                      Vérification de la Formule
+                    </h3>
+                    <div
+                      :class="yearReport.verification_formule.statut === 'OK' ? 'text-sm text-emerald-700 space-y-2' : 'text-sm text-amber-700 space-y-2'">
+                      <p><strong>Formule vérifiée :</strong> Solde de clôture = Solde d'ouverture + Mouvements de
+                        période</p>
+                      <p class="ml-4">{{ yearReport.verification_formule.explication }}</p>
+                      <div class="mt-3 grid grid-cols-3 gap-4 text-xs">
+                        <div class="bg-white p-2 rounded border">
+                          <span class="font-semibold">Comptes vérifiés :</span>
+                          <span class="ml-2 font-bold">{{ yearReport.verification_formule.nb_comptes_verifies }}</span>
+                        </div>
+                        <div class="bg-white p-2 rounded border">
+                          <span class="font-semibold">Formule respectée :</span>
+                          <span class="ml-2 font-bold text-emerald-600">{{ yearReport.verification_formule.nb_comptes_ok
+                          }}</span>
+                        </div>
+                        <div class="bg-white p-2 rounded border"
+                          :class="yearReport.verification_formule.nb_comptes_erreur > 0 ? 'border-red-300 bg-red-50' : ''">
+                          <span class="font-semibold">Formule non respectée :</span>
+                          <span class="ml-2 font-bold text-red-600">{{ yearReport.verification_formule.nb_comptes_erreur
+                          }}</span>
+                        </div>
+                      </div>
+                      <div
+                        v-if="yearReport.verification_formule.statut === 'ERREUR' && yearReport.verification_formule.nb_comptes_erreur > 0"
+                        class="mt-3 p-3 bg-red-50 border border-red-200 rounded text-xs">
+                        <p class="font-semibold text-red-800 mb-1">⚠️ Attention : Des erreurs ont été détectées</p>
+                        <p class="text-red-700">Les comptes avec des erreurs de formule sont listés dans le tableau
+                          ci-dessous. Chaque erreur indique l'écart exact entre le solde de clôture attendu et le solde
+                          réel, ainsi que les détails des calculs.</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3178,6 +3293,16 @@ function formatAmount(value) {
                   </div>
                 </div>
               </div>
+
+              <!-- Contrôle arithmétique : à la place de l'ancienne liste d'erreurs, pistes d'analyse,
+                   message sur les sous-totaux et liste des comptes repliée (lecture V2). Le calcul reste
+                   celui de la V1 (/cors/mission/controle_coherence, model.py inchangé). -->
+              <CoherenceArithmetique
+                v-if="selectedControlType === 'arithmetique'"
+                :mission-id="props.missionId"
+                :annee="String(annee)"
+                @ouvrir-ecran="(ecran) => { if (ECRANS_HORS_ETAPES.has(ecran)) showComponent(ecran); }"
+              />
             </template>
           </div>
         </div>
