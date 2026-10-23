@@ -384,24 +384,27 @@ async function parcours(navigateur, d) {
     { url: /step=coherence/, texte: 'Masquer les comptes', barre: true })
   await etape(navigateur, 'Contrôle de cohérence : onglet « Contrôle de Vraisemblance »', () => cliquer(navigateur, 'Contrôle de Vraisemblance'),
     { url: /step=coherence/, texte: 'Voir le détail', barre: true })
-  // Colonne « Exceptions et cas particuliers » : une ligne dépliée puis repliée (bouton et aria-expanded).
-  const boutonException = `[...document.querySelectorAll('button[aria-controls^="exceptions-"]')].find((b) => b.offsetParent !== null)`
+  // Tableau par classe : une ligne repliée dépliée puis repliée (un bouton pour nature, exceptions et
+  // anomalies ; aria-expanded ; le résumé des anomalies reste visible).
+  const zonesDe = (b) => `${b}.getAttribute('aria-controls').split(' ').map((id) => document.getElementById(id))`
   await etape(navigateur, 'Vraisemblance : « Voir le détail » déplie la ligne', () => navigateur.evaluer(`(() => {
-      const b = ${boutonException}; if (!b) throw new Error('bouton « Voir le détail » introuvable');
-      b.click(); })()`), { url: /step=coherence/, texte: 'Masquer', barre: true })
-  await etape(navigateur, 'Vraisemblance : ligne dépliée (aria-expanded, liste visible)', () => navigateur.evaluer(`(() => {
-      const b = document.querySelector('button[aria-expanded="true"][aria-controls^="exceptions-"]');
-      if (!b) throw new Error('aucune ligne annoncée dépliée');
-      const liste = document.getElementById(b.getAttribute('aria-controls'));
-      if (!liste || liste.offsetParent === null) throw new Error('liste des cas particuliers non visible') })()`),
+      const b = [...document.querySelectorAll('button[aria-controls^="nature-"][aria-expanded="false"]')].find((x) => x.offsetParent !== null);
+      if (!b) throw new Error('aucune ligne repliée'); b.dataset.parcours = '1'; b.click(); })()`),
     { url: /step=coherence/, texte: 'Masquer', barre: true })
-  await etape(navigateur, 'Vraisemblance : « Masquer » replie la ligne', () => navigateur.evaluer(`(() => {
-      const b = document.querySelector('button[aria-expanded="true"][aria-controls^="exceptions-"]');
+  await etape(navigateur, 'Vraisemblance : ligne dépliée (aria-expanded, trois zones visibles)', () => navigateur.evaluer(`(() => {
+      const b = document.querySelector('button[data-parcours="1"]');
+      if (b.getAttribute('aria-expanded') !== 'true') throw new Error('ligne non annoncée dépliée');
+      const zones = ${zonesDe('b')};
+      if (zones.length !== 3 || zones.some((z) => !z || z.style.display === 'none')) throw new Error('nature, exceptions ou anomalies non dépliées') })()`),
+    { url: /step=coherence/, texte: 'Masquer', barre: true })
+  await etape(navigateur, 'Vraisemblance : « Masquer » replie la ligne, résumé des anomalies visible', () => navigateur.evaluer(`(() => {
+      const b = document.querySelector('button[data-parcours="1"]');
       b.click();
       return new Promise((r) => setTimeout(r, 200)).then(() => {
         if (b.getAttribute('aria-expanded') !== 'false') throw new Error('ligne toujours annoncée dépliée');
-        if (document.getElementById(b.getAttribute('aria-controls')).offsetParent !== null) throw new Error('liste toujours visible');
-        if (b.textContent.trim() !== 'Voir le détail') throw new Error('libellé du bouton : ' + b.textContent.trim()) }) })()`),
+        if (${zonesDe('b')}.some((z) => z.style.display !== 'none')) throw new Error('zone toujours visible');
+        if (b.textContent.trim() !== 'Voir le détail') throw new Error('libellé du bouton : ' + b.textContent.trim());
+        if (!/Aucune anomalie|\\d+ anomalies?/.test(b.closest('tr').innerText)) throw new Error('résumé des anomalies masqué') }) })()`),
     { url: /step=coherence/, texte: 'Voir le détail', barre: true })
   await etape(navigateur, 'Barre latérale : « Retour »', () => cliquer(navigateur, 'Retour'),
     { url: new RegExp(`^/client/${d.client_id}`), texte: d.client_nom })

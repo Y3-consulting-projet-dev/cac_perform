@@ -2559,15 +2559,37 @@ function formatAmount(value) {
   return new Intl.NumberFormat('fr-FR').format(n);
 }
 
-// Contrôle de vraisemblance, « Tableau par classe » : colonne « Exceptions et cas
-// particuliers » repliée par défaut, dépliable ligne par ligne (affichage seulement,
-// textes du rapport V1 inchangés côté model.py).
-const exceptionsDepliees = ref({});
-function basculerExceptions(classe) {
-  exceptionsDepliees.value = { ...exceptionsDepliees.value, [classe]: !exceptionsDepliees.value[classe] };
+// Contrôle de vraisemblance, « Tableau par classe » (affichage seulement, textes du
+// rapport V1 inchangés côté model.py) : repliée, une ligne montre le titre de la classe,
+// le nombre de cas particuliers et le résumé des anomalies ; « Voir le détail » déplie
+// ensemble la nature, les exceptions et les anomalies. Une ligne qui contient des
+// anomalies est dépliée tant que l'auditeur ne l'a pas repliée.
+const lignesClassesDepliees = ref({});
+function ligneClasseDepliee(classe) {
+  const choix = lignesClassesDepliees.value[classe.classe];
+  return choix === undefined ? (classe.anomalies_detectees || []).length > 0 : choix;
 }
-function deplierToutesExceptions(classes, deplie) {
-  exceptionsDepliees.value = Object.fromEntries((classes || []).map((c) => [c.classe, deplie]));
+function basculerLigneClasse(classe) {
+  lignesClassesDepliees.value = { ...lignesClassesDepliees.value, [classe.classe]: !ligneClasseDepliee(classe) };
+}
+function deplierToutesLignesClasses(classes, deplie) {
+  lignesClassesDepliees.value = Object.fromEntries((classes || []).map((c) => [c.classe, deplie]));
+}
+// Détail d'une anomalie de sens : montant, sens réel et sens attendu lus dans l'erreur V1
+// « signe » du même compte (le message structuré par model.py ne garde pas le montant et
+// écrit « Le solde anormal s'élève à classe N. », phrase retirée ici à l'affichage).
+function detailAnomalieSens(anomalie, erreurs) {
+  const erreur = (erreurs || []).find((e) => e.type === 'signe' && e.numero_compte === anomalie.compte);
+  const texte = String(erreur?.message || '');
+  const solde = texte.match(/(DÉBITEUR|CRÉDITEUR)\s*\((-?[\d,]+)\s*FCFA\)/);
+  const attendu = texte.match(/devrait être\s+(DÉBITEUR|CRÉDITEUR)/);
+  const sens = (mot) => (mot === 'DÉBITEUR' ? 'D' : 'C');
+  return {
+    montant: solde ? formatAmount(solde[2].replace(/[,-]/g, '')) : null,
+    sens: solde ? sens(solde[1]) : null,
+    sensAttendu: attendu ? sens(attendu[1]) : null,
+    message: String(anomalie.message || '').replace(/\s*Le solde anormal s'élève à classe \d+\./, ''),
+  };
 }
 // « CRÉDITEUR » / « DÉBITEUR » en minuscules dans le texte, numéros de comptes (109, 28x,
 // 4191…) isolés pour être mis en gras.
@@ -3179,12 +3201,12 @@ function montantsEnFrancais(texte) {
                     <div class="flex gap-2">
                       <button type="button"
                         class="px-3 py-1 text-sm rounded-lg border border-white text-white font-semibold hover:bg-white hover:text-blue-ycube transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                        @click="deplierToutesExceptions(yearReport.verification_vraisemblance.structure.tableau_classes, true)">
+                        @click="deplierToutesLignesClasses(yearReport.verification_vraisemblance.structure.tableau_classes, true)">
                         Tout déplier
                       </button>
                       <button type="button"
                         class="px-3 py-1 text-sm rounded-lg border border-white text-white font-semibold hover:bg-white hover:text-blue-ycube transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                        @click="deplierToutesExceptions(yearReport.verification_vraisemblance.structure.tableau_classes, false)">
+                        @click="deplierToutesLignesClasses(yearReport.verification_vraisemblance.structure.tableau_classes, false)">
                         Tout replier
                       </button>
                     </div>
@@ -3219,29 +3241,34 @@ function montantsEnFrancais(texte) {
                               }}</span>
                             </div>
                           </td>
-                          <td class="px-4 py-4 text-sm text-gray-700">{{ classe.nature }}</td>
+                          <!-- Nature : titre court toujours visible, description dépliée -->
+                          <td class="px-4 py-4 text-sm text-gray-700">
+                            <div class="flex flex-col gap-2">
+                              <span class="font-semibold text-gray-800">Classe {{ classe.classe }} · {{ classe.nom }}</span>
+                              <p v-show="ligneClasseDepliee(classe)" :id="`nature-${annee}-${classe.classe}`" class="m-0">{{ classe.nature }}</p>
+                              <button type="button"
+                                class="self-start text-blue-ycube font-semibold text-sm hover:underline inline-flex items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-ycube"
+                                :aria-expanded="ligneClasseDepliee(classe)"
+                                :aria-controls="`nature-${annee}-${classe.classe} exceptions-${annee}-${classe.classe} anomalies-${annee}-${classe.classe}`"
+                                :aria-label="`${ligneClasseDepliee(classe) ? 'Masquer' : 'Voir'} le détail de la classe ${classe.classe}`"
+                                @click="basculerLigneClasse(classe)">
+                                <i :class="['fa-solid text-xs', ligneClasseDepliee(classe) ? 'fa-chevron-up' : 'fa-chevron-down']"
+                                  aria-hidden="true"></i>
+                                {{ ligneClasseDepliee(classe) ? 'Masquer' : 'Voir le détail' }}
+                              </button>
+                            </div>
+                          </td>
                           <td class="px-4 py-4 whitespace-nowrap">
                             <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
                               :class="classe.sens_normal === 'CRÉDITEUR' ? 'bg-gray-500 text-white' : 'bg-gray-200 text-gray-800'">
                               {{ classe.sens_normal }}
                             </span>
                           </td>
+                          <!-- Exceptions : résumé toujours visible, liste dépliée -->
                           <td class="px-4 py-4 text-sm text-gray-700">
-                            <div v-if="classe.exceptions && classe.exceptions.length" class="flex flex-col gap-2">
-                              <div class="flex items-center gap-3 flex-wrap">
-                                <span class="text-gray-500 text-sm">{{ classe.exceptions.length }} cas particulier{{
-                                  classe.exceptions.length > 1 ? 's' : '' }}</span>
-                                <button type="button"
-                                  class="text-blue-ycube font-semibold text-sm hover:underline inline-flex items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-ycube"
-                                  :aria-expanded="!!exceptionsDepliees[classe.classe]"
-                                  :aria-controls="`exceptions-${annee}-${classe.classe}`"
-                                  @click="basculerExceptions(classe.classe)">
-                                  <i :class="['fa-solid text-xs', exceptionsDepliees[classe.classe] ? 'fa-chevron-up' : 'fa-chevron-down']"
-                                    aria-hidden="true"></i>
-                                  {{ exceptionsDepliees[classe.classe] ? 'Masquer' : 'Voir le détail' }}
-                                </button>
-                              </div>
-                              <ul v-show="exceptionsDepliees[classe.classe]" :id="`exceptions-${annee}-${classe.classe}`"
+                            <div class="flex flex-col gap-2">
+                              <span class="text-gray-500 text-sm">{{ (classe.exceptions || []).length ? `${classe.exceptions.length} cas particulier${classe.exceptions.length > 1 ? 's' : ''}` : 'Aucun cas particulier' }}</span>
+                              <ul v-show="ligneClasseDepliee(classe)" :id="`exceptions-${annee}-${classe.classe}`"
                                 class="list-disc pl-4 space-y-1 text-xs text-gray-700">
                                 <li v-for="(exception, idx) in classe.exceptions" :key="idx">
                                   <template v-for="(s, j) in segmentsException(exception)" :key="j"><strong
@@ -3250,39 +3277,43 @@ function montantsEnFrancais(texte) {
                                 </li>
                               </ul>
                             </div>
-                            <span v-else class="text-gray-500 text-sm">Aucun cas particulier</span>
                           </td>
+                          <!-- Anomalies : résumé jamais masqué, liste détaillée dépliée -->
                           <td class="px-4 py-4 text-sm text-gray-700">
-                            <div v-if="classe.anomalies_detectees && classe.anomalies_detectees.length > 0"
-                              class="space-y-3">
-                              <div v-for="(anomalie, idx) in classe.anomalies_detectees" :key="idx"
-                                class="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg shadow-sm">
-                                <div class="flex items-start gap-2 mb-2">
-                                  <svg class="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
-                                    </path>
-                                  </svg>
-                                  <div class="flex-1">
-                                    <div class="font-bold text-red-900 mb-1 text-sm">
-                                      Compte {{ anomalie.compte }}
-                                    </div>
-                                    <div class="text-red-800 text-xs leading-relaxed whitespace-pre-line">
-                                      {{ anomalie.message }}
+                            <div class="flex flex-col gap-3">
+                              <span v-if="(classe.anomalies_detectees || []).length"
+                                class="self-start px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                                {{ classe.anomalies_detectees.length }} anomalie{{ classe.anomalies_detectees.length > 1 ? 's' : '' }}
+                              </span>
+                              <span v-else class="self-start px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                Aucune anomalie
+                              </span>
+                              <div v-show="ligneClasseDepliee(classe)" :id="`anomalies-${annee}-${classe.classe}`" class="space-y-3">
+                                <div v-for="(anomalie, idx) in classe.anomalies_detectees" :key="idx"
+                                  class="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg shadow-sm">
+                                  <div class="flex items-start gap-2">
+                                    <svg class="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none"
+                                      stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                                      </path>
+                                    </svg>
+                                    <div class="flex-1 flex flex-col gap-1">
+                                      <div class="font-bold text-red-900 text-sm">Compte {{ anomalie.compte }}</div>
+                                      <div v-if="detailAnomalieSens(anomalie, yearReport.erreurs).montant !== null"
+                                        class="text-xs text-red-900">
+                                        Solde : <span class="font-mono font-semibold">{{ detailAnomalieSens(anomalie, yearReport.erreurs).montant }} {{ detailAnomalieSens(anomalie, yearReport.erreurs).sens }}</span>
+                                        <template v-if="detailAnomalieSens(anomalie, yearReport.erreurs).sensAttendu">
+                                          · sens attendu : <span class="font-semibold">{{ detailAnomalieSens(anomalie, yearReport.erreurs).sensAttendu }}</span>
+                                        </template>
+                                      </div>
+                                      <div class="text-red-800 text-xs leading-relaxed whitespace-pre-line">
+                                        {{ detailAnomalieSens(anomalie, yearReport.erreurs).message }}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                            <div v-else
-                              class="text-xs text-emerald-700 bg-emerald-50 p-3 rounded-lg border border-emerald-200 flex items-center gap-2">
-                              <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                              </svg>
-                              <span class="font-medium">Aucune anomalie détectée pour cette classe</span>
                             </div>
                           </td>
                         </tr>
