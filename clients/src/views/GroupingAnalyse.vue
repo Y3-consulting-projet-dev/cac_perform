@@ -3477,35 +3477,33 @@ function montantsEnFrancais(texte) {
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="(e, i) in intangibiliteEcarts" :key="i"
-                    class="align-top hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group"
-                    :class="e.status === 'ok' ? 'bg-green-50' : e.status === 'ecart' ? 'bg-red-50' : e.status === 'nouveau' ? 'bg-blue-50' : e.status === 'supprime' ? 'bg-yellow-50' : ''">
+                    class="align-top hover:bg-gray-50 transition-colors">
                     <td class="px-3 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <div
-                          class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                          <span class="text-xs font-bold text-white">{{ getClasseFromItem(e) }}</span>
+                          class="shrink-0 h-8 w-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                          <span class="text-xs font-bold text-gray-700">{{ getClasseFromItem(e) }}</span>
                         </div>
                         <div
-                          class="text-sm font-mono font-bold text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
+                          class="text-sm font-mono font-bold text-gray-900">
                           {{ getCompteFromItem(e) }}</div>
                       </div>
                     </td>
                     <td class="px-3 py-4 whitespace-nowrap text-right">
                       <div
-                        class="text-sm font-mono text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
+                        class="text-sm font-mono text-gray-900">
                         {{
                           formatAmount(e.ouverture_n) }}</div>
                     </td>
                     <td class="px-3 py-4 whitespace-nowrap text-right">
                       <div
-                        class="text-sm font-mono text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
+                        class="text-sm font-mono text-gray-900">
                         {{ e.cloture_n1 !== null ? formatAmount(e.cloture_n1) : 'N/A' }}
                       </div>
                     </td>
                     <td class="px-3 py-4 whitespace-nowrap text-right">
                       <div
-                        class="text-sm font-mono font-semibold transform group-hover:scale-105 transition-all duration-200"
-                        :class="e.ecart >= 0 ? 'text-emerald-600' : 'text-red-600'">
+                        class="text-sm font-mono font-semibold text-gray-900">
                         {{ formatAmount(e.ecart) }}
                       </div>
                     </td>
@@ -3521,8 +3519,7 @@ function montantsEnFrancais(texte) {
                       </span>
                     </td>
                     <td class="px-3 py-4">
-                      <div v-if="e.justification && e.justification !== '-'"
-                        class="bg-blue-50 border border-blue-200 rounded-lg p-3 group-hover:bg-blue-100 transition-colors duration-200">
+                      <div v-if="e.justification && e.justification !== '-'">
                         <p :id="`intang-explication-${i}`" class="m-0 text-sm text-gray-700 leading-relaxed"
                           :class="ligneIntangDepliee(i) ? '' : 'line-clamp-2'">{{ montantsDecimauxEnFrancais(e.justification) }}</p>
                       </div>
@@ -3538,10 +3535,9 @@ function montantsEnFrancais(texte) {
                       </button>
                     </td>
                     <td class="px-3 py-4">
-                      <div v-if="e.conclusion_audit && e.conclusion_audit !== '-'"
-                        class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 group-hover:bg-emerald-100 transition-colors duration-200">
+                      <div v-if="e.conclusion_audit && e.conclusion_audit !== '-'">
                         <p :id="`intang-conclusion-${i}`" class="m-0 text-sm text-gray-700 leading-relaxed">
-                          <span class="font-semibold text-emerald-800">{{ conclusionCourte(e.conclusion_audit) }}</span>
+                          <span class="font-semibold text-gray-800">{{ conclusionCourte(e.conclusion_audit) }}</span>
                           <template v-if="ligneIntangDepliee(i) && e.conclusion_audit.includes(' - ')"> — {{
                             e.conclusion_audit.split(' - ').slice(1).join(' - ') }}</template>
                         </p>
