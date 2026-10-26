@@ -19,6 +19,7 @@ import SelectionTiersView from '@/views/SelectionTiersView.vue';
 import CourriersView from '@/views/CourriersView.vue';
 import SuiviReponsesView from '@/views/SuiviReponsesView.vue';
 import CoherenceArithmetique from '@/components/CoherenceArithmetique.vue';
+import { conclusionCourte, montantsEnFrancais as montantsDecimauxEnFrancais } from '@/utils/intangibilite.js';
 
 
 const axios = inject('axios');
@@ -2559,6 +2560,17 @@ function formatAmount(value) {
   return new Intl.NumberFormat('fr-FR').format(n);
 }
 
+// Contrôle d'intangibilité : explication et conclusion de chaque ligne repliées par défaut
+// (affichage seulement, rapport V1 inchangé).
+const lignesIntangDepliees = ref({});
+const ligneIntangDepliee = (i) => !!lignesIntangDepliees.value[i];
+function basculerLigneIntang(i) {
+  lignesIntangDepliees.value = { ...lignesIntangDepliees.value, [i]: !ligneIntangDepliee(i) };
+}
+function deplierToutesLignesIntang(deplie) {
+  lignesIntangDepliees.value = Object.fromEntries(intangibiliteEcarts.value.map((_, i) => [i, deplie]));
+}
+
 // Contrôle de vraisemblance, « Tableau par classe » (affichage seulement, textes du
 // rapport V1 inchangés côté model.py) : repliée, une ligne montre le titre de la classe,
 // le nombre de cas particuliers et le résumé des anomalies ; « Voir le détail » déplie
@@ -3431,33 +3443,43 @@ function montantsEnFrancais(texte) {
             <div
               v-else-if="intangibiliteEcarts.length > 0"
               class="overflow-hidden rounded-xl shadow-xl bg-white border border-gray-100">
-              <table class="min-w-full divide-y divide-gray-200">
+              <!-- Explications et conclusions repliées par défaut : une ligne montre le début de
+                   l'explication et la conclusion courte ; « Voir le détail » déplie les deux textes. -->
+              <div class="flex justify-end gap-2 px-4 py-3 border-b border-gray-200">
+                <button type="button"
+                  class="px-3 py-1 text-sm rounded-lg border border-blue-ycube text-blue-ycube font-semibold hover:bg-blue-ycube hover:text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-ycube"
+                  @click="deplierToutesLignesIntang(true)">Tout déplier</button>
+                <button type="button"
+                  class="px-3 py-1 text-sm rounded-lg border border-blue-ycube text-blue-ycube font-semibold hover:bg-blue-ycube hover:text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-ycube"
+                  @click="deplierToutesLignesIntang(false)">Tout replier</button>
+              </div>
+              <table class="w-full table-fixed divide-y divide-gray-200">
                 <thead class="bg-linear-to-r from-blue-ycube  to-blue-ycube-3">
                   <tr>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
+                    <th class="w-[12%] px-3 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Compte
                     </th>
-                    <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Bilan
+                    <th class="w-[12%] px-3 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Bilan
                       ouverture
                       (N)</th>
-                    <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Bilan
+                    <th class="w-[12%] px-3 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Bilan
                       clôture
                       (N-1)</th>
-                    <th class="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Écarts
+                    <th class="w-[11%] px-3 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Écarts
                     </th>
-                    <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Statut
+                    <th class="w-[11%] px-3 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Statut
                     </th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th class="w-[24%] px-3 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                       Explications probables</th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Conclusion
+                    <th class="w-[18%] px-3 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Conclusion
                       audit
                     </th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="(e, i) in intangibiliteEcarts" :key="i"
-                    class="hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group transform hover:scale-[1.01] hover:shadow-md"
+                    class="align-top hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group"
                     :class="e.status === 'ok' ? 'bg-green-50' : e.status === 'ecart' ? 'bg-red-50' : e.status === 'nouveau' ? 'bg-blue-50' : e.status === 'supprime' ? 'bg-yellow-50' : ''">
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td class="px-3 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <div
                           class="shrink-0 h-8 w-8 bg-linear-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
@@ -3468,26 +3490,26 @@ function montantsEnFrancais(texte) {
                           {{ getCompteFromItem(e) }}</div>
                       </div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                    <td class="px-3 py-4 whitespace-nowrap text-right">
                       <div
                         class="text-sm font-mono text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
                         {{
                           formatAmount(e.ouverture_n) }}</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                    <td class="px-3 py-4 whitespace-nowrap text-right">
                       <div
                         class="text-sm font-mono text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
                         {{ e.cloture_n1 !== null ? formatAmount(e.cloture_n1) : 'N/A' }}
                       </div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                    <td class="px-3 py-4 whitespace-nowrap text-right">
                       <div
                         class="text-sm font-mono font-semibold transform group-hover:scale-105 transition-all duration-200"
                         :class="e.ecart >= 0 ? 'text-emerald-600' : 'text-red-600'">
                         {{ formatAmount(e.ecart) }}
                       </div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                    <td class="px-3 py-4 whitespace-nowrap text-center">
                       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" :class="e.status === 'ok' ? 'bg-green-100 text-green-800' :
                         e.status === 'ecart' ? 'bg-red-100 text-red-800' :
                           e.status === 'nouveau' ? 'bg-blue-100 text-blue-800' :
@@ -3498,45 +3520,31 @@ function montantsEnFrancais(texte) {
                               e.status === 'supprime' ? '🗑 Supprimé' : '?' }}
                       </span>
                     </td>
-                    <td class="px-6 py-4">
-                      <div v-if="e.justification && e.justification !== '-'" class="max-w-sm">
-                        <div
-                          class="bg-blue-50 border border-blue-200 rounded-lg p-3 group-hover:bg-blue-100 transition-colors duration-200">
-                          <div class="flex items-start space-x-2">
-                            <div class="shrink-0">
-                              <svg class="w-4 h-4 text-blue-600 mt-0.5" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                </path>
-                              </svg>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <p class="text-sm text-gray-700 leading-relaxed">{{ e.justification }}</p>
-                            </div>
-                          </div>
-                        </div>
+                    <td class="px-3 py-4">
+                      <div v-if="e.justification && e.justification !== '-'"
+                        class="bg-blue-50 border border-blue-200 rounded-lg p-3 group-hover:bg-blue-100 transition-colors duration-200">
+                        <p :id="`intang-explication-${i}`" class="m-0 text-sm text-gray-700 leading-relaxed"
+                          :class="ligneIntangDepliee(i) ? '' : 'line-clamp-2'">{{ montantsDecimauxEnFrancais(e.justification) }}</p>
                       </div>
                       <div v-else class="text-sm text-gray-500 italic">Aucune justification</div>
+                      <button type="button"
+                        class="mt-2 text-blue-ycube font-semibold text-sm hover:underline inline-flex items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-ycube"
+                        :aria-expanded="ligneIntangDepliee(i)"
+                        :aria-controls="`intang-explication-${i} intang-conclusion-${i}`"
+                        :aria-label="`${ligneIntangDepliee(i) ? 'Masquer' : 'Voir'} le détail du compte ${getCompteFromItem(e)}`"
+                        @click="basculerLigneIntang(i)">
+                        <i :class="['fa-solid text-xs', ligneIntangDepliee(i) ? 'fa-chevron-up' : 'fa-chevron-down']" aria-hidden="true"></i>
+                        {{ ligneIntangDepliee(i) ? 'Masquer' : 'Voir le détail' }}
+                      </button>
                     </td>
-                    <td class="px-6 py-4">
-                      <div v-if="e.conclusion_audit && e.conclusion_audit !== '-'" class="max-w-sm">
-                        <div
-                          class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 group-hover:bg-emerald-100 transition-colors duration-200">
-                          <div class="flex items-start space-x-2">
-                            <div class="shrink-0">
-                              <svg class="w-4 h-4 text-emerald-600 mt-0.5" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                              </svg>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <p class="text-xs font-medium text-emerald-800 mb-1">Conclusion Audit</p>
-                              <p class="text-sm text-gray-700 leading-relaxed">{{ e.conclusion_audit }}</p>
-                            </div>
-                          </div>
-                        </div>
+                    <td class="px-3 py-4">
+                      <div v-if="e.conclusion_audit && e.conclusion_audit !== '-'"
+                        class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 group-hover:bg-emerald-100 transition-colors duration-200">
+                        <p :id="`intang-conclusion-${i}`" class="m-0 text-sm text-gray-700 leading-relaxed">
+                          <span class="font-semibold text-emerald-800">{{ conclusionCourte(e.conclusion_audit) }}</span>
+                          <template v-if="ligneIntangDepliee(i) && e.conclusion_audit.includes(' - ')"> — {{
+                            e.conclusion_audit.split(' - ').slice(1).join(' - ') }}</template>
+                        </p>
                       </div>
                       <div v-else class="text-sm text-gray-500 italic">Aucune conclusion</div>
                     </td>
